@@ -390,6 +390,7 @@ serve(async (req) => {
     }
 
     // Immediately return with processing status
+    console.log("Returning success response with historyId:", historyRecord.id);
     return new Response(
       JSON.stringify({
         success: true,
@@ -397,7 +398,10 @@ serve(async (req) => {
         message: "Image generation started. Please check the history page for results.",
         historyId: historyRecord.id,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
     );
 
   } catch (error) {

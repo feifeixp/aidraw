@@ -113,6 +113,8 @@ const Generate = () => {
 
       if (error) throw error;
 
+      console.log("Edge function response:", data);
+
       if (data.success && data.status === "processing") {
         // 异步生成已启动，开始轮询状态
         toast({
