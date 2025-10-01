@@ -5,9 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ChatMessage {
   id: string;
@@ -28,6 +30,7 @@ const Generate = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAISelecting, setIsAISelecting] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -446,53 +449,100 @@ const Generate = () => {
               </SelectContent>
             </Select>
 
-            {/* 风格多选 */}
+            {/* 风格选择弹窗 */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Select 
-                value=""
-                onValueChange={(value) => {
-                  if (selectedLoras.includes(value)) {
-                    setSelectedLoras(prev => prev.filter(id => id !== value));
-                  } else if (selectedLoras.length < 5) {
-                    setSelectedLoras(prev => [...prev, value]);
-                  } else {
-                    toast({
-                      title: "最多选择5个风格",
-                      description: "您已经选择了5个风格模型",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger className="w-auto min-w-[180px]">
-                  <SelectValue placeholder={`选择风格 (${selectedLoras.length}/5)`} />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {modelsLoading ? (
-                    <SelectItem value="loading" disabled>
-                      加载中...
-                    </SelectItem>
-                  ) : filteredLoraModels.length > 0 ? (
-                    filteredLoraModels.map((model) => (
-                      <SelectItem key={model.id} value={model.model_id}>
-                        <div className="flex items-center gap-2">
-                          <span>{model.name}</span>
-                          {selectedLoras.includes(model.model_id) && (
-                            <span className="text-xs">✓</span>
-                          )}
-                          <Badge className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
-                            风格
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-styles" disabled>
-                      {selectedCheckpoint ? "该底模暂无风格" : "暂无风格"}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <Dialog open={isStyleDialogOpen} onOpenChange={setIsStyleDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    选择风格 ({selectedLoras.length}/5)
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh]">
+                  <DialogHeader>
+                    <DialogTitle>
+                      选择风格模型 ({selectedLoras.length}/5)
+                      {selectedCheckpoint && (
+                        <span className="text-sm text-muted-foreground ml-2">
+                          - 基于 {checkpointModels.find(m => m.model_id === selectedCheckpoint)?.name}
+                        </span>
+                      )}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="h-[60vh] pr-4">
+                    {modelsLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : filteredLoraModels.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {filteredLoraModels.map((model) => {
+                          const isSelected = selectedLoras.includes(model.model_id);
+                          return (
+                            <Card
+                              key={model.id}
+                              className={`cursor-pointer transition-all hover:shadow-lg ${
+                                isSelected ? 'ring-2 ring-primary' : ''
+                              }`}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedLoras(prev => prev.filter(id => id !== model.model_id));
+                                } else if (selectedLoras.length < 5) {
+                                  setSelectedLoras(prev => [...prev, model.model_id]);
+                                } else {
+                                  toast({
+                                    title: "最多选择5个风格",
+                                    description: "您已经选择了5个风格模型",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              <div className="relative aspect-square overflow-hidden rounded-t-lg bg-muted">
+                                {model.thumbnail_url ? (
+                                  <img
+                                    src={model.thumbnail_url}
+                                    alt={model.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex items-center justify-center h-full">
+                                    <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                                  </div>
+                                )}
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">
+                                    <span className="text-xs font-bold">✓</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4 className="font-medium text-sm line-clamp-1">{model.name}</h4>
+                                  <Badge className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20 flex-shrink-0">
+                                    风格
+                                  </Badge>
+                                </div>
+                                {model.description && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2">
+                                    {model.description}
+                                  </p>
+                                )}
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">
+                          {selectedCheckpoint ? "该底模暂无可用风格" : "请先选择底模"}
+                        </p>
+                      </div>
+                    )}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
               
               {selectedLoras.length > 0 && (
                 <div className="flex items-center gap-1 flex-wrap">
