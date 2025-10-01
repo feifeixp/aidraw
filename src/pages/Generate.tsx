@@ -24,7 +24,7 @@ interface ChatMessage {
 const Generate = () => {
   const [prompt, setPrompt] = useState("");
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string>("");
-  const [selectedLora, setSelectedLora] = useState<string>("");
+  const [selectedLoras, setSelectedLoras] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAISelecting, setIsAISelecting] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -84,7 +84,12 @@ const Generate = () => {
         if (selectedModel.checkpoint_id) {
           setSelectedCheckpoint(data.model_id);
         } else if (selectedModel.lora_version_id) {
-          setSelectedLora(data.model_id);
+          setSelectedLoras(prev => {
+            if (!prev.includes(data.model_id) && prev.length < 5) {
+              return [...prev, data.model_id];
+            }
+            return prev;
+          });
         }
       }
       
@@ -120,26 +125,26 @@ const Generate = () => {
 
     // 使用AI选择时用override，否则检查用户选择
     let checkpointModel = null;
-    let loraModel = null;
+    let loraModelsSelected: any[] = [];
 
     if (modelIdOverride) {
       const model = models?.find(m => m.model_id === modelIdOverride);
       if (model?.checkpoint_id) {
         checkpointModel = model;
       } else if (model?.lora_version_id) {
-        loraModel = model;
+        loraModelsSelected = [model];
       }
     } else {
       if (selectedCheckpoint) {
         checkpointModel = models?.find(m => m.model_id === selectedCheckpoint);
       }
-      if (selectedLora) {
-        loraModel = models?.find(m => m.model_id === selectedLora);
+      if (selectedLoras.length > 0) {
+        loraModelsSelected = models?.filter(m => selectedLoras.includes(m.model_id)) || [];
       }
     }
 
     // 至少需要选择一个模型
-    if (!checkpointModel && !loraModel) {
+    if (!checkpointModel && loraModelsSelected.length === 0) {
       toast({
         title: "请选择模型",
         description: "请至少选择一个底模或LoRA模型",
@@ -148,8 +153,11 @@ const Generate = () => {
       return;
     }
 
-    const displayModelName = checkpointModel?.name || loraModel?.name || "未知模型";
-    const primaryModelId = checkpointModel?.model_id || loraModel?.model_id || "";
+    const loraNames = loraModelsSelected.map(l => l.name).join(" + ");
+    const displayModelName = checkpointModel 
+      ? (loraModelsSelected.length > 0 ? `${checkpointModel.name} + ${loraNames}` : checkpointModel.name)
+      : loraNames || "未知模型";
+    const primaryModelId = checkpointModel?.model_id || loraModelsSelected[0]?.model_id || "";
 
     // 添加用户消息
     const userMessage: ChatMessage = {
@@ -184,7 +192,7 @@ const Generate = () => {
           modelId: primaryModelId,
           modelName: displayModelName,
           checkpointId: checkpointModel?.model_id,
-          loraId: loraModel?.model_id,
+          loraIds: loraModelsSelected.map(l => l.model_id),
         },
       });
 
@@ -421,34 +429,72 @@ const Generate = () => {
               </SelectContent>
             </Select>
 
-            {/* LoRA选择 */}
-            <Select value={selectedLora} onValueChange={setSelectedLora}>
-              <SelectTrigger className="w-auto min-w-[180px]">
-                <SelectValue placeholder="选择LoRA（可选）" />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                {modelsLoading ? (
-                  <SelectItem value="loading" disabled>
-                    加载中...
-                  </SelectItem>
-                ) : loraModels.length > 0 ? (
-                  loraModels.map((model) => (
-                    <SelectItem key={model.id} value={model.model_id}>
-                      <div className="flex items-center gap-2">
-                        <span>{model.name}</span>
-                        <Badge className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
-                          LoRA
-                        </Badge>
-                      </div>
+            {/* LoRA多选 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select 
+                value=""
+                onValueChange={(value) => {
+                  if (selectedLoras.includes(value)) {
+                    setSelectedLoras(prev => prev.filter(id => id !== value));
+                  } else if (selectedLoras.length < 5) {
+                    setSelectedLoras(prev => [...prev, value]);
+                  } else {
+                    toast({
+                      title: "最多选择5个LoRA",
+                      description: "您已经选择了5个LoRA模型",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-auto min-w-[180px]">
+                  <SelectValue placeholder={`选择LoRA (${selectedLoras.length}/5)`} />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {modelsLoading ? (
+                    <SelectItem value="loading" disabled>
+                      加载中...
                     </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="no-loras" disabled>
-                    暂无LoRA
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+                  ) : loraModels.length > 0 ? (
+                    loraModels.map((model) => (
+                      <SelectItem key={model.id} value={model.model_id}>
+                        <div className="flex items-center gap-2">
+                          <span>{model.name}</span>
+                          {selectedLoras.includes(model.model_id) && (
+                            <span className="text-xs">✓</span>
+                          )}
+                          <Badge className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                            LoRA
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-loras" disabled>
+                      暂无LoRA
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              
+              {selectedLoras.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {selectedLoras.map((loraId) => {
+                    const lora = models?.find(m => m.model_id === loraId);
+                    return (
+                      <Badge
+                        key={loraId}
+                        variant="secondary"
+                        className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20 cursor-pointer"
+                        onClick={() => setSelectedLoras(prev => prev.filter(id => id !== loraId))}
+                      >
+                        {lora?.name} ×
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             <Button
               onClick={handleAISelect}
@@ -474,7 +520,7 @@ const Generate = () => {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  if (!isGenerating && !isAISelecting && prompt.trim() && (selectedCheckpoint || selectedLora)) {
+                  if (!isGenerating && !isAISelecting && prompt.trim() && (selectedCheckpoint || selectedLoras.length > 0)) {
                     handleGenerate();
                   }
                 }
@@ -484,7 +530,7 @@ const Generate = () => {
             />
             <Button
               onClick={() => handleGenerate()}
-              disabled={isGenerating || isAISelecting || !prompt.trim() || (!selectedCheckpoint && !selectedLora)}
+              disabled={isGenerating || isAISelecting || !prompt.trim() || (!selectedCheckpoint && selectedLoras.length === 0)}
               size="lg"
               className="px-6"
             >

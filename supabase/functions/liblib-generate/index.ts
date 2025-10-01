@@ -17,7 +17,7 @@ serve(async (req) => {
       modelId, 
       modelName, 
       checkpointId, 
-      loraId, 
+      loraIds = [], 
       width = 1024, 
       height = 1024, 
       imgCount = 1 
@@ -31,9 +31,17 @@ serve(async (req) => {
     }
 
     // 至少需要一个模型（底模或LoRA）
-    if (!checkpointId && !loraId) {
+    if (!checkpointId && (!loraIds || loraIds.length === 0)) {
       return new Response(
-        JSON.stringify({ error: "At least one of checkpointId or loraId is required" }),
+        JSON.stringify({ error: "At least one of checkpointId or loraIds is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // 最多支持5个LoRA
+    if (loraIds && loraIds.length > 5) {
+      return new Response(
+        JSON.stringify({ error: "Maximum 5 LoRA models are allowed" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -109,23 +117,22 @@ serve(async (req) => {
     }
 
     // 获取LoRA配置（如果有）
-    let loraData = null;
-    if (loraId) {
+    let loraDataList: any[] = [];
+    if (loraIds && loraIds.length > 0) {
       const { data, error } = await supabase
         .from("liblib_models")
         .select("*")
-        .eq("model_id", loraId)
-        .single();
+        .in("model_id", loraIds);
       
       if (!error && data) {
-        loraData = data;
+        loraDataList = data;
       } else {
         console.error("Failed to fetch LoRA data:", error);
       }
     }
 
     // 确定使用哪个模型的base_algo（优先使用底模的）
-    const primaryModel = checkpointData || loraData;
+    const primaryModel = checkpointData || loraDataList[0];
     if (!primaryModel) {
       return new Response(
         JSON.stringify({ error: "No valid model configuration found" }),
@@ -133,11 +140,13 @@ serve(async (req) => {
       );
     }
 
-    // 创建历史记录
-    const loraModels = loraData ? [{
-      modelId: loraData.lora_version_id,
-      weight: loraData.lora_weight || 0.8
-    }] : null;
+    // 创建历史记录（包含所有LoRA模型）
+    const loraModels = loraDataList.length > 0 
+      ? loraDataList.map(lora => ({
+          modelId: lora.lora_version_id,
+          weight: lora.lora_weight || 0.8
+        }))
+      : null;
 
     const { data: historyRecord, error: historyError } = await supabase
       .from("generation_history")
@@ -164,7 +173,8 @@ serve(async (req) => {
     console.log("Calling LibLib API with config:", {
       baseAlgo: primaryModel.base_algo,
       checkpointId: checkpointData?.checkpoint_id,
-      loraVersionId: loraData?.lora_version_id,
+      loraCount: loraDataList.length,
+      loraVersionIds: loraDataList.map(l => l.lora_version_id),
       sampler: primaryModel.sampler,
       cfgScale: primaryModel.cfg_scale,
     });
@@ -208,15 +218,13 @@ serve(async (req) => {
       console.log("Using checkpoint model:", checkpointData.checkpoint_id);
     }
 
-    // 如果有LoRA，添加additionalNetwork
-    if (loraData?.lora_version_id) {
-      generateParams.additionalNetwork = [
-        {
-          modelId: loraData.lora_version_id,
-          weight: loraData.lora_weight || 0.8,
-        },
-      ];
-      console.log("Using LoRA model:", loraData.lora_version_id, "with weight:", loraData.lora_weight);
+    // 如果有LoRA，添加additionalNetwork（支持多个LoRA）
+    if (loraDataList.length > 0) {
+      generateParams.additionalNetwork = loraDataList.map(lora => ({
+        modelId: lora.lora_version_id,
+        weight: lora.lora_weight || 0.8,
+      }));
+      console.log("Using LoRA models:", loraDataList.map(l => `${l.lora_version_id} (weight: ${l.lora_weight})`).join(", "));
     }
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
