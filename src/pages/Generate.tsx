@@ -1,20 +1,33 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
+
+interface ChatMessage {
+  id: string;
+  type: "user" | "assistant";
+  prompt?: string;
+  modelName?: string;
+  modelId?: string;
+  imageUrl?: string;
+  status?: "processing" | "completed" | "failed";
+  aiReasoning?: string;
+  timestamp: Date;
+}
 
 const Generate = () => {
   const [prompt, setPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAISelecting, setIsAISelecting] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [aiReasoning, setAiReasoning] = useState<string>("");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // 获取模型列表
@@ -32,6 +45,15 @@ const Generate = () => {
     },
   });
 
+  // 自动滚动到底部
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
+
   const handleAISelect = async () => {
     if (!prompt.trim()) {
       toast({
@@ -43,7 +65,6 @@ const Generate = () => {
     }
 
     setIsAISelecting(true);
-    setAiReasoning("");
 
     try {
       const { data, error } = await supabase.functions.invoke("ai-select-model", {
@@ -53,12 +74,14 @@ const Generate = () => {
       if (error) throw error;
 
       setSelectedModel(data.model_id);
-      setAiReasoning(data.reasoning);
       
       toast({
         title: "AI已选择模型",
         description: `${data.model_name}: ${data.reasoning}`,
       });
+
+      // 自动触发生成
+      handleGenerate(data.model_id, data.reasoning);
     } catch (error: any) {
       console.error("AI selection error:", error);
       toast({
@@ -66,13 +89,15 @@ const Generate = () => {
         description: error.message || "请稍后重试",
         variant: "destructive",
       });
-    } finally {
       setIsAISelecting(false);
     }
   };
 
-  const handleGenerate = async () => {
-    if (!prompt.trim()) {
+  const handleGenerate = async (modelIdOverride?: string, reasoning?: string) => {
+    const currentPrompt = prompt.trim();
+    const currentModelId = modelIdOverride || selectedModel;
+
+    if (!currentPrompt) {
       toast({
         title: "请输入提示词",
         description: "提示词不能为空",
@@ -81,7 +106,7 @@ const Generate = () => {
       return;
     }
 
-    if (!selectedModel) {
+    if (!currentModelId) {
       toast({
         title: "请选择模型",
         description: "请先选择一个模型或使用AI智能选择",
@@ -90,7 +115,7 @@ const Generate = () => {
       return;
     }
 
-    const model = models?.find(m => m.model_id === selectedModel);
+    const model = models?.find(m => m.model_id === currentModelId);
     if (!model) {
       toast({
         title: "模型未找到",
@@ -99,13 +124,36 @@ const Generate = () => {
       return;
     }
 
+    // 添加用户消息
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      type: "user",
+      prompt: currentPrompt,
+      modelName: model.name,
+      modelId: model.model_id,
+      aiReasoning: reasoning,
+      timestamp: new Date(),
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setPrompt("");
     setIsGenerating(true);
-    setGeneratedImage(null);
+
+    // 添加处理中的助手消息
+    const assistantMessageId = `assistant-${Date.now()}`;
+    const assistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      type: "assistant",
+      status: "processing",
+      timestamp: new Date(),
+    };
+
+    setChatMessages(prev => [...prev, assistantMessage]);
 
     try {
       const { data, error } = await supabase.functions.invoke("liblib-generate", {
         body: {
-          prompt,
+          prompt: currentPrompt,
           modelId: model.model_id,
           modelName: model.name,
         },
@@ -116,22 +164,22 @@ const Generate = () => {
       console.log("Edge function response:", data);
 
       if (data.success && data.status === "processing") {
-        // 异步生成已启动，开始轮询状态
-        toast({
-          title: "生成中",
-          description: "图片正在生成，请稍候...",
-        });
-
         const historyId = data.historyId;
         let pollAttempts = 0;
-        const maxPollAttempts = 90; // 90 * 2秒 = 3分钟
+        const maxPollAttempts = 90;
 
         const pollInterval = setInterval(async () => {
           pollAttempts++;
           
           if (pollAttempts > maxPollAttempts) {
             clearInterval(pollInterval);
+            setChatMessages(prev => prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { ...msg, status: "failed" as const }
+                : msg
+            ));
             setIsGenerating(false);
+            setIsAISelecting(false);
             toast({
               title: "生成超时",
               description: "生成时间过长，请稍后在历史记录中查看结果",
@@ -153,173 +201,236 @@ const Generate = () => {
 
           if (historyData.status === "completed" && historyData.image_url) {
             clearInterval(pollInterval);
-            setGeneratedImage(historyData.image_url);
+            setChatMessages(prev => prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { ...msg, status: "completed" as const, imageUrl: historyData.image_url }
+                : msg
+            ));
             setIsGenerating(false);
+            setIsAISelecting(false);
             toast({
               title: "生成成功",
               description: "图片已生成",
             });
           } else if (historyData.status === "failed") {
             clearInterval(pollInterval);
+            setChatMessages(prev => prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { ...msg, status: "failed" as const }
+                : msg
+            ));
             setIsGenerating(false);
+            setIsAISelecting(false);
             toast({
               title: "生成失败",
               description: historyData.error_message || "请稍后重试",
               variant: "destructive",
             });
           }
-        }, 2000); // 每2秒轮询一次
+        }, 2000);
 
       } else if (data.success && data.imageUrl) {
-        // 旧版同步返回（向后兼容）
-        setGeneratedImage(data.imageUrl);
+        setChatMessages(prev => prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, status: "completed" as const, imageUrl: data.imageUrl }
+            : msg
+        ));
+        setIsGenerating(false);
+        setIsAISelecting(false);
         toast({
           title: "生成成功",
           description: "图片已生成",
         });
-        setIsGenerating(false);
       } else {
         throw new Error(data.error || "生成失败");
       }
     } catch (error: any) {
       console.error("Generation error:", error);
+      setChatMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { ...msg, status: "failed" as const }
+          : msg
+      ));
+      setIsGenerating(false);
+      setIsAISelecting(false);
       toast({
         title: "生成失败",
         description: error.message || "请稍后重试",
         variant: "destructive",
       });
-      setIsGenerating(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 p-6">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-8 text-center">
-          <h1 className="mb-2 text-4xl font-bold bg-[var(--gradient-primary)] bg-clip-text text-transparent">
-            AI智能绘图
-          </h1>
-          <p className="text-muted-foreground">
-            描述您的创意，AI会自动选择最合适的模型为您生成图片
-          </p>
-        </header>
+    <div className="flex flex-col h-screen bg-gradient-to-br from-background via-background to-accent/5">
+      {/* 顶部标题 */}
+      <header className="flex-shrink-0 border-b bg-card/50 backdrop-blur-sm px-6 py-4">
+        <h1 className="text-2xl font-bold bg-[var(--gradient-primary)] bg-clip-text text-transparent">
+          AI智能绘图
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          描述您的创意，AI会自动选择最合适的模型为您生成图片
+        </p>
+      </header>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* 输入区域 */}
-          <Card className="p-6 bg-gradient-to-br from-card via-card to-primary/5 border-primary/20">
-            <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              创作设置
-            </h2>
+      {/* 对话列表区域 */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {chatMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <Sparkles className="h-16 w-16 text-muted-foreground/50 mb-4" />
+              <p className="text-lg text-muted-foreground">开始您的创作之旅</p>
+              <p className="text-sm text-muted-foreground/70 mt-2">输入提示词，让AI为您生成精美图片</p>
+            </div>
+          ) : (
+            chatMessages.map((message) => (
+              <div key={message.id} className="space-y-4">
+                {message.type === "user" && (
+                  <div className="flex justify-end">
+                    <Card className="max-w-2xl p-4 bg-primary/10 border-primary/20">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">{message.prompt}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline" className="text-xs">
+                            {message.modelName}
+                          </Badge>
+                          {message.aiReasoning && (
+                            <span className="flex items-center gap-1">
+                              <Wand2 className="h-3 w-3" />
+                              AI推荐
+                            </span>
+                          )}
+                        </div>
+                        {message.aiReasoning && (
+                          <p className="text-xs text-muted-foreground italic">
+                            💡 {message.aiReasoning}
+                          </p>
+                        )}
+                      </div>
+                    </Card>
+                  </div>
+                )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  提示词
-                </label>
-                <Textarea
-                  placeholder="描述您想要生成的图片，例如：一个赛博朋克风格的城市夜景，霓虹灯闪烁..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-32 resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  模型选择
-                </label>
-                <div className="flex gap-2">
-                  <Select value={selectedModel} onValueChange={setSelectedModel}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="选择模型或使用AI智能选择" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {modelsLoading ? (
-                        <SelectItem value="loading" disabled>
-                          加载中...
-                        </SelectItem>
-                      ) : models && models.length > 0 ? (
-                        models.map((model) => (
-                          <SelectItem key={model.id} value={model.model_id}>
-                            {model.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-models" disabled>
-                          暂无可用模型
-                        </SelectItem>
+                {message.type === "assistant" && (
+                  <div className="flex justify-start">
+                    <Card className="max-w-2xl p-4 bg-card border-accent/20">
+                      {message.status === "processing" && (
+                        <div className="flex flex-col items-center gap-4 py-8">
+                          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                          <p className="text-sm text-muted-foreground">正在生成图片...</p>
+                          <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+                            生成中
+                          </Badge>
+                        </div>
                       )}
-                    </SelectContent>
-                  </Select>
 
-                  <Button
-                    onClick={handleAISelect}
-                    disabled={isAISelecting || !prompt.trim()}
-                    variant="outline"
-                    className="shrink-0"
-                  >
-                    {isAISelecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                    <span className="ml-2">AI选择</span>
-                  </Button>
-                </div>
+                      {message.status === "completed" && message.imageUrl && (
+                        <div className="space-y-3">
+                          <div className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted">
+                            <img
+                              src={message.imageUrl}
+                              alt="Generated"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+                            已完成
+                          </Badge>
+                        </div>
+                      )}
 
-                {aiReasoning && (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    💡 {aiReasoning}
-                  </p>
+                      {message.status === "failed" && (
+                        <div className="flex flex-col items-center gap-4 py-8 text-destructive">
+                          <ImageIcon className="h-12 w-12" />
+                          <p className="text-sm">生成失败，请重试</p>
+                          <Badge className="bg-red-500/10 text-red-500 border-red-500/20">
+                            失败
+                          </Badge>
+                        </div>
+                      )}
+                    </Card>
+                  </div>
                 )}
               </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
 
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating || !prompt.trim() || !selectedModel}
-                className="w-full"
-                size="lg"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    生成中...
-                  </>
+      {/* 底部输入区域 */}
+      <div className="flex-shrink-0 border-t bg-card/50 backdrop-blur-sm p-4">
+        <div className="max-w-4xl mx-auto space-y-3">
+          {/* 模型选择 */}
+          <div className="flex items-center gap-2">
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="w-auto min-w-[200px]">
+                <SelectValue placeholder="选择模型" />
+              </SelectTrigger>
+              <SelectContent>
+                {modelsLoading ? (
+                  <SelectItem value="loading" disabled>
+                    加载中...
+                  </SelectItem>
+                ) : models && models.length > 0 ? (
+                  models.map((model) => (
+                    <SelectItem key={model.id} value={model.model_id}>
+                      {model.name}
+                    </SelectItem>
+                  ))
                 ) : (
-                  <>
-                    <Sparkles className="mr-2 h-5 w-5" />
-                    开始生成
-                  </>
+                  <SelectItem value="no-models" disabled>
+                    暂无可用模型
+                  </SelectItem>
                 )}
-              </Button>
-            </div>
-          </Card>
+              </SelectContent>
+            </Select>
 
-          {/* 预览区域 */}
-          <Card className="p-6 bg-gradient-to-br from-card via-card to-accent/5 border-accent/20">
-            <h2 className="mb-4 text-xl font-semibold">生成预览</h2>
-            
-            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted/50 flex items-center justify-center">
-              {isGenerating ? (
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">正在生成图片...</p>
-                </div>
-              ) : generatedImage ? (
-                <img
-                  src={generatedImage}
-                  alt="Generated"
-                  className="h-full w-full object-contain"
-                />
+            <Button
+              onClick={handleAISelect}
+              disabled={isAISelecting || isGenerating || !prompt.trim()}
+              variant="outline"
+              size="sm"
+            >
+              {isAISelecting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <div className="text-center text-muted-foreground">
-                  <Sparkles className="mx-auto mb-2 h-12 w-12 opacity-50" />
-                  <p>图片将在这里显示</p>
-                </div>
+                <Wand2 className="h-4 w-4" />
               )}
-            </div>
-          </Card>
+              <span className="ml-2">AI选择</span>
+            </Button>
+          </div>
+
+          {/* 输入框 */}
+          <div className="flex gap-2">
+            <Textarea
+              placeholder="输入提示词..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!isGenerating && !isAISelecting && prompt.trim() && selectedModel) {
+                    handleGenerate();
+                  }
+                }
+              }}
+              className="min-h-[60px] resize-none"
+              disabled={isGenerating || isAISelecting}
+            />
+            <Button
+              onClick={() => handleGenerate()}
+              disabled={isGenerating || isAISelecting || !prompt.trim() || !selectedModel}
+              size="lg"
+              className="px-6"
+            >
+              {isGenerating || isAISelecting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
