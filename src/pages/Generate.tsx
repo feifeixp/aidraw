@@ -46,9 +46,26 @@ const Generate = () => {
     },
   });
 
-  // 分离底模和LoRA列表
+  // 分离底模和风格列表
   const checkpointModels = models?.filter(m => m.checkpoint_id) || [];
-  const loraModels = models?.filter(m => m.lora_version_id) || [];
+  
+  // 根据选中的底模筛选风格模型
+  const filteredLoraModels = models?.filter(m => {
+    if (!m.lora_version_id) return false;
+    
+    // 如果没有选择底模，显示所有风格
+    if (!selectedCheckpoint) return true;
+    
+    // 检查features中是否包含compatible_checkpoint_id
+    const features = m.features as Record<string, any> | null;
+    const compatibleCheckpointId = features?.compatible_checkpoint_id;
+    if (compatibleCheckpointId) {
+      return compatibleCheckpointId === selectedCheckpoint;
+    }
+    
+    // 如果没有compatible_checkpoint_id，显示所有风格
+    return true;
+  }) || [];
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -144,10 +161,10 @@ const Generate = () => {
     }
 
     // 至少需要选择一个模型
-    if (!checkpointModel && loraModelsSelected.length === 0) {
+      if (!checkpointModel && loraModelsSelected.length === 0) {
       toast({
         title: "请选择模型",
-        description: "请至少选择一个底模或LoRA模型",
+        description: "请至少选择一个底模或风格模型",
         variant: "destructive",
       });
       return;
@@ -429,7 +446,7 @@ const Generate = () => {
               </SelectContent>
             </Select>
 
-            {/* LoRA多选 */}
+            {/* 风格多选 */}
             <div className="flex items-center gap-2 flex-wrap">
               <Select 
                 value=""
@@ -440,23 +457,23 @@ const Generate = () => {
                     setSelectedLoras(prev => [...prev, value]);
                   } else {
                     toast({
-                      title: "最多选择5个LoRA",
-                      description: "您已经选择了5个LoRA模型",
+                      title: "最多选择5个风格",
+                      description: "您已经选择了5个风格模型",
                       variant: "destructive",
                     });
                   }
                 }}
               >
                 <SelectTrigger className="w-auto min-w-[180px]">
-                  <SelectValue placeholder={`选择LoRA (${selectedLoras.length}/5)`} />
+                  <SelectValue placeholder={`选择风格 (${selectedLoras.length}/5)`} />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
                   {modelsLoading ? (
                     <SelectItem value="loading" disabled>
                       加载中...
                     </SelectItem>
-                  ) : loraModels.length > 0 ? (
-                    loraModels.map((model) => (
+                  ) : filteredLoraModels.length > 0 ? (
+                    filteredLoraModels.map((model) => (
                       <SelectItem key={model.id} value={model.model_id}>
                         <div className="flex items-center gap-2">
                           <span>{model.name}</span>
@@ -464,14 +481,14 @@ const Generate = () => {
                             <span className="text-xs">✓</span>
                           )}
                           <Badge className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
-                            LoRA
+                            风格
                           </Badge>
                         </div>
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="no-loras" disabled>
-                      暂无LoRA
+                    <SelectItem value="no-styles" disabled>
+                      {selectedCheckpoint ? "该底模暂无风格" : "暂无风格"}
                     </SelectItem>
                   )}
                 </SelectContent>
