@@ -36,10 +36,17 @@ serve(async (req) => {
     }
 
     // Generate signature parameters
-    const timestamp = Date.now();
+    const timestamp = Date.now().toString();
     const signatureNonce = crypto.randomUUID().substring(0, 10);
     const uri = "/api/generate/webui/text2img";
     const content = `${uri}&${timestamp}&${signatureNonce}`;
+    
+    console.log("=== Signature Generation ===");
+    console.log("URI:", uri);
+    console.log("Timestamp:", timestamp);
+    console.log("SignatureNonce:", signatureNonce);
+    console.log("Content to sign:", content);
+    console.log("SecretKey length:", LIBLIB_SECRET_KEY.length);
 
     // Create HMAC-SHA1 signature
     const encoder = new TextEncoder();
@@ -60,6 +67,8 @@ serve(async (req) => {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
+    
+    console.log("Generated signature:", signature);
 
     // 初始化Supabase客户端
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
