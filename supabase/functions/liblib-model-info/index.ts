@@ -101,9 +101,14 @@ serve(async (req) => {
       );
     }
 
-    // showType: 1=LoRA, 2=Checkpoint (根据实际API返回修正)
-    const modelType = result.data.showType === 2 ? "checkpoint" : "lora";
-    console.log("Successfully fetched model info:", result.data.modelName || "Unknown", "Type:", modelType);
+    // 判断模型类型：
+    // baseAlgo: 1=SD1.5, 2=SDXL, 3=Flux, 9=Qwen-Image
+    // showType: 1=LoRA, 2=Checkpoint
+    // Qwen-Image (baseAlgo=9) 应该被识别为 checkpoint
+    const baseAlgo = result.data.baseAlgo;
+    const isQwenImage = baseAlgo === 9;
+    const modelType = (result.data.showType === 2 || isQwenImage) ? "checkpoint" : "lora";
+    console.log("Successfully fetched model info:", result.data.modelName || "Unknown", "Type:", modelType, "BaseAlgo:", baseAlgo);
     
     return new Response(
       JSON.stringify({
