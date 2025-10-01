@@ -195,10 +195,10 @@ serve(async (req) => {
       const statusResult = await statusResponse.json();
       console.log("Status check:", statusResult);
       
-      if (statusResult.data?.generateStatus === "SUCCEED") {
-        imageUrl = statusResult.data?.images?.[0]?.url;
+      if (statusResult.data?.generateStatus === 5) {
+        imageUrl = statusResult.data?.images?.[0]?.imageUrl;
         break;
-      } else if (statusResult.data?.generateStatus === "FAILED") {
+      } else if (statusResult.data?.generateStatus === 4) {
         throw new Error("Generation failed");
       }
       
