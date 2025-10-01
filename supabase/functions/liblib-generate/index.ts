@@ -125,9 +125,9 @@ serve(async (req) => {
     const generateParams: any = {
       prompt: prompt,
       negativePrompt: defaultNegativePrompt,
-      sampler: modelData.sampler || 15,
+      sampler: modelData.sampler || 1, // Euler sampler
       steps: 20,
-      cfgScale: modelData.cfg_scale || 7,
+      cfgScale: modelData.cfg_scale || 3.5,
       width: width,
       height: height,
       imgCount: imgCount,
