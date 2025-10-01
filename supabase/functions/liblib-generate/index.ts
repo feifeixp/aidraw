@@ -155,7 +155,7 @@ serve(async (req) => {
         model_id: modelId,
         model_name: modelName,
         status: "processing",
-        template_uuid: (primaryModel.base_algo === 3 || primaryModel.base_algo === 9) ? "6f7c4652458d4802969f8d089cf5b91f" : "e10adc3949ba59abbe56e057f20f883e",
+        template_uuid: primaryModel.base_algo === 3 ? "6f7c4652458d4802969f8d089cf5b91f" : (primaryModel.base_algo === 9 ? null : "e10adc3949ba59abbe56e057f20f883e"),
         checkpoint_id: checkpointData?.checkpoint_id || null,
         lora_models: loraModels,
       })
@@ -183,14 +183,14 @@ serve(async (req) => {
     const apiUrl = `https://openapi.liblibai.cloud${uri}?AccessKey=${LIBLIB_ACCESS_KEY}&Signature=${signature}&Timestamp=${timestamp}&SignatureNonce=${signatureNonce}`;
 
     // 根据base_algo选择正确的模板UUID
-    let templateUuid: string;
+    let templateUuid: string | undefined;
     if (primaryModel.base_algo === 3) {
       // Flux 模型使用专用模板
       templateUuid = "6f7c4652458d4802969f8d089cf5b91f";
     } else if (primaryModel.base_algo === 9) {
-      // Qwen-Image 模型尝试使用 Flux 模板（Qwen-Image 可能基于类似架构）
-      templateUuid = "6f7c4652458d4802969f8d089cf5b91f";
-      console.log("Using Flux template for Qwen-Image model");
+      // Qwen-Image 模型不使用 templateUuid
+      templateUuid = undefined;
+      console.log("Qwen-Image model: not using templateUuid");
     } else {
       // SD1.5 和 SDXL 模型使用通用模板
       templateUuid = "e10adc3949ba59abbe56e057f20f883e";
@@ -212,9 +212,13 @@ serve(async (req) => {
     };
 
     const requestBody: any = {
-      templateUuid: templateUuid,
       generateParams: generateParams,
     };
+
+    // 只有在 templateUuid 存在时才添加它
+    if (templateUuid) {
+      requestBody.templateUuid = templateUuid;
+    }
 
     // 如果有底模，添加checkPointId
     if (checkpointData?.checkpoint_id) {
