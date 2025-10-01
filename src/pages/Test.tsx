@@ -1,37 +1,88 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, TestTube2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
 
 const Test = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [apiResponse, setApiResponse] = useState<any>(null);
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const { toast } = useToast();
 
-  // 简单的测试提示词 - 一个简单人物
+  // 获取模型列表
+  const { data: models, isLoading: modelsLoading } = useQuery({
+    queryKey: ["test-liblib-models"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("liblib_models")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // 自动选择第一个模型
+  useEffect(() => {
+    if (models && models.length > 0 && !selectedModel) {
+      setSelectedModel(models[0].model_id);
+    }
+  }, [models, selectedModel]);
+
+  // 简单的测试提示词
   const testPrompt = "一个微笑的年轻女孩，简单风格，干净背景";
-  const testModelId = "test-model-001"; // 这个需要根据实际可用的模型ID调整
 
   const handleTest = async () => {
+    if (!selectedModel) {
+      toast({
+        title: "请选择模型",
+        description: "请先选择一个测试模型",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const model = models?.find(m => m.model_id === selectedModel);
+    if (!model) {
+      toast({
+        title: "模型未找到",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     setGeneratedImage(null);
     setApiResponse(null);
 
     try {
-      console.log("Testing LibLib API with:", { testPrompt, testModelId });
+      console.log("=== 开始测试 LibLib API ===");
+      console.log("测试配置:", { 
+        prompt: testPrompt, 
+        modelId: model.model_id,
+        modelName: model.name,
+        baseAlgo: model.base_algo 
+      });
       
+      const startTime = Date.now();
       const { data, error } = await supabase.functions.invoke("liblib-generate", {
         body: {
           prompt: testPrompt,
-          modelId: testModelId,
-          modelName: "测试模型",
+          modelId: model.model_id,
+          modelName: model.name,
         },
       });
+      const endTime = Date.now();
 
-      console.log("Response:", data);
+      console.log(`请求耗时: ${endTime - startTime}ms`);
+      console.log("API响应:", data);
       setApiResponse(data);
 
       if (error) {
@@ -82,31 +133,63 @@ const Test = () => {
           {/* 测试信息卡片 */}
           <Card className="p-6 bg-gradient-to-br from-card via-card to-accent/5 border-accent/20">
             <h2 className="mb-4 text-xl font-semibold">测试配置</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">AccessKey:</span>
-                <span className="font-mono">Pt6EX8XqnGpmwAerrYkhsQ</span>
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-muted-foreground">
+                  选择测试模型
+                </label>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择一个模型进行测试" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modelsLoading ? (
+                      <SelectItem value="loading" disabled>
+                        加载中...
+                      </SelectItem>
+                    ) : models && models.length > 0 ? (
+                      models.map((model) => (
+                        <SelectItem key={model.id} value={model.model_id}>
+                          {model.name} ({model.base_algo === 3 ? 'Flux' : model.base_algo === 1 ? 'SD/XL' : 'Unknown'})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-models" disabled>
+                        暂无可用模型
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">测试提示词:</span>
-                <span>{testPrompt}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">测试模型ID:</span>
-                <span className="font-mono">{testModelId}</span>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">AccessKey:</span>
+                  <span className="font-mono text-xs">Pt6EX8XqnGpmwAerrYkhsQ</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">测试提示词:</span>
+                  <span className="text-right">{testPrompt}</span>
+                </div>
+                {selectedModel && models && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">模型ID:</span>
+                    <span className="font-mono text-xs">{selectedModel}</span>
+                  </div>
+                )}
               </div>
             </div>
 
             <Button
               onClick={handleTest}
-              disabled={isGenerating}
+              disabled={isGenerating || !selectedModel || modelsLoading}
               className="mt-6 w-full"
               size="lg"
             >
               {isGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  测试中...
+                  测试中（最长45秒）...
                 </>
               ) : (
                 <>
@@ -162,12 +245,13 @@ const Test = () => {
 
           {/* 说明 */}
           <Card className="p-6 bg-gradient-to-br from-card via-card to-accent/5 border-accent/20">
-            <h3 className="mb-2 font-semibold">⚠️ 重要说明</h3>
+            <h3 className="mb-2 font-semibold">📋 测试说明</h3>
             <ul className="space-y-1 text-sm text-muted-foreground list-disc list-inside">
+              <li>此页面使用数据库中的真实模型进行测试</li>
               <li>如果测试失败，请检查 <code className="px-1 py-0.5 bg-muted rounded">LIBLIB_API_KEY</code> 是否正确配置</li>
-              <li>测试使用的模型ID（<code className="px-1 py-0.5 bg-muted rounded">{testModelId}</code>）需要替换为实际可用的LibLib模型ID</li>
-              <li>可以在模型管理页面添加真实的LibLib模型</li>
-              <li>查看浏览器控制台和Edge Function日志获取详细错误信息</li>
+              <li>测试过程中会在控制台输出详细日志，包括请求耗时和API响应</li>
+              <li>Edge Function 日志中会显示更详细的调试信息</li>
+              <li>超时时间设置为45秒，如果超时请检查网络连接和LibLib API状态</li>
             </ul>
           </Card>
         </div>

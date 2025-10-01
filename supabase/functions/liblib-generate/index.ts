@@ -155,13 +155,21 @@ serve(async (req) => {
     }
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
+    console.log("Calling LibLib API at URL:", apiUrl);
+    console.log("Using Access Key:", LIBLIB_ACCESS_KEY);
 
-    // 调用LibLib API with timeout (60 seconds for initial generation request)
+    // 调用LibLib API with timeout (45 seconds for initial generation request)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => {
+      console.error("Request timeout after 45 seconds, aborting...");
+      controller.abort();
+    }, 45000); // 45 second timeout
     
     let liblibResponse;
     try {
+      const startTime = Date.now();
+      console.log("Starting LibLib API call at:", new Date(startTime).toISOString());
+      
       liblibResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -170,18 +178,30 @@ serve(async (req) => {
         body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
+      
+      const endTime = Date.now();
+      console.log(`LibLib API responded in ${endTime - startTime}ms`);
+      console.log("Response status:", liblibResponse.status);
+      console.log("Response headers:", JSON.stringify(Object.fromEntries(liblibResponse.headers.entries())));
     } catch (fetchError) {
       clearTimeout(timeoutId);
-      console.error("LibLib API fetch error:", fetchError);
+      console.error("=== LibLib API FETCH ERROR ===");
+      console.error("Error type:", fetchError instanceof Error ? fetchError.name : typeof fetchError);
+      console.error("Error message:", fetchError instanceof Error ? fetchError.message : String(fetchError));
+      console.error("Error stack:", fetchError instanceof Error ? fetchError.stack : "N/A");
       console.error("API URL:", apiUrl);
-      console.error("Request body:", JSON.stringify(requestBody, null, 2));
+      console.error("Timestamp:", new Date().toISOString());
       
       let errorMessage = fetchError instanceof Error ? fetchError.message : "Network error connecting to LibLib API";
       
       // Check if it's a timeout error
       if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        errorMessage = "Request timeout: LibLib API took too long to respond (>60s). Please try again.";
-        console.error("Timeout occurred after 60 seconds");
+        errorMessage = "Request timeout: LibLib API took too long to respond (>45s). The API may be experiencing issues.";
+        console.error("=== TIMEOUT ERROR ===");
+        console.error("This suggests the LibLib API is not responding. Possible causes:");
+        console.error("1. LibLib API service is down or slow");
+        console.error("2. Network connectivity issues");
+        console.error("3. API authentication issues (check LIBLIB_API_KEY)");
       }
       
       await supabase
@@ -206,7 +226,11 @@ serve(async (req) => {
 
     if (!liblibResponse.ok) {
       const errorText = await liblibResponse.text();
-      console.error("LibLib API error:", liblibResponse.status, errorText);
+      console.error("=== LibLib API ERROR RESPONSE ===");
+      console.error("Status code:", liblibResponse.status);
+      console.error("Status text:", liblibResponse.statusText);
+      console.error("Response body:", errorText);
+      console.error("Response headers:", JSON.stringify(Object.fromEntries(liblibResponse.headers.entries())));
       
       let errorMessage = `API error: ${liblibResponse.status}`;
       try {
@@ -235,8 +259,29 @@ serve(async (req) => {
       );
     }
 
-    const result = await liblibResponse.json();
-    console.log("LibLib API response:", JSON.stringify(result, null, 2));
+    const responseText = await liblibResponse.text();
+    console.log("=== LibLib API SUCCESS RESPONSE ===");
+    console.log("Raw response text:", responseText);
+    
+    let result;
+    try {
+      result = JSON.parse(responseText);
+      console.log("Parsed response:", JSON.stringify(result, null, 2));
+    } catch (parseError) {
+      console.error("Failed to parse JSON response:", parseError);
+      await supabase
+        .from("generation_history")
+        .update({
+          status: "failed",
+          error_message: "Invalid JSON response from API",
+        })
+        .eq("id", historyRecord.id);
+      
+      return new Response(
+        JSON.stringify({ error: "Invalid response from image generation service", historyId: historyRecord.id }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // LibLib API returns a task UUID for async generation
     const generateUuid = result.data?.generateUuid;
