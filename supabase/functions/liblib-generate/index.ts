@@ -160,8 +160,12 @@ serve(async (req) => {
     while (attempts < 30 && !imageUrl) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
+      // 为状态检查生成新的签名参数
       const statusUri = "/api/generate/webui/status";
-      const statusContent = `${statusUri}&${Date.now()}&${crypto.randomUUID().substring(0, 10)}`;
+      const statusTimestamp = Date.now();
+      const statusNonce = crypto.randomUUID().substring(0, 10);
+      const statusContent = `${statusUri}&${statusTimestamp}&${statusNonce}`;
+      
       const statusKeyData = encoder.encode(LIBLIB_SECRET_KEY);
       const statusMessageData = encoder.encode(statusContent);
       
@@ -180,8 +184,6 @@ serve(async (req) => {
         .replace(/\//g, '_')
         .replace(/=/g, '');
       
-      const statusTimestamp = Date.now();
-      const statusNonce = crypto.randomUUID().substring(0, 10);
       const statusUrl = `https://openapi.liblibai.cloud${statusUri}?AccessKey=${LIBLIB_ACCESS_KEY}&Signature=${statusSignature}&Timestamp=${statusTimestamp}&SignatureNonce=${statusNonce}`;
       
       const statusResponse = await fetch(statusUrl, {
