@@ -152,24 +152,25 @@ serve(async (req) => {
       restoreFaces: 0,
     };
 
-    // 所有模型统一使用additionalNetwork传递LoRA
-    if (modelData.lora_version_id) {
+    const requestBody: any = {
+      templateUuid: templateUuid,
+      generateParams: generateParams,
+    };
+
+    // 根据模型配置选择参数结构
+    if (modelData.checkpoint_id) {
+      // 如果是底模(checkpoint)，使用checkPointId
+      requestBody.checkPointId = modelData.checkpoint_id;
+      console.log("Using checkpoint model:", modelData.checkpoint_id);
+    } else if (modelData.lora_version_id) {
+      // 如果是LoRA模型，使用additionalNetwork
       generateParams.additionalNetwork = [
         {
           modelId: modelData.lora_version_id,
           weight: modelData.lora_weight || 0.8,
         },
       ];
-    }
-
-    const requestBody: any = {
-      templateUuid: templateUuid,
-      generateParams: generateParams,
-    };
-
-    // 如果有checkpoint_id，添加到请求体
-    if (modelData.checkpoint_id) {
-      requestBody.checkPointId = modelData.checkpoint_id;
+      console.log("Using LoRA model:", modelData.lora_version_id);
     }
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));

@@ -106,22 +106,23 @@ const Models = () => {
       if (data.success && data.data) {
         const modelInfo = data.data;
         const baseAlgo = modelInfo.baseAlgo || 1;
+        const isCheckpoint = modelInfo.modelType === "checkpoint";
         
-        // 自动填充表单
+        // 根据模型类型设置不同的ID字段
         setFormData(prev => ({
           ...prev,
-          lora_version_id: versionUuid,
+          lora_version_id: isCheckpoint ? '' : versionUuid,
+          checkpoint_id: isCheckpoint ? versionUuid : '',
           model_id: versionUuid,
           name: `${modelInfo.modelName || ''} ${modelInfo.versionName || ''}`.trim(),
-          description: `基础算法: ${modelInfo.baseAlgoName || modelInfo.baseAlgo}\n${modelInfo.commercialUse === 1 ? '可商用' : '不可商用'}`,
+          description: `基础算法: ${modelInfo.baseAlgoName || modelInfo.baseAlgo}\n${modelInfo.commercialUse === 1 ? '可商用' : '不可商用'}\n模型类型: ${isCheckpoint ? '底模(Checkpoint)' : 'LoRA'}`,
           thumbnail_url: modelInfo.modelUrl || '',
-          checkpoint_id: '',
           base_algo: String(baseAlgo),
         }));
         
         toast({
           title: "模型信息获取成功",
-          description: `${modelInfo.modelName} - ${modelInfo.baseAlgoName} (算法类型: ${baseAlgo})`,
+          description: `${modelInfo.modelName} - ${modelInfo.baseAlgoName} (${isCheckpoint ? '底模' : 'LoRA'})`,
         });
       } else {
         throw new Error(data.error || "获取模型信息失败");

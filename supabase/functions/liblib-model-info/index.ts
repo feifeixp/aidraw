@@ -101,11 +101,16 @@ serve(async (req) => {
       );
     }
 
-    console.log("Successfully fetched model info:", result.data.modelName || "Unknown");
+    const modelType = result.data.showType === 1 ? "checkpoint" : "lora";
+    console.log("Successfully fetched model info:", result.data.modelName || "Unknown", "Type:", modelType);
+    
     return new Response(
       JSON.stringify({
         success: true,
-        data: result.data,
+        data: {
+          ...result.data,
+          modelType, // 添加模型类型标识
+        },
       }),
       { 
         status: 200,
