@@ -164,12 +164,13 @@ serve(async (req) => {
     console.log("Calling LibLib API at URL:", apiUrl);
     console.log("Using Access Key:", LIBLIB_ACCESS_KEY);
 
-    // 调用LibLib API with timeout (45 seconds for initial generation request)
+    // 调用LibLib API with timeout (60 seconds for initial generation request)
+    const REQUEST_TIMEOUT = 60000; // 60 seconds
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error("Request timeout after 45 seconds, aborting...");
+      console.error(`Request timeout after ${REQUEST_TIMEOUT/1000} seconds, aborting...`);
       controller.abort();
-    }, 45000); // 45 second timeout
+    }, REQUEST_TIMEOUT);
     
     let liblibResponse;
     try {
@@ -202,12 +203,17 @@ serve(async (req) => {
       
       // Check if it's a timeout error
       if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        errorMessage = "Request timeout: LibLib API took too long to respond (>45s). The API may be experiencing issues.";
+        errorMessage = `Request timeout: LibLib API took too long to respond (>${REQUEST_TIMEOUT/1000}s). The API may be experiencing issues. Please try again.`;
         console.error("=== TIMEOUT ERROR ===");
         console.error("This suggests the LibLib API is not responding. Possible causes:");
-        console.error("1. LibLib API service is down or slow");
+        console.error("1. LibLib API service is down or slow (most common)");
         console.error("2. Network connectivity issues");
-        console.error("3. API authentication issues (check LIBLIB_API_KEY)");
+        console.error("3. API authentication issues - verify:");
+        console.error("   - AccessKey is correct:", LIBLIB_ACCESS_KEY);
+        console.error("   - SecretKey length:", LIBLIB_SECRET_KEY.length);
+        console.error("   - Signature:", signature);
+        console.error("API URL:", apiUrl);
+        console.error("Request body:", JSON.stringify(requestBody, null, 2));
       }
       
       await supabase
