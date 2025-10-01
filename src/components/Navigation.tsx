@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Database, History, TestTube2 } from "lucide-react";
+import { Sparkles, Database, History, TestTube2, Bug } from "lucide-react";
 
 const Navigation = () => {
   const location = useLocation();
@@ -10,6 +10,7 @@ const Navigation = () => {
     { to: "/models", label: "模型管理", icon: Database },
     { to: "/history", label: "生成历史", icon: History },
     { to: "/test", label: "API测试", icon: TestTube2 },
+    { to: "/debug-qwen", label: "Qwen调试", icon: Bug },
   ];
 
   return (
