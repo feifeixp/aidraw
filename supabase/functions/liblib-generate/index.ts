@@ -155,7 +155,7 @@ serve(async (req) => {
         model_id: modelId,
         model_name: modelName,
         status: "processing",
-        template_uuid: primaryModel.base_algo === 3 ? "6f7c4652458d4802969f8d089cf5b91f" : "e10adc3949ba59abbe56e057f20f883e",
+        template_uuid: (primaryModel.base_algo === 3 || primaryModel.base_algo === 9) ? "6f7c4652458d4802969f8d089cf5b91f" : "e10adc3949ba59abbe56e057f20f883e",
         checkpoint_id: checkpointData?.checkpoint_id || null,
         lora_models: loraModels,
       })
@@ -185,10 +185,14 @@ serve(async (req) => {
     // 根据base_algo选择正确的模板UUID
     let templateUuid: string;
     if (primaryModel.base_algo === 3) {
-      // F.1 (Flux) 模型使用专用模板
+      // Flux 模型使用专用模板
       templateUuid = "6f7c4652458d4802969f8d089cf5b91f";
+    } else if (primaryModel.base_algo === 9) {
+      // Qwen-Image 模型尝试使用 Flux 模板（Qwen-Image 可能基于类似架构）
+      templateUuid = "6f7c4652458d4802969f8d089cf5b91f";
+      console.log("Using Flux template for Qwen-Image model");
     } else {
-      // 1.5和XL模型使用通用模板
+      // SD1.5 和 SDXL 模型使用通用模板
       templateUuid = "e10adc3949ba59abbe56e057f20f883e";
     }
 
