@@ -126,8 +126,8 @@ serve(async (req) => {
       restoreFaces: 0,
     };
 
-    // 如果有底模ID，添加checkPointId
-    if (modelData.checkpoint_id) {
+    // 只有当明确指定了底模ID时才添加checkPointId
+    if (modelData.checkpoint_id && modelData.checkpoint_id.trim()) {
       generateParams.checkPointId = modelData.checkpoint_id;
     }
 

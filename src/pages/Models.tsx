@@ -94,14 +94,16 @@ const Models = () => {
           ...prev,
           lora_version_id: versionUuid,
           model_id: versionUuid,
-          name: `${modelInfo.model_name || ''} ${modelInfo.version_name || ''}`.trim(),
-          description: modelInfo.baseAlgo ? `基础算法: ${modelInfo.baseAlgo}\n${modelInfo.commercial_use === 1 ? '可商用' : '不可商用'}` : '',
-          thumbnail_url: modelInfo.model_url || '',
+          name: `${modelInfo.modelName || ''} ${modelInfo.versionName || ''}`.trim(),
+          description: `基础算法: ${modelInfo.baseAlgoName || modelInfo.baseAlgo}\n${modelInfo.commercialUse === 1 ? '可商用' : '不可商用'}`,
+          thumbnail_url: modelInfo.modelUrl || '',
+          // 对于Flux模型(baseAlgo=3)，不需要checkPointId
+          checkpoint_id: modelInfo.baseAlgo === 3 ? '' : prev.checkpoint_id,
         }));
         
         toast({
           title: "模型信息获取成功",
-          description: `已自动填充 ${modelInfo.model_name}`,
+          description: `${modelInfo.modelName} - ${modelInfo.baseAlgoName}`,
         });
       } else {
         throw new Error(data.error || "获取模型信息失败");
@@ -296,10 +298,10 @@ const Models = () => {
                       id="checkpoint_id"
                       value={formData.checkpoint_id}
                       onChange={(e) => setFormData({ ...formData, checkpoint_id: e.target.value })}
-                      placeholder="可选：用于指定底模"
+                      placeholder="可选：某些模型需要指定底模"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      如需指定特定底模才填写
+                      Flux模型无需填写，SD/XL模型才需要
                     </p>
                   </div>
 
