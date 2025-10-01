@@ -156,14 +156,45 @@ serve(async (req) => {
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
 
-    // 调用LibLib API
-    const liblibResponse = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // 调用LibLib API with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    let liblibResponse;
+    try {
+      liblibResponse = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error("LibLib API fetch error:", fetchError);
+      
+      const errorMessage = fetchError instanceof Error ? fetchError.message : "Network error connecting to LibLib API";
+      
+      await supabase
+        .from("generation_history")
+        .update({
+          status: "failed",
+          error_message: errorMessage,
+        })
+        .eq("id", historyRecord.id);
+
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to connect to image generation service", 
+          details: errorMessage,
+          historyId: historyRecord.id 
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!liblibResponse.ok) {
       const errorText = await liblibResponse.text();
