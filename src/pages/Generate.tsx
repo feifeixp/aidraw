@@ -166,7 +166,7 @@ const Generate = () => {
       if (data.success && data.status === "processing") {
         const historyId = data.historyId;
         let pollAttempts = 0;
-        const maxPollAttempts = 90;
+        const maxPollAttempts = 120;
 
         const pollInterval = setInterval(async () => {
           pollAttempts++;

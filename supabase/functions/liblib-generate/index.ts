@@ -169,8 +169,8 @@ serve(async (req) => {
       try {
         console.log("Background task: Starting LibLib API call");
         
-        // 调用LibLib API with extended timeout (120 seconds for initial generation request)
-        const REQUEST_TIMEOUT = 120000; // 120 seconds
+        // 调用LibLib API with extended timeout (180 seconds for initial generation request)
+        const REQUEST_TIMEOUT = 180000; // 180 seconds
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           console.error(`Background: Request timeout after ${REQUEST_TIMEOUT/1000} seconds, aborting...`);
@@ -284,10 +284,10 @@ serve(async (req) => {
 
         console.log("Background: Generation started with UUID:", generateUuid);
 
-        // Poll for result - increased to 90 attempts * 2 seconds = 3 minutes max
+        // Poll for result - increased to 120 attempts * 2 seconds = 4 minutes max
         let attempts = 0;
         let imageUrl = null;
-        const maxAttempts = 90;
+        const maxAttempts = 120;
         
         while (attempts < maxAttempts && !imageUrl) {
           await new Promise(resolve => setTimeout(resolve, 2000));
