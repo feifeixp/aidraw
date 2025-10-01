@@ -52,6 +52,7 @@ export type Database = {
       }
       liblib_models: {
         Row: {
+          base_algo: number | null
           cfg_scale: number | null
           checkpoint_id: string | null
           created_at: string | null
@@ -70,6 +71,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          base_algo?: number | null
           cfg_scale?: number | null
           checkpoint_id?: string | null
           created_at?: string | null
@@ -88,6 +90,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          base_algo?: number | null
           cfg_scale?: number | null
           checkpoint_id?: string | null
           created_at?: string | null

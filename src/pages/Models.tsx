@@ -25,6 +25,7 @@ interface ModelFormData {
   cfg_scale: string;
   randn_source: string;
   lora_weight: string;
+  base_algo: string;
 }
 
 const Models = () => {
@@ -44,6 +45,7 @@ const Models = () => {
     cfg_scale: "7",
     randn_source: "0",
     lora_weight: "0.8",
+    base_algo: "1",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -88,6 +90,7 @@ const Models = () => {
 
       if (data.success && data.data) {
         const modelInfo = data.data;
+        const baseAlgo = modelInfo.baseAlgo || 1;
         
         // 自动填充表单
         setFormData(prev => ({
@@ -97,13 +100,13 @@ const Models = () => {
           name: `${modelInfo.modelName || ''} ${modelInfo.versionName || ''}`.trim(),
           description: `基础算法: ${modelInfo.baseAlgoName || modelInfo.baseAlgo}\n${modelInfo.commercialUse === 1 ? '可商用' : '不可商用'}`,
           thumbnail_url: modelInfo.modelUrl || '',
-          // 对于Flux模型(baseAlgo=3)，不需要checkPointId
-          checkpoint_id: modelInfo.baseAlgo === 3 ? '' : prev.checkpoint_id,
+          checkpoint_id: '',
+          base_algo: String(baseAlgo),
         }));
         
         toast({
           title: "模型信息获取成功",
-          description: `${modelInfo.modelName} - ${modelInfo.baseAlgoName}`,
+          description: `${modelInfo.modelName} - ${modelInfo.baseAlgoName} (算法类型: ${baseAlgo})`,
         });
       } else {
         throw new Error(data.error || "获取模型信息失败");
@@ -133,6 +136,7 @@ const Models = () => {
         cfg_scale: parseFloat(data.cfg_scale) || 7,
         randn_source: parseInt(data.randn_source) || 0,
         lora_weight: parseFloat(data.lora_weight) || 0.8,
+        base_algo: parseInt(data.base_algo) || 1,
       };
 
       if (editingModel) {
@@ -206,6 +210,7 @@ const Models = () => {
       cfg_scale: "7",
       randn_source: "0",
       lora_weight: "0.8",
+      base_algo: "1",
     });
     setEditingModel(null);
   };
@@ -226,6 +231,7 @@ const Models = () => {
       cfg_scale: String(model.cfg_scale || 7),
       randn_source: String(model.randn_source || 0),
       lora_weight: String(model.lora_weight || 0.8),
+      base_algo: String(model.base_algo || 1),
     });
     setIsDialogOpen(true);
   };

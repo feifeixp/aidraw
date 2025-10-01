@@ -102,6 +102,7 @@ serve(async (req) => {
     }
 
     console.log("Calling LibLib API with signature auth and model config:", {
+      baseAlgo: modelData.base_algo,
       checkpointId: modelData.checkpoint_id,
       loraVersionId: modelData.lora_version_id,
       sampler: modelData.sampler,
@@ -126,25 +127,32 @@ serve(async (req) => {
       restoreFaces: 0,
     };
 
-    // 只有当明确指定了底模ID时才添加checkPointId
-    if (modelData.checkpoint_id && modelData.checkpoint_id.trim()) {
-      generateParams.checkPointId = modelData.checkpoint_id;
-    }
-
-    // 如果有Lora版本ID，添加additionalNetwork
-    if (modelData.lora_version_id) {
-      generateParams.additionalNetwork = [
-        {
-          modelId: modelData.lora_version_id,
-          weight: modelData.lora_weight || 0.8,
-        },
-      ];
-    }
-
-    const requestBody = {
+    const requestBody: any = {
       templateUuid: "e10adc3949ba59abbe56e057f20f883e",
-      generateParams: generateParams,
     };
+
+    // 根据base_algo选择不同的生成方式
+    if (modelData.base_algo === 3) {
+      // Flux模型：直接使用modelUuid，不使用additionalNetwork
+      requestBody.modelUuid = modelData.lora_version_id || modelId;
+      requestBody.generateParams = generateParams;
+    } else {
+      // SD/XL模型：使用checkPointId + additionalNetwork
+      if (modelData.checkpoint_id && modelData.checkpoint_id.trim()) {
+        generateParams.checkPointId = modelData.checkpoint_id;
+      }
+      
+      if (modelData.lora_version_id) {
+        generateParams.additionalNetwork = [
+          {
+            modelId: modelData.lora_version_id,
+            weight: modelData.lora_weight || 0.8,
+          },
+        ];
+      }
+      
+      requestBody.generateParams = generateParams;
+    }
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
 
