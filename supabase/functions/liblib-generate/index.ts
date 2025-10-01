@@ -156,9 +156,9 @@ serve(async (req) => {
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
 
-    // 调用LibLib API with timeout
+    // 调用LibLib API with timeout (60 seconds for initial generation request)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
     
     let liblibResponse;
     try {
@@ -173,8 +173,16 @@ serve(async (req) => {
     } catch (fetchError) {
       clearTimeout(timeoutId);
       console.error("LibLib API fetch error:", fetchError);
+      console.error("API URL:", apiUrl);
+      console.error("Request body:", JSON.stringify(requestBody, null, 2));
       
-      const errorMessage = fetchError instanceof Error ? fetchError.message : "Network error connecting to LibLib API";
+      let errorMessage = fetchError instanceof Error ? fetchError.message : "Network error connecting to LibLib API";
+      
+      // Check if it's a timeout error
+      if (fetchError instanceof Error && fetchError.name === "AbortError") {
+        errorMessage = "Request timeout: LibLib API took too long to respond (>60s). Please try again.";
+        console.error("Timeout occurred after 60 seconds");
+      }
       
       await supabase
         .from("generation_history")
