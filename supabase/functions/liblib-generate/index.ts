@@ -12,11 +12,28 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, modelId, modelName, width = 1024, height = 1024, imgCount = 1 } = await req.json();
+    const { 
+      prompt, 
+      modelId, 
+      modelName, 
+      checkpointId, 
+      loraId, 
+      width = 1024, 
+      height = 1024, 
+      imgCount = 1 
+    } = await req.json();
     
     if (!prompt || !modelId || !modelName) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: prompt, modelId, modelName" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 至少需要一个模型（底模或LoRA）
+    if (!checkpointId && !loraId) {
+      return new Response(
+        JSON.stringify({ error: "At least one of checkpointId or loraId is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -75,22 +92,53 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 获取模型配置
-    const { data: modelData, error: modelError } = await supabase
-      .from("liblib_models")
-      .select("*")
-      .eq("model_id", modelId)
-      .single();
+    // 获取底模配置（如果有）
+    let checkpointData = null;
+    if (checkpointId) {
+      const { data, error } = await supabase
+        .from("liblib_models")
+        .select("*")
+        .eq("model_id", checkpointId)
+        .single();
+      
+      if (!error && data) {
+        checkpointData = data;
+      } else {
+        console.error("Failed to fetch checkpoint data:", error);
+      }
+    }
 
-    if (modelError || !modelData) {
-      console.error("Failed to fetch model data:", modelError);
+    // 获取LoRA配置（如果有）
+    let loraData = null;
+    if (loraId) {
+      const { data, error } = await supabase
+        .from("liblib_models")
+        .select("*")
+        .eq("model_id", loraId)
+        .single();
+      
+      if (!error && data) {
+        loraData = data;
+      } else {
+        console.error("Failed to fetch LoRA data:", error);
+      }
+    }
+
+    // 确定使用哪个模型的base_algo（优先使用底模的）
+    const primaryModel = checkpointData || loraData;
+    if (!primaryModel) {
       return new Response(
-        JSON.stringify({ error: "Model not found" }),
+        JSON.stringify({ error: "No valid model configuration found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // 创建历史记录
+    const loraModels = loraData ? [{
+      modelId: loraData.lora_version_id,
+      weight: loraData.lora_weight || 0.8
+    }] : null;
+
     const { data: historyRecord, error: historyError } = await supabase
       .from("generation_history")
       .insert({
@@ -98,12 +146,9 @@ serve(async (req) => {
         model_id: modelId,
         model_name: modelName,
         status: "processing",
-        template_uuid: modelData.base_algo === 3 ? "6f7c4652458d4802969f8d089cf5b91f" : "e10adc3949ba59abbe56e057f20f883e",
-        checkpoint_id: modelData.checkpoint_id,
-        lora_models: modelData.lora_version_id ? [{
-          modelId: modelData.lora_version_id,
-          weight: modelData.lora_weight || 0.8
-        }] : null,
+        template_uuid: primaryModel.base_algo === 3 ? "6f7c4652458d4802969f8d089cf5b91f" : "e10adc3949ba59abbe56e057f20f883e",
+        checkpoint_id: checkpointData?.checkpoint_id || null,
+        lora_models: loraModels,
       })
       .select()
       .single();
@@ -116,12 +161,12 @@ serve(async (req) => {
       );
     }
 
-    console.log("Calling LibLib API with signature auth and model config:", {
-      baseAlgo: modelData.base_algo,
-      checkpointId: modelData.checkpoint_id,
-      loraVersionId: modelData.lora_version_id,
-      sampler: modelData.sampler,
-      cfgScale: modelData.cfg_scale,
+    console.log("Calling LibLib API with config:", {
+      baseAlgo: primaryModel.base_algo,
+      checkpointId: checkpointData?.checkpoint_id,
+      loraVersionId: loraData?.lora_version_id,
+      sampler: primaryModel.sampler,
+      cfgScale: primaryModel.cfg_scale,
     });
 
     // Build URL with signature parameters
@@ -129,7 +174,7 @@ serve(async (req) => {
 
     // 根据base_algo选择正确的模板UUID
     let templateUuid: string;
-    if (modelData.base_algo === 3) {
+    if (primaryModel.base_algo === 3) {
       // F.1 (Flux) 模型使用专用模板
       templateUuid = "6f7c4652458d4802969f8d089cf5b91f";
     } else {
@@ -141,13 +186,13 @@ serve(async (req) => {
     const generateParams: any = {
       prompt: prompt,
       negativePrompt: defaultNegativePrompt,
-      sampler: modelData.sampler || 1,
+      sampler: primaryModel.sampler || 1,
       steps: 20,
-      cfgScale: modelData.cfg_scale || 3.5,
+      cfgScale: primaryModel.cfg_scale || 3.5,
       width: width,
       height: height,
       imgCount: imgCount,
-      randnSource: modelData.randn_source || 0,
+      randnSource: primaryModel.randn_source || 0,
       seed: -1,
       restoreFaces: 0,
     };
@@ -157,29 +202,22 @@ serve(async (req) => {
       generateParams: generateParams,
     };
 
-    // 根据模型配置选择参数结构
-    if (modelData.checkpoint_id) {
-      // 如果是底模(checkpoint)，使用checkPointId
-      requestBody.checkPointId = modelData.checkpoint_id;
-      console.log("Using checkpoint model:", modelData.checkpoint_id);
-    } else if (modelData.lora_version_id) {
-      // 如果是LoRA模型，使用additionalNetwork
-      generateParams.additionalNetwork = [
-        {
-          modelId: modelData.lora_version_id,
-          weight: modelData.lora_weight || 0.8,
-        },
-      ];
-      console.log("Using LoRA model:", modelData.lora_version_id);
+    // 如果有底模，添加checkPointId
+    if (checkpointData?.checkpoint_id) {
+      requestBody.checkPointId = checkpointData.checkpoint_id;
+      console.log("Using checkpoint model:", checkpointData.checkpoint_id);
     }
 
-    console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
-    console.log("Model LoRA config:", {
-      loraVersionId: modelData.lora_version_id,
-      loraWeight: modelData.lora_weight,
-      baseAlgo: modelData.base_algo,
-      checkpointId: modelData.checkpoint_id,
-    });
+    // 如果有LoRA，添加additionalNetwork
+    if (loraData?.lora_version_id) {
+      generateParams.additionalNetwork = [
+        {
+          modelId: loraData.lora_version_id,
+          weight: loraData.lora_weight || 0.8,
+        },
+      ];
+      console.log("Using LoRA model:", loraData.lora_version_id, "with weight:", loraData.lora_weight);
+    }
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
     console.log("Calling LibLib API at URL:", apiUrl);

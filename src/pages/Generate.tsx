@@ -23,7 +23,8 @@ interface ChatMessage {
 
 const Generate = () => {
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [selectedCheckpoint, setSelectedCheckpoint] = useState<string>("");
+  const [selectedLora, setSelectedLora] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAISelecting, setIsAISelecting] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -44,6 +45,10 @@ const Generate = () => {
       return data;
     },
   });
+
+  // 分离底模和LoRA列表
+  const checkpointModels = models?.filter(m => m.checkpoint_id) || [];
+  const loraModels = models?.filter(m => m.lora_version_id) || [];
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -73,7 +78,15 @@ const Generate = () => {
 
       if (error) throw error;
 
-      setSelectedModel(data.model_id);
+      // 根据返回的模型类型设置选择
+      const selectedModel = models?.find(m => m.model_id === data.model_id);
+      if (selectedModel) {
+        if (selectedModel.checkpoint_id) {
+          setSelectedCheckpoint(data.model_id);
+        } else if (selectedModel.lora_version_id) {
+          setSelectedLora(data.model_id);
+        }
+      }
       
       toast({
         title: "AI已选择模型",
@@ -95,8 +108,7 @@ const Generate = () => {
 
   const handleGenerate = async (modelIdOverride?: string, reasoning?: string) => {
     const currentPrompt = prompt.trim();
-    const currentModelId = modelIdOverride || selectedModel;
-
+    
     if (!currentPrompt) {
       toast({
         title: "请输入提示词",
@@ -106,31 +118,46 @@ const Generate = () => {
       return;
     }
 
-    if (!currentModelId) {
+    // 使用AI选择时用override，否则检查用户选择
+    let checkpointModel = null;
+    let loraModel = null;
+
+    if (modelIdOverride) {
+      const model = models?.find(m => m.model_id === modelIdOverride);
+      if (model?.checkpoint_id) {
+        checkpointModel = model;
+      } else if (model?.lora_version_id) {
+        loraModel = model;
+      }
+    } else {
+      if (selectedCheckpoint) {
+        checkpointModel = models?.find(m => m.model_id === selectedCheckpoint);
+      }
+      if (selectedLora) {
+        loraModel = models?.find(m => m.model_id === selectedLora);
+      }
+    }
+
+    // 至少需要选择一个模型
+    if (!checkpointModel && !loraModel) {
       toast({
         title: "请选择模型",
-        description: "请先选择一个模型或使用AI智能选择",
+        description: "请至少选择一个底模或LoRA模型",
         variant: "destructive",
       });
       return;
     }
 
-    const model = models?.find(m => m.model_id === currentModelId);
-    if (!model) {
-      toast({
-        title: "模型未找到",
-        variant: "destructive",
-      });
-      return;
-    }
+    const displayModelName = checkpointModel?.name || loraModel?.name || "未知模型";
+    const primaryModelId = checkpointModel?.model_id || loraModel?.model_id || "";
 
     // 添加用户消息
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       type: "user",
       prompt: currentPrompt,
-      modelName: model.name,
-      modelId: model.model_id,
+      modelName: displayModelName,
+      modelId: primaryModelId,
       aiReasoning: reasoning,
       timestamp: new Date(),
     };
@@ -154,8 +181,10 @@ const Generate = () => {
       const { data, error } = await supabase.functions.invoke("liblib-generate", {
         body: {
           prompt: currentPrompt,
-          modelId: model.model_id,
-          modelName: model.name,
+          modelId: primaryModelId,
+          modelName: displayModelName,
+          checkpointId: checkpointModel?.model_id,
+          loraId: loraModel?.model_id,
         },
       });
 
@@ -362,37 +391,60 @@ const Generate = () => {
       <div className="flex-shrink-0 border-t bg-card/50 backdrop-blur-sm p-4">
         <div className="max-w-4xl mx-auto space-y-3">
           {/* 模型选择 */}
-          <div className="flex items-center gap-2">
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="w-auto min-w-[200px]">
-                <SelectValue placeholder="选择模型" />
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* 底模选择 */}
+            <Select value={selectedCheckpoint} onValueChange={setSelectedCheckpoint}>
+              <SelectTrigger className="w-auto min-w-[180px]">
+                <SelectValue placeholder="选择底模" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background z-50">
                 {modelsLoading ? (
                   <SelectItem value="loading" disabled>
                     加载中...
                   </SelectItem>
-                ) : models && models.length > 0 ? (
-                  models.map((model) => {
-                    const modelType = model.checkpoint_id ? "底模" : "LoRA";
-                    const modelTypeColor = model.checkpoint_id 
-                      ? "bg-blue-500/10 text-blue-500 border-blue-500/20" 
-                      : "bg-purple-500/10 text-purple-500 border-purple-500/20";
-                    
-                    return (
-                      <SelectItem key={model.id} value={model.model_id}>
-                        <div className="flex items-center gap-2">
-                          <span>{model.name}</span>
-                          <Badge className={`text-xs ${modelTypeColor}`}>
-                            {modelType}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    );
-                  })
+                ) : checkpointModels.length > 0 ? (
+                  checkpointModels.map((model) => (
+                    <SelectItem key={model.id} value={model.model_id}>
+                      <div className="flex items-center gap-2">
+                        <span>{model.name}</span>
+                        <Badge className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20">
+                          底模
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))
                 ) : (
-                  <SelectItem value="no-models" disabled>
-                    暂无可用模型
+                  <SelectItem value="no-checkpoints" disabled>
+                    暂无底模
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+
+            {/* LoRA选择 */}
+            <Select value={selectedLora} onValueChange={setSelectedLora}>
+              <SelectTrigger className="w-auto min-w-[180px]">
+                <SelectValue placeholder="选择LoRA（可选）" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                {modelsLoading ? (
+                  <SelectItem value="loading" disabled>
+                    加载中...
+                  </SelectItem>
+                ) : loraModels.length > 0 ? (
+                  loraModels.map((model) => (
+                    <SelectItem key={model.id} value={model.model_id}>
+                      <div className="flex items-center gap-2">
+                        <span>{model.name}</span>
+                        <Badge className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                          LoRA
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-loras" disabled>
+                    暂无LoRA
                   </SelectItem>
                 )}
               </SelectContent>
@@ -422,7 +474,7 @@ const Generate = () => {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  if (!isGenerating && !isAISelecting && prompt.trim() && selectedModel) {
+                  if (!isGenerating && !isAISelecting && prompt.trim() && (selectedCheckpoint || selectedLora)) {
                     handleGenerate();
                   }
                 }
@@ -432,7 +484,7 @@ const Generate = () => {
             />
             <Button
               onClick={() => handleGenerate()}
-              disabled={isGenerating || isAISelecting || !prompt.trim() || !selectedModel}
+              disabled={isGenerating || isAISelecting || !prompt.trim() || (!selectedCheckpoint && !selectedLora)}
               size="lg"
               className="px-6"
             >
