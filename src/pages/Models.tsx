@@ -223,7 +223,7 @@ const Models = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button className="bg-[var(--gradient-primary)] hover:opacity-90">
+              <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 添加模型
               </Button>
