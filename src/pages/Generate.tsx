@@ -375,7 +375,14 @@ const Generate = () => {
                 ) : models && models.length > 0 ? (
                   models.map((model) => (
                     <SelectItem key={model.id} value={model.model_id}>
-                      {model.name}
+                      <div className="flex flex-col">
+                        <span>{model.name}</span>
+                        {model.lora_weight && (
+                          <span className="text-xs text-muted-foreground">
+                            LoRA权重: {model.lora_weight}
+                          </span>
+                        )}
+                      </div>
                     </SelectItem>
                   ))
                 ) : (
