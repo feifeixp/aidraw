@@ -101,7 +101,8 @@ serve(async (req) => {
       );
     }
 
-    const modelType = result.data.showType === 1 ? "checkpoint" : "lora";
+    // showType: 1=LoRA, 2=Checkpoint (根据实际API返回修正)
+    const modelType = result.data.showType === 2 ? "checkpoint" : "lora";
     console.log("Successfully fetched model info:", result.data.modelName || "Unknown", "Type:", modelType);
     
     return new Response(
