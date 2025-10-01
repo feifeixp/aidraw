@@ -18,6 +18,13 @@ interface ModelFormData {
   tags: string;
   features: string;
   thumbnail_url: string;
+  model_url: string;
+  checkpoint_id: string;
+  lora_version_id: string;
+  sampler: string;
+  cfg_scale: string;
+  randn_source: string;
+  lora_weight: string;
 }
 
 const Models = () => {
@@ -30,6 +37,13 @@ const Models = () => {
     tags: "",
     features: "",
     thumbnail_url: "",
+    model_url: "",
+    checkpoint_id: "",
+    lora_version_id: "",
+    sampler: "15",
+    cfg_scale: "7",
+    randn_source: "0",
+    lora_weight: "0.8",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -47,6 +61,33 @@ const Models = () => {
     },
   });
 
+  const parseModelUrl = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/');
+      const checkpointId = pathParts[pathParts.length - 1];
+      const loraVersionId = urlObj.searchParams.get('versionUuid') || '';
+      
+      setFormData(prev => ({
+        ...prev,
+        checkpoint_id: checkpointId,
+        lora_version_id: loraVersionId,
+        model_id: loraVersionId || checkpointId,
+      }));
+      
+      toast({
+        title: "URL已解析",
+        description: `checkPointId: ${checkpointId}, Lora版本: ${loraVersionId}`,
+      });
+    } catch (error) {
+      toast({
+        title: "URL解析失败",
+        description: "请检查URL格式是否正确",
+        variant: "destructive",
+      });
+    }
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data: ModelFormData) => {
       const payload = {
@@ -56,6 +97,12 @@ const Models = () => {
         tags: data.tags ? data.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
         features: data.features ? JSON.parse(data.features) : {},
         thumbnail_url: data.thumbnail_url || null,
+        checkpoint_id: data.checkpoint_id || null,
+        lora_version_id: data.lora_version_id || null,
+        sampler: parseInt(data.sampler) || 15,
+        cfg_scale: parseFloat(data.cfg_scale) || 7,
+        randn_source: parseInt(data.randn_source) || 0,
+        lora_weight: parseFloat(data.lora_weight) || 0.8,
       };
 
       if (editingModel) {
@@ -122,6 +169,13 @@ const Models = () => {
       tags: "",
       features: "",
       thumbnail_url: "",
+      model_url: "",
+      checkpoint_id: "",
+      lora_version_id: "",
+      sampler: "15",
+      cfg_scale: "7",
+      randn_source: "0",
+      lora_weight: "0.8",
     });
     setEditingModel(null);
   };
@@ -135,6 +189,13 @@ const Models = () => {
       tags: model.tags?.join(", ") || "",
       features: JSON.stringify(model.features || {}, null, 2),
       thumbnail_url: model.thumbnail_url || "",
+      model_url: "",
+      checkpoint_id: model.checkpoint_id || "",
+      lora_version_id: model.lora_version_id || "",
+      sampler: String(model.sampler || 15),
+      cfg_scale: String(model.cfg_scale || 7),
+      randn_source: String(model.randn_source || 0),
+      lora_weight: String(model.lora_weight || 0.8),
     });
     setIsDialogOpen(true);
   };
@@ -179,15 +240,63 @@ const Models = () => {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
+                  <Label htmlFor="model_url">LibLib模型URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="model_url"
+                      value={formData.model_url}
+                      onChange={(e) => setFormData({ ...formData, model_url: e.target.value })}
+                      placeholder="https://www.liblib.art/modelinfo/..."
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => parseModelUrl(formData.model_url)}
+                      disabled={!formData.model_url}
+                    >
+                      解析
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    粘贴LibLib模型页面URL，自动提取checkPointId和versionUuid
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="checkpoint_id">底模ID (checkPointId) *</Label>
+                    <Input
+                      id="checkpoint_id"
+                      value={formData.checkpoint_id}
+                      onChange={(e) => setFormData({ ...formData, checkpoint_id: e.target.value })}
+                      placeholder="自动填充或手动输入"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="lora_version_id">Lora版本ID (versionUuid)</Label>
+                    <Input
+                      id="lora_version_id"
+                      value={formData.lora_version_id}
+                      onChange={(e) => setFormData({ ...formData, lora_version_id: e.target.value })}
+                      placeholder="自动填充或手动输入"
+                    />
+                  </div>
+                </div>
+
+                <div>
                   <Label htmlFor="model_id">模型ID *</Label>
                   <Input
                     id="model_id"
                     value={formData.model_id}
                     onChange={(e) => setFormData({ ...formData, model_id: e.target.value })}
-                    placeholder="liblib-model-001"
+                    placeholder="使用lora_version_id或checkpoint_id"
                     required
                     disabled={!!editingModel}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    如果有Lora则使用versionUuid，否则使用checkPointId
+                  </p>
                 </div>
 
                 <div>
@@ -242,6 +351,60 @@ const Models = () => {
                     onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
                     placeholder="https://..."
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="sampler">采样方法</Label>
+                    <Input
+                      id="sampler"
+                      type="number"
+                      value={formData.sampler}
+                      onChange={(e) => setFormData({ ...formData, sampler: e.target.value })}
+                      placeholder="15"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cfg_scale">提示词引导系数 (CFG Scale)</Label>
+                    <Input
+                      id="cfg_scale"
+                      type="number"
+                      step="0.1"
+                      value={formData.cfg_scale}
+                      onChange={(e) => setFormData({ ...formData, cfg_scale: e.target.value })}
+                      placeholder="7"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="randn_source">随机种子生成器</Label>
+                    <select
+                      id="randn_source"
+                      value={formData.randn_source}
+                      onChange={(e) => setFormData({ ...formData, randn_source: e.target.value })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="0">CPU (0)</option>
+                      <option value="1">GPU (1)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="lora_weight">Lora权重</Label>
+                    <Input
+                      id="lora_weight"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="1"
+                      value={formData.lora_weight}
+                      onChange={(e) => setFormData({ ...formData, lora_weight: e.target.value })}
+                      placeholder="0.8"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2">

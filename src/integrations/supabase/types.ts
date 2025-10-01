@@ -52,37 +52,55 @@ export type Database = {
       }
       liblib_models: {
         Row: {
+          cfg_scale: number | null
+          checkpoint_id: string | null
           created_at: string | null
           description: string | null
           features: Json | null
           id: string
           is_active: boolean | null
+          lora_version_id: string | null
+          lora_weight: number | null
           model_id: string
           name: string
+          randn_source: number | null
+          sampler: number | null
           tags: string[] | null
           thumbnail_url: string | null
           updated_at: string | null
         }
         Insert: {
+          cfg_scale?: number | null
+          checkpoint_id?: string | null
           created_at?: string | null
           description?: string | null
           features?: Json | null
           id?: string
           is_active?: boolean | null
+          lora_version_id?: string | null
+          lora_weight?: number | null
           model_id: string
           name: string
+          randn_source?: number | null
+          sampler?: number | null
           tags?: string[] | null
           thumbnail_url?: string | null
           updated_at?: string | null
         }
         Update: {
+          cfg_scale?: number | null
+          checkpoint_id?: string | null
           created_at?: string | null
           description?: string | null
           features?: Json | null
           id?: string
           is_active?: boolean | null
+          lora_version_id?: string | null
+          lora_weight?: number | null
           model_id?: string
           name?: string
+          randn_source?: number | null
+          sampler?: number | null
           tags?: string[] | null
           thumbnail_url?: string | null
           updated_at?: string | null

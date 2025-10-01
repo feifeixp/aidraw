@@ -66,6 +66,21 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // 获取模型配置
+    const { data: modelData, error: modelError } = await supabase
+      .from("liblib_models")
+      .select("*")
+      .eq("model_id", modelId)
+      .single();
+
+    if (modelError || !modelData) {
+      console.error("Failed to fetch model data:", modelError);
+      return new Response(
+        JSON.stringify({ error: "Model not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // 创建历史记录
     const { data: historyRecord, error: historyError } = await supabase
       .from("generation_history")
@@ -86,10 +101,45 @@ serve(async (req) => {
       );
     }
 
-    console.log("Calling LibLib API with signature auth");
+    console.log("Calling LibLib API with signature auth and model config:", {
+      checkpointId: modelData.checkpoint_id,
+      loraVersionId: modelData.lora_version_id,
+      sampler: modelData.sampler,
+      cfgScale: modelData.cfg_scale,
+    });
 
     // Build URL with signature parameters
     const apiUrl = `https://openapi.liblibai.cloud${uri}?AccessKey=${LIBLIB_ACCESS_KEY}&Signature=${signature}&Timestamp=${timestamp}&SignatureNonce=${signatureNonce}`;
+
+    // 构建生成参数
+    const generateParams: any = {
+      prompt: prompt,
+      negativePrompt: defaultNegativePrompt,
+      sampler: modelData.sampler || 15,
+      steps: 20,
+      cfgScale: modelData.cfg_scale || 7,
+      width: width,
+      height: height,
+      imgCount: imgCount,
+      randnSource: modelData.randn_source || 0,
+      seed: -1,
+      restoreFaces: 0,
+    };
+
+    // 如果有底模ID，添加checkPointId
+    if (modelData.checkpoint_id) {
+      generateParams.checkPointId = modelData.checkpoint_id;
+    }
+
+    // 如果有Lora版本ID，添加additionalNetwork
+    if (modelData.lora_version_id) {
+      generateParams.additionalNetwork = [
+        {
+          modelId: modelData.lora_version_id,
+          weight: modelData.lora_weight || 0.8,
+        },
+      ];
+    }
 
     // 调用LibLib API
     const liblibResponse = await fetch(apiUrl, {
@@ -98,18 +148,8 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        templateUuid: "6f7c4652458d4802969f8d089cf5b91f",
-        modelUuid: modelId,
-        generateParams: {
-          prompt: prompt,
-          negativePrompt: defaultNegativePrompt,
-          steps: 20,
-          width: width,
-          height: height,
-          imgCount: imgCount,
-          seed: -1,
-          restoreFaces: 0,
-        },
+        templateUuid: "e10adc3949ba59abbe56e057f20f883e",
+        generateParams: generateParams,
       }),
     });
 
