@@ -142,17 +142,19 @@ serve(async (req) => {
 
     // 根据base_algo选择不同的生成方式
     if (modelData.base_algo === 3) {
-      // Flux模型：直接使用modelUuid，并在generateParams中添加lora权重
-      requestBody.modelUuid = modelData.lora_version_id || modelId;
-      
-      // 如果有lora_weight配置，添加到generateParams中
-      if (modelData.lora_weight) {
-        generateParams.loraWeight = modelData.lora_weight;
+      // Flux模型：使用additionalNetwork传递lora
+      if (modelData.lora_version_id) {
+        generateParams.additionalNetwork = [
+          {
+            modelId: modelData.lora_version_id,
+            weight: modelData.lora_weight || 0.8,
+          },
+        ];
       }
-      
+      // Flux模型使用templateUuid，不需要单独的modelUuid
       requestBody.generateParams = generateParams;
     } else {
-      // SD/XL模型：使用lora作为additionalNetwork
+      // SD/XL模型：同样使用additionalNetwork
       if (modelData.lora_version_id) {
         generateParams.additionalNetwork = [
           {
@@ -164,6 +166,13 @@ serve(async (req) => {
       
       requestBody.generateParams = generateParams;
     }
+
+    console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
+    console.log("Model LoRA config:", {
+      loraVersionId: modelData.lora_version_id,
+      loraWeight: modelData.lora_weight,
+      baseAlgo: modelData.base_algo,
+    });
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
     console.log("Calling LibLib API at URL:", apiUrl);
