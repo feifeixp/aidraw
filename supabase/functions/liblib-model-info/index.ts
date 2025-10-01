@@ -32,10 +32,16 @@ serve(async (req) => {
     }
 
     // Generate signature parameters
-    const timestamp = Date.now();
+    const timestamp = Date.now().toString();
     const signatureNonce = crypto.randomUUID().substring(0, 10);
     const uri = "/api/model/version/get";
     const content = `${uri}&${timestamp}&${signatureNonce}`;
+
+    console.log("=== Model Info Signature Generation ===");
+    console.log("URI:", uri);
+    console.log("Timestamp:", timestamp);
+    console.log("SignatureNonce:", signatureNonce);
+    console.log("Content to sign:", content);
 
     // Create HMAC-SHA1 signature
     const encoder = new TextEncoder();
@@ -60,6 +66,7 @@ serve(async (req) => {
     const apiUrl = `https://openapi.liblibai.cloud${uri}?AccessKey=${LIBLIB_ACCESS_KEY}&Signature=${signature}&Timestamp=${timestamp}&SignatureNonce=${signatureNonce}`;
 
     console.log("Fetching model info for versionUuid:", versionUuid);
+    console.log("API URL:", apiUrl);
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -84,18 +91,26 @@ serve(async (req) => {
     console.log("LibLib API response:", JSON.stringify(result, null, 2));
 
     if (result.code !== 0 || !result.data) {
+      console.error("LibLib API returned error:", result);
       return new Response(
-        JSON.stringify({ error: result.msg || "Failed to fetch model info" }),
+        JSON.stringify({ 
+          success: false,
+          error: result.msg || "Failed to fetch model info" 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log("Successfully fetched model info:", result.data.modelName || "Unknown");
     return new Response(
       JSON.stringify({
         success: true,
         data: result.data,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
     );
 
   } catch (error) {

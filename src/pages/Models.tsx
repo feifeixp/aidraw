@@ -31,6 +31,7 @@ interface ModelFormData {
 const Models = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<any>(null);
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [formData, setFormData] = useState<ModelFormData>({
     model_id: "",
     name: "",
@@ -64,6 +65,11 @@ const Models = () => {
   });
 
   const parseModelUrl = async (url: string) => {
+    if (isAutoFilling) {
+      console.log("Already fetching model info, ignoring click");
+      return;
+    }
+
     try {
       const urlObj = new URL(url);
       const versionUuid = urlObj.searchParams.get('versionUuid') || '';
@@ -77,16 +83,25 @@ const Models = () => {
         return;
       }
 
-      // 调用edge function获取模型详情
+      setIsAutoFilling(true);
+      
       toast({
         title: "正在获取模型信息...",
+        description: "请稍候，这可能需要几秒钟",
       });
+
+      console.log("Fetching model info for versionUuid:", versionUuid);
 
       const { data, error } = await supabase.functions.invoke("liblib-model-info", {
         body: { versionUuid },
       });
 
-      if (error) throw error;
+      console.log("Model info response:", data);
+
+      if (error) {
+        console.error("Model info error:", error);
+        throw error;
+      }
 
       if (data.success && data.data) {
         const modelInfo = data.data;
@@ -118,6 +133,8 @@ const Models = () => {
         description: error instanceof Error ? error.message : "请检查URL格式或网络连接",
         variant: "destructive",
       });
+    } finally {
+      setIsAutoFilling(false);
     }
   };
 
@@ -287,9 +304,9 @@ const Models = () => {
                     <Button
                       type="button"
                       onClick={() => parseModelUrl(formData.model_url)}
-                      disabled={!formData.model_url}
+                      disabled={!formData.model_url || isAutoFilling}
                     >
-                      自动填充
+                      {isAutoFilling ? "获取中..." : "自动填充"}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
