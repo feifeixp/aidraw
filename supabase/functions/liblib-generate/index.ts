@@ -142,10 +142,16 @@ serve(async (req) => {
 
     // 根据base_algo选择不同的生成方式
     if (modelData.base_algo === 3) {
-      // Flux模型：直接使用modelUuid（LoRA模型ID）
-      // Flux模型的LoRA权重是内置在模型中的，通过modelUuid直接调用
+      // Flux模型：使用modelUuid指定LoRA模型，并通过loraStrength控制权重
       requestBody.modelUuid = modelData.lora_version_id || modelId;
+      // 为Flux模型添加LoRA强度参数
+      generateParams.loraStrength = modelData.lora_weight || 0.8;
       requestBody.generateParams = generateParams;
+      
+      console.log("Flux model with LoRA strength:", {
+        modelUuid: requestBody.modelUuid,
+        loraStrength: generateParams.loraStrength
+      });
     } else {
       // SD/XL模型：使用additionalNetwork传递LoRA
       if (modelData.lora_version_id) {
