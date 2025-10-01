@@ -64,20 +64,19 @@ const Models = () => {
   const parseModelUrl = (url: string) => {
     try {
       const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/');
-      const checkpointId = pathParts[pathParts.length - 1];
-      const loraVersionId = urlObj.searchParams.get('versionUuid') || '';
+      const versionUuid = urlObj.searchParams.get('versionUuid') || '';
       
+      // 从URL中提取的不是checkPointId，需要用户手动输入底模ID
+      // versionUuid是Lora版本ID，可以自动填充
       setFormData(prev => ({
         ...prev,
-        checkpoint_id: checkpointId,
-        lora_version_id: loraVersionId,
-        model_id: loraVersionId || checkpointId,
+        lora_version_id: versionUuid,
+        model_id: versionUuid, // 默认使用Lora版本ID作为模型ID
       }));
       
       toast({
         title: "URL已解析",
-        description: `checkPointId: ${checkpointId}, Lora版本: ${loraVersionId}`,
+        description: `已提取Lora版本ID: ${versionUuid}。请手动填写底模ID (checkPointId)`,
       });
     } catch (error) {
       toast({
@@ -257,7 +256,7 @@ const Models = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    粘贴LibLib模型页面URL，自动提取checkPointId和versionUuid
+                    粘贴LibLib模型页面URL，自动提取Lora版本ID (versionUuid)。底模ID需要手动从模型详情页获取。
                   </p>
                 </div>
 
@@ -268,9 +267,12 @@ const Models = () => {
                       id="checkpoint_id"
                       value={formData.checkpoint_id}
                       onChange={(e) => setFormData({ ...formData, checkpoint_id: e.target.value })}
-                      placeholder="自动填充或手动输入"
+                      placeholder="需要从模型详情页手动获取"
                       required
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      在模型详情页查找底模的UUID
+                    </p>
                   </div>
 
                   <div>
@@ -279,7 +281,7 @@ const Models = () => {
                       id="lora_version_id"
                       value={formData.lora_version_id}
                       onChange={(e) => setFormData({ ...formData, lora_version_id: e.target.value })}
-                      placeholder="自动填充或手动输入"
+                      placeholder="从URL自动提取或手动输入"
                     />
                   </div>
                 </div>
@@ -290,7 +292,7 @@ const Models = () => {
                     id="model_id"
                     value={formData.model_id}
                     onChange={(e) => setFormData({ ...formData, model_id: e.target.value })}
-                    placeholder="使用lora_version_id或checkpoint_id"
+                    placeholder="优先使用Lora版本ID，无Lora则使用底模ID"
                     required
                     disabled={!!editingModel}
                   />

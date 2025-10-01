@@ -141,35 +141,47 @@ serve(async (req) => {
       ];
     }
 
+    const requestBody = {
+      templateUuid: "e10adc3949ba59abbe56e057f20f883e",
+      generateParams: generateParams,
+    };
+
+    console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
+
     // 调用LibLib API
     const liblibResponse = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        templateUuid: "e10adc3949ba59abbe56e057f20f883e",
-        generateParams: generateParams,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!liblibResponse.ok) {
       const errorText = await liblibResponse.text();
       console.error("LibLib API error:", liblibResponse.status, errorText);
       
+      let errorMessage = `API error: ${liblibResponse.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.msg || errorMessage;
+      } catch (e) {
+        errorMessage = errorText || errorMessage;
+      }
+      
       // 更新历史记录为失败
       await supabase
         .from("generation_history")
         .update({
           status: "failed",
-          error_message: `API error: ${liblibResponse.status}`,
+          error_message: errorMessage,
         })
         .eq("id", historyRecord.id);
 
       return new Response(
         JSON.stringify({ 
           error: "Failed to generate image", 
-          details: errorText,
+          details: errorMessage,
           historyId: historyRecord.id 
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -177,7 +189,7 @@ serve(async (req) => {
     }
 
     const result = await liblibResponse.json();
-    console.log("LibLib API response:", result);
+    console.log("LibLib API response:", JSON.stringify(result, null, 2));
 
     // LibLib API returns a task UUID for async generation
     const generateUuid = result.data?.generateUuid;
