@@ -3,5 +3,8 @@ project_id = "fosvwmuvanqdwlqtlhlx"
 [functions.liblib-generate]
 verify_jwt = false
 
+[functions.liblib-model-info]
+verify_jwt = false
+
 [functions.ai-select-model]
 verify_jwt = false

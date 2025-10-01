@@ -61,27 +61,56 @@ const Models = () => {
     },
   });
 
-  const parseModelUrl = (url: string) => {
+  const parseModelUrl = async (url: string) => {
     try {
       const urlObj = new URL(url);
       const versionUuid = urlObj.searchParams.get('versionUuid') || '';
       
-      // 从URL中提取的不是checkPointId，需要用户手动输入底模ID
-      // versionUuid是Lora版本ID，可以自动填充
-      setFormData(prev => ({
-        ...prev,
-        lora_version_id: versionUuid,
-        model_id: versionUuid, // 默认使用Lora版本ID作为模型ID
-      }));
-      
+      if (!versionUuid) {
+        toast({
+          title: "URL解析失败",
+          description: "URL中没有找到versionUuid参数",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 调用edge function获取模型详情
       toast({
-        title: "URL已解析",
-        description: `已提取Lora版本ID: ${versionUuid}。请手动填写底模ID (checkPointId)`,
+        title: "正在获取模型信息...",
       });
+
+      const { data, error } = await supabase.functions.invoke("liblib-model-info", {
+        body: { versionUuid },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.data) {
+        const modelInfo = data.data;
+        
+        // 自动填充表单
+        setFormData(prev => ({
+          ...prev,
+          lora_version_id: versionUuid,
+          model_id: versionUuid,
+          name: `${modelInfo.model_name || ''} ${modelInfo.version_name || ''}`.trim(),
+          description: modelInfo.baseAlgo ? `基础算法: ${modelInfo.baseAlgo}\n${modelInfo.commercial_use === 1 ? '可商用' : '不可商用'}` : '',
+          thumbnail_url: modelInfo.model_url || '',
+        }));
+        
+        toast({
+          title: "模型信息获取成功",
+          description: `已自动填充 ${modelInfo.model_name}`,
+        });
+      } else {
+        throw new Error(data.error || "获取模型信息失败");
+      }
     } catch (error) {
+      console.error("Parse model URL error:", error);
       toast({
-        title: "URL解析失败",
-        description: "请检查URL格式是否正确",
+        title: "获取模型信息失败",
+        description: error instanceof Error ? error.message : "请检查URL格式或网络连接",
         variant: "destructive",
       });
     }
@@ -239,39 +268,38 @@ const Models = () => {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label htmlFor="model_url">LibLib模型URL</Label>
+                  <Label htmlFor="model_url">LibLib模型URL *</Label>
                   <div className="flex gap-2">
                     <Input
                       id="model_url"
                       value={formData.model_url}
                       onChange={(e) => setFormData({ ...formData, model_url: e.target.value })}
-                      placeholder="https://www.liblib.art/modelinfo/..."
+                      placeholder="https://www.liblib.art/modelinfo/...?versionUuid=..."
                     />
                     <Button
                       type="button"
                       onClick={() => parseModelUrl(formData.model_url)}
                       disabled={!formData.model_url}
                     >
-                      解析
+                      自动填充
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    粘贴LibLib模型页面URL，自动提取Lora版本ID (versionUuid)。底模ID需要手动从模型详情页获取。
+                    粘贴LibLib模型URL，点击"自动填充"获取完整模型信息
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="checkpoint_id">底模ID (checkPointId) *</Label>
+                    <Label htmlFor="checkpoint_id">底模ID (checkPointId)</Label>
                     <Input
                       id="checkpoint_id"
                       value={formData.checkpoint_id}
                       onChange={(e) => setFormData({ ...formData, checkpoint_id: e.target.value })}
-                      placeholder="需要从模型详情页手动获取"
-                      required
+                      placeholder="可选：用于指定底模"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      在模型详情页查找底模的UUID
+                      如需指定特定底模才填写
                     </p>
                   </div>
 
@@ -281,7 +309,8 @@ const Models = () => {
                       id="lora_version_id"
                       value={formData.lora_version_id}
                       onChange={(e) => setFormData({ ...formData, lora_version_id: e.target.value })}
-                      placeholder="从URL自动提取或手动输入"
+                      placeholder="自动填充"
+                      readOnly
                     />
                   </div>
                 </div>
@@ -292,13 +321,10 @@ const Models = () => {
                     id="model_id"
                     value={formData.model_id}
                     onChange={(e) => setFormData({ ...formData, model_id: e.target.value })}
-                    placeholder="优先使用Lora版本ID，无Lora则使用底模ID"
+                    placeholder="自动填充"
                     required
                     disabled={!!editingModel}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    如果有Lora则使用versionUuid，否则使用checkPointId
-                  </p>
                 </div>
 
                 <div>
