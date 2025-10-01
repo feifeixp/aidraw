@@ -173,6 +173,9 @@ const Models = () => {
                   {editingModel ? "编辑模型" : "添加新模型"}
                 </DialogTitle>
               </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                填写模型信息以便AI智能选择使用
+              </p>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>

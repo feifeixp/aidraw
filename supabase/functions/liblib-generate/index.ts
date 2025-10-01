@@ -22,6 +22,8 @@ serve(async (req) => {
     }
 
     const LIBLIB_API_KEY = Deno.env.get("LIBLIB_API_KEY");
+    const LIBLIB_ACCESS_KEY = "Pt6EX8XqnGpmwAerrYkhsQ"; // LibLib AccessKey
+    
     if (!LIBLIB_API_KEY) {
       console.error("LIBLIB_API_KEY not configured");
       return new Response(
@@ -55,23 +57,22 @@ serve(async (req) => {
       );
     }
 
-    console.log("Calling LibLib API with:", { prompt, modelId });
+    console.log("Calling LibLib API with:", { prompt, modelId, accessKey: LIBLIB_ACCESS_KEY });
 
-    // 调用LibLib API
-    // 注意：这里使用通用的API端点，实际端点需要根据LibLib文档调整
-    const liblibResponse = await fetch("https://api.liblibai.com/v1/generate", {
+    // 调用LibLib API - 使用提供的AccessKey
+    const liblibResponse = await fetch("https://www.liblibai.com/api/open/sd/text2img", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LIBLIB_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: modelId,
+        accessKey: LIBLIB_ACCESS_KEY,
+        apiKey: LIBLIB_API_KEY,
+        modelId: modelId,
         prompt: prompt,
-        // 可能需要的其他参数
         width: 1024,
         height: 1024,
-        num_images: 1,
+        batchSize: 1,
       }),
     });
 
@@ -101,9 +102,13 @@ serve(async (req) => {
     const result = await liblibResponse.json();
     console.log("LibLib API response:", result);
 
-    // 假设API返回格式为 { images: [{ url: "..." }] }
-    // 实际格式需要根据LibLib文档调整
-    const imageUrl = result.images?.[0]?.url || result.image_url || result.url;
+    // 根据LibLib API响应格式解析
+    // 可能的格式: { data: { images: [...] } } 或 { images: [...] }
+    const imageUrl = result.data?.images?.[0]?.url || 
+                     result.images?.[0]?.url || 
+                     result.data?.image_url || 
+                     result.image_url || 
+                     result.url;
 
     if (!imageUrl) {
       console.error("No image URL in response:", result);
