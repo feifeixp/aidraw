@@ -164,168 +164,136 @@ serve(async (req) => {
     console.log("Calling LibLib API at URL:", apiUrl);
     console.log("Using Access Key:", LIBLIB_ACCESS_KEY);
 
-    // 调用LibLib API with timeout (60 seconds for initial generation request)
-    const REQUEST_TIMEOUT = 60000; // 60 seconds
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.error(`Request timeout after ${REQUEST_TIMEOUT/1000} seconds, aborting...`);
-      controller.abort();
-    }, REQUEST_TIMEOUT);
-    
-    let liblibResponse;
-    try {
-      const startTime = Date.now();
-      console.log("Starting LibLib API call at:", new Date(startTime).toISOString());
-      
-      liblibResponse = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      });
-      
-      const endTime = Date.now();
-      console.log(`LibLib API responded in ${endTime - startTime}ms`);
-      console.log("Response status:", liblibResponse.status);
-      console.log("Response headers:", JSON.stringify(Object.fromEntries(liblibResponse.headers.entries())));
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      console.error("=== LibLib API FETCH ERROR ===");
-      console.error("Error type:", fetchError instanceof Error ? fetchError.name : typeof fetchError);
-      console.error("Error message:", fetchError instanceof Error ? fetchError.message : String(fetchError));
-      console.error("Error stack:", fetchError instanceof Error ? fetchError.stack : "N/A");
-      console.error("API URL:", apiUrl);
-      console.error("Timestamp:", new Date().toISOString());
-      
-      let errorMessage = fetchError instanceof Error ? fetchError.message : "Network error connecting to LibLib API";
-      
-      // Check if it's a timeout error
-      if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        errorMessage = `Request timeout: LibLib API took too long to respond (>${REQUEST_TIMEOUT/1000}s). The API may be experiencing issues. Please try again.`;
-        console.error("=== TIMEOUT ERROR ===");
-        console.error("This suggests the LibLib API is not responding. Possible causes:");
-        console.error("1. LibLib API service is down or slow (most common)");
-        console.error("2. Network connectivity issues");
-        console.error("3. API authentication issues - verify:");
-        console.error("   - AccessKey is correct:", LIBLIB_ACCESS_KEY);
-        console.error("   - SecretKey length:", LIBLIB_SECRET_KEY.length);
-        console.error("   - Signature:", signature);
-        console.error("API URL:", apiUrl);
-        console.error("Request body:", JSON.stringify(requestBody, null, 2));
-      }
-      
-      await supabase
-        .from("generation_history")
-        .update({
-          status: "failed",
-          error_message: errorMessage,
-        })
-        .eq("id", historyRecord.id);
-
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to connect to image generation service", 
-          details: errorMessage,
-          historyId: historyRecord.id 
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    if (!liblibResponse.ok) {
-      const errorText = await liblibResponse.text();
-      console.error("=== LibLib API ERROR RESPONSE ===");
-      console.error("Status code:", liblibResponse.status);
-      console.error("Status text:", liblibResponse.statusText);
-      console.error("Response body:", errorText);
-      console.error("Response headers:", JSON.stringify(Object.fromEntries(liblibResponse.headers.entries())));
-      
-      let errorMessage = `API error: ${liblibResponse.status}`;
+    // 定义后台处理函数
+    const processGeneration = async () => {
       try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.msg || errorMessage;
-      } catch (e) {
-        errorMessage = errorText || errorMessage;
-      }
-      
-      // 更新历史记录为失败
-      await supabase
-        .from("generation_history")
-        .update({
-          status: "failed",
-          error_message: errorMessage,
-        })
-        .eq("id", historyRecord.id);
-
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to generate image", 
-          details: errorMessage,
-          historyId: historyRecord.id 
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const responseText = await liblibResponse.text();
-    console.log("=== LibLib API SUCCESS RESPONSE ===");
-    console.log("Raw response text:", responseText);
+        console.log("Background task: Starting LibLib API call");
+        
+        // 调用LibLib API with extended timeout (120 seconds for initial generation request)
+        const REQUEST_TIMEOUT = 120000; // 120 seconds
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.error(`Background: Request timeout after ${REQUEST_TIMEOUT/1000} seconds, aborting...`);
+          controller.abort();
+        }, REQUEST_TIMEOUT);
     
-    let result;
-    try {
-      result = JSON.parse(responseText);
-      console.log("Parsed response:", JSON.stringify(result, null, 2));
-    } catch (parseError) {
-      console.error("Failed to parse JSON response:", parseError);
-      await supabase
-        .from("generation_history")
-        .update({
-          status: "failed",
-          error_message: "Invalid JSON response from API",
-        })
-        .eq("id", historyRecord.id);
-      
-      return new Response(
-        JSON.stringify({ error: "Invalid response from image generation service", historyId: historyRecord.id }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+        let liblibResponse;
+        try {
+          const startTime = Date.now();
+          console.log("Background: Starting LibLib API call at:", new Date(startTime).toISOString());
+          
+          liblibResponse = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+          });
+          
+          const endTime = Date.now();
+          console.log(`Background: LibLib API responded in ${endTime - startTime}ms`);
+          console.log("Background: Response status:", liblibResponse.status);
+          console.log("Background: Response headers:", JSON.stringify(Object.fromEntries(liblibResponse.headers.entries())));
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          console.error("Background: === LibLib API FETCH ERROR ===");
+          console.error("Background: Error type:", fetchError instanceof Error ? fetchError.name : typeof fetchError);
+          console.error("Background: Error message:", fetchError instanceof Error ? fetchError.message : String(fetchError));
+          console.error("Background: Error stack:", fetchError instanceof Error ? fetchError.stack : "N/A");
+          
+          let errorMessage = fetchError instanceof Error ? fetchError.message : "Network error connecting to LibLib API";
+          
+          if (fetchError instanceof Error && fetchError.name === "AbortError") {
+            errorMessage = `Request timeout: LibLib API took too long to respond (>${REQUEST_TIMEOUT/1000}s). The API may be experiencing issues.`;
+          }
+          
+          await supabase
+            .from("generation_history")
+            .update({
+              status: "failed",
+              error_message: errorMessage,
+            })
+            .eq("id", historyRecord.id);
+          
+          return;
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
-    // LibLib API returns a task UUID for async generation
-    const generateUuid = result.data?.generateUuid;
-    
-    if (!generateUuid) {
-      console.error("No generateUuid in response:", result);
-      await supabase
-        .from("generation_history")
-        .update({
-          status: "failed",
-          error_message: result.msg || "No task UUID returned",
-        })
-        .eq("id", historyRecord.id);
+        if (!liblibResponse.ok) {
+          const errorText = await liblibResponse.text();
+          console.error("Background: === LibLib API ERROR RESPONSE ===");
+          console.error("Background: Status code:", liblibResponse.status);
+          console.error("Background: Response body:", errorText);
+          
+          let errorMessage = `API error: ${liblibResponse.status}`;
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.msg || errorMessage;
+          } catch (e) {
+            errorMessage = errorText || errorMessage;
+          }
+          
+          await supabase
+            .from("generation_history")
+            .update({
+              status: "failed",
+              error_message: errorMessage,
+            })
+            .eq("id", historyRecord.id);
+          
+          return;
+        }
 
-      return new Response(
-        JSON.stringify({ error: "Failed to start generation", details: result.msg, historyId: historyRecord.id }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+        const responseText = await liblibResponse.text();
+        console.log("Background: === LibLib API SUCCESS RESPONSE ===");
+        console.log("Background: Raw response text:", responseText);
+        
+        let result;
+        try {
+          result = JSON.parse(responseText);
+          console.log("Background: Parsed response:", JSON.stringify(result, null, 2));
+        } catch (parseError) {
+          console.error("Background: Failed to parse JSON response:", parseError);
+          await supabase
+            .from("generation_history")
+            .update({
+              status: "failed",
+              error_message: "Invalid JSON response from API",
+            })
+            .eq("id", historyRecord.id);
+          
+          return;
+        }
 
-    console.log("Generation started with UUID:", generateUuid);
+        const generateUuid = result.data?.generateUuid;
+        
+        if (!generateUuid) {
+          console.error("Background: No generateUuid in response:", result);
+          await supabase
+            .from("generation_history")
+            .update({
+              status: "failed",
+              error_message: result.msg || "No task UUID returned",
+            })
+            .eq("id", historyRecord.id);
+          
+          return;
+        }
 
-    // Poll for result with increased attempts and shorter intervals
-    let attempts = 0;
-    let imageUrl = null;
-    const maxAttempts = 60; // 60 attempts * 2 seconds = 2 minutes max
-    
-    while (attempts < maxAttempts && !imageUrl) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      attempts++;
-      
-      console.log(`Status check attempt ${attempts}/${maxAttempts}`);
+        console.log("Background: Generation started with UUID:", generateUuid);
+
+        // Poll for result - increased to 90 attempts * 2 seconds = 3 minutes max
+        let attempts = 0;
+        let imageUrl = null;
+        const maxAttempts = 90;
+        
+        while (attempts < maxAttempts && !imageUrl) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          attempts++;
+          
+          console.log(`Background: Status check attempt ${attempts}/${maxAttempts}`);
       
       // 为状态检查生成新的签名参数
       const statusUri = "/api/generate/webui/status";
@@ -353,54 +321,80 @@ serve(async (req) => {
       
       const statusUrl = `https://openapi.liblibai.cloud${statusUri}?AccessKey=${LIBLIB_ACCESS_KEY}&Signature=${statusSignature}&Timestamp=${statusTimestamp}&SignatureNonce=${statusNonce}`;
       
-      const statusResponse = await fetch(statusUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generateUuid }),
-      });
-      
-      const statusResult = await statusResponse.json();
-      console.log(`Status check ${attempts}: status=${statusResult.data?.generateStatus}, code=${statusResult.code}`);
-      
-      if (statusResult.data?.generateStatus === 5) {
-        imageUrl = statusResult.data?.images?.[0]?.imageUrl;
-        console.log("Generation completed! Image URL:", imageUrl);
-        break;
-      } else if (statusResult.data?.generateStatus === 4) {
-        console.error("Generation failed with status 4");
-        throw new Error("Generation failed");
+          const statusResponse = await fetch(statusUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ generateUuid }),
+          });
+          
+          const statusResult = await statusResponse.json();
+          console.log(`Background: Status check ${attempts}: status=${statusResult.data?.generateStatus}, code=${statusResult.code}`);
+          
+          if (statusResult.data?.generateStatus === 5) {
+            imageUrl = statusResult.data?.images?.[0]?.imageUrl;
+            console.log("Background: Generation completed! Image URL:", imageUrl);
+            break;
+          } else if (statusResult.data?.generateStatus === 4) {
+            console.error("Background: Generation failed with status 4");
+            throw new Error("Generation failed");
+          }
+        }
+
+        if (!imageUrl) {
+          console.error("Background: Timeout - no image generated after", maxAttempts * 2, "seconds");
+          await supabase
+            .from("generation_history")
+            .update({
+              status: "failed",
+              error_message: "Generation timeout - please try again",
+            })
+            .eq("id", historyRecord.id);
+          
+          return;
+        }
+
+        // 更新历史记录为成功
+        console.log("Background: Updating history record with image URL");
+        await supabase
+          .from("generation_history")
+          .update({
+            status: "completed",
+            image_url: imageUrl,
+          })
+          .eq("id", historyRecord.id);
+        
+        console.log("Background: Generation process completed successfully");
+      } catch (bgError) {
+        console.error("Background: Error in background processing:", bgError);
+        await supabase
+          .from("generation_history")
+          .update({
+            status: "failed",
+            error_message: bgError instanceof Error ? bgError.message : "Unknown error",
+          })
+          .eq("id", historyRecord.id);
       }
+    };
+
+    // Start background processing using EdgeRuntime
+    console.log("Starting background processing for history ID:", historyRecord.id);
+    // @ts-ignore - EdgeRuntime is available in Deno environment
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(processGeneration());
+      console.log("Background task scheduled with EdgeRuntime.waitUntil");
+    } else {
+      // Fallback: start async without awaiting
+      processGeneration().catch(e => console.error("Background task error:", e));
+      console.log("Background task started (fallback mode)");
     }
 
-    if (!imageUrl) {
-      console.error("No image URL in response:", result);
-      await supabase
-        .from("generation_history")
-        .update({
-          status: "failed",
-          error_message: "No image URL in response",
-        })
-        .eq("id", historyRecord.id);
-
-      return new Response(
-        JSON.stringify({ error: "No image generated", historyId: historyRecord.id }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 更新历史记录为成功
-    await supabase
-      .from("generation_history")
-      .update({
-        status: "completed",
-        image_url: imageUrl,
-      })
-      .eq("id", historyRecord.id);
-
+    // Immediately return with processing status
     return new Response(
       JSON.stringify({
         success: true,
-        imageUrl,
+        status: "processing",
+        message: "Image generation started. Please check the history page for results.",
         historyId: historyRecord.id,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

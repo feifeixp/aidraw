@@ -113,12 +113,69 @@ const Generate = () => {
 
       if (error) throw error;
 
-      if (data.success && data.imageUrl) {
+      if (data.success && data.status === "processing") {
+        // 异步生成已启动，开始轮询状态
+        toast({
+          title: "生成中",
+          description: "图片正在生成，请稍候...",
+        });
+
+        const historyId = data.historyId;
+        let pollAttempts = 0;
+        const maxPollAttempts = 90; // 90 * 2秒 = 3分钟
+
+        const pollInterval = setInterval(async () => {
+          pollAttempts++;
+          
+          if (pollAttempts > maxPollAttempts) {
+            clearInterval(pollInterval);
+            setIsGenerating(false);
+            toast({
+              title: "生成超时",
+              description: "生成时间过长，请稍后在历史记录中查看结果",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          const { data: historyData, error: historyError } = await supabase
+            .from("generation_history")
+            .select("*")
+            .eq("id", historyId)
+            .single();
+
+          if (historyError) {
+            console.error("轮询错误:", historyError);
+            return;
+          }
+
+          if (historyData.status === "completed" && historyData.image_url) {
+            clearInterval(pollInterval);
+            setGeneratedImage(historyData.image_url);
+            setIsGenerating(false);
+            toast({
+              title: "生成成功",
+              description: "图片已生成",
+            });
+          } else if (historyData.status === "failed") {
+            clearInterval(pollInterval);
+            setIsGenerating(false);
+            toast({
+              title: "生成失败",
+              description: historyData.error_message || "请稍后重试",
+              variant: "destructive",
+            });
+          }
+        }, 2000); // 每2秒轮询一次
+
+      } else if (data.success && data.imageUrl) {
+        // 旧版同步返回（向后兼容）
         setGeneratedImage(data.imageUrl);
         toast({
           title: "生成成功",
           description: "图片已生成",
         });
+        setIsGenerating(false);
       } else {
         throw new Error(data.error || "生成失败");
       }
@@ -129,7 +186,6 @@ const Generate = () => {
         description: error.message || "请稍后重试",
         variant: "destructive",
       });
-    } finally {
       setIsGenerating(false);
     }
   };
