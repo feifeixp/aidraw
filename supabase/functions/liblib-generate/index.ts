@@ -142,7 +142,12 @@ serve(async (req) => {
 
     // 根据base_algo选择不同的生成方式
     if (modelData.base_algo === 3) {
-      // Flux模型：使用additionalNetwork传递lora
+      // Flux模型：直接使用modelUuid（LoRA模型ID）
+      // Flux模型的LoRA权重是内置在模型中的，通过modelUuid直接调用
+      requestBody.modelUuid = modelData.lora_version_id || modelId;
+      requestBody.generateParams = generateParams;
+    } else {
+      // SD/XL模型：使用additionalNetwork传递LoRA
       if (modelData.lora_version_id) {
         generateParams.additionalNetwork = [
           {
@@ -151,17 +156,10 @@ serve(async (req) => {
           },
         ];
       }
-      // Flux模型使用templateUuid，不需要单独的modelUuid
-      requestBody.generateParams = generateParams;
-    } else {
-      // SD/XL模型：同样使用additionalNetwork
-      if (modelData.lora_version_id) {
-        generateParams.additionalNetwork = [
-          {
-            modelId: modelData.lora_version_id,
-            weight: modelData.lora_weight || 0.8,
-          },
-        ];
+      
+      // 如果有checkpoint_id，添加到请求体
+      if (modelData.checkpoint_id) {
+        requestBody.checkPointId = modelData.checkpoint_id;
       }
       
       requestBody.generateParams = generateParams;
@@ -172,6 +170,7 @@ serve(async (req) => {
       loraVersionId: modelData.lora_version_id,
       loraWeight: modelData.lora_weight,
       baseAlgo: modelData.base_algo,
+      checkpointId: modelData.checkpoint_id,
     });
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
