@@ -491,7 +491,7 @@ const Models = () => {
             {models.map((model) => (
               <Card key={model.id} className="overflow-hidden bg-gradient-to-br from-card via-card to-primary/5 border-primary/20">
                 {model.thumbnail_url ? (
-                  <div className="aspect-video w-full overflow-hidden bg-muted relative">
+                  <div className="aspect-[3/4] w-full overflow-hidden bg-muted relative">
                     <img
                       src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(model.thumbnail_url)}`}
                       alt={model.name}
