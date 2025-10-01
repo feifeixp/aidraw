@@ -208,22 +208,28 @@ serve(async (req) => {
         .from("generation_history")
         .update({
           status: "failed",
-          error_message: "No task UUID returned",
+          error_message: result.msg || "No task UUID returned",
         })
         .eq("id", historyRecord.id);
 
       return new Response(
-        JSON.stringify({ error: "Failed to start generation", historyId: historyRecord.id }),
+        JSON.stringify({ error: "Failed to start generation", details: result.msg, historyId: historyRecord.id }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Poll for result (simplified - in production use webhooks or job queue)
+    console.log("Generation started with UUID:", generateUuid);
+
+    // Poll for result with increased attempts and shorter intervals
     let attempts = 0;
     let imageUrl = null;
+    const maxAttempts = 60; // 60 attempts * 2 seconds = 2 minutes max
     
-    while (attempts < 30 && !imageUrl) {
+    while (attempts < maxAttempts && !imageUrl) {
       await new Promise(resolve => setTimeout(resolve, 2000));
+      attempts++;
+      
+      console.log(`Status check attempt ${attempts}/${maxAttempts}`);
       
       // 为状态检查生成新的签名参数
       const statusUri = "/api/generate/webui/status";
@@ -258,16 +264,16 @@ serve(async (req) => {
       });
       
       const statusResult = await statusResponse.json();
-      console.log("Status check:", statusResult);
+      console.log(`Status check ${attempts}: status=${statusResult.data?.generateStatus}, code=${statusResult.code}`);
       
       if (statusResult.data?.generateStatus === 5) {
         imageUrl = statusResult.data?.images?.[0]?.imageUrl;
+        console.log("Generation completed! Image URL:", imageUrl);
         break;
       } else if (statusResult.data?.generateStatus === 4) {
+        console.error("Generation failed with status 4");
         throw new Error("Generation failed");
       }
-      
-      attempts++;
     }
 
     if (!imageUrl) {
