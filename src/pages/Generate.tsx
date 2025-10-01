@@ -373,18 +373,23 @@ const Generate = () => {
                     加载中...
                   </SelectItem>
                 ) : models && models.length > 0 ? (
-                  models.map((model) => (
-                    <SelectItem key={model.id} value={model.model_id}>
-                      <div className="flex flex-col">
-                        <span>{model.name}</span>
-                        {model.lora_weight && (
-                          <span className="text-xs text-muted-foreground">
-                            LoRA权重: {model.lora_weight}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))
+                  models.map((model) => {
+                    const modelType = model.checkpoint_id ? "底模" : "LoRA";
+                    const modelTypeColor = model.checkpoint_id 
+                      ? "bg-blue-500/10 text-blue-500 border-blue-500/20" 
+                      : "bg-purple-500/10 text-purple-500 border-purple-500/20";
+                    
+                    return (
+                      <SelectItem key={model.id} value={model.model_id}>
+                        <div className="flex items-center gap-2">
+                          <span>{model.name}</span>
+                          <Badge className={`text-xs ${modelTypeColor}`}>
+                            {modelType}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    );
+                  })
                 ) : (
                   <SelectItem value="no-models" disabled>
                     暂无可用模型
