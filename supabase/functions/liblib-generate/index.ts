@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, modelId, modelName } = await req.json();
+    const { prompt, modelId, modelName, width = 1024, height = 1024, imgCount = 1 } = await req.json();
     
     if (!prompt || !modelId || !modelName) {
       return new Response(
@@ -20,6 +20,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    // 默认负面提示词
+    const defaultNegativePrompt = "ng_deepnegative_v1_75t,(badhandv4:1.2),EasyNegative,(worst quality:2),";
 
     const LIBLIB_SECRET_KEY = Deno.env.get("LIBLIB_API_KEY");
     const LIBLIB_ACCESS_KEY = "Pt6EX8XqnGpmwAerrYkhsQ";
@@ -96,12 +99,14 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         templateUuid: "6f7c4652458d4802969f8d089cf5b91f",
+        modelUuid: modelId,
         generateParams: {
           prompt: prompt,
+          negativePrompt: defaultNegativePrompt,
           steps: 20,
-          width: 1024,
-          height: 1024,
-          imgCount: 1,
+          width: width,
+          height: height,
+          imgCount: imgCount,
           seed: -1,
           restoreFaces: 0,
         },
