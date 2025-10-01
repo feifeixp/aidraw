@@ -133,15 +133,12 @@ serve(async (req) => {
 
     // 根据base_algo选择不同的生成方式
     if (modelData.base_algo === 3) {
-      // Flux模型：直接使用modelUuid，不使用additionalNetwork
+      // Flux模型：直接使用modelUuid
       requestBody.modelUuid = modelData.lora_version_id || modelId;
       requestBody.generateParams = generateParams;
     } else {
-      // SD/XL模型：使用checkPointId + additionalNetwork
-      if (modelData.checkpoint_id && modelData.checkpoint_id.trim()) {
-        generateParams.checkPointId = modelData.checkpoint_id;
-      }
-      
+      // SD/XL模型：只使用lora作为additionalNetwork，不使用checkPointId
+      // 因为LibLib API对于lora模型不需要单独的checkPointId
       if (modelData.lora_version_id) {
         generateParams.additionalNetwork = [
           {
