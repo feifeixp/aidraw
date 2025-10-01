@@ -220,7 +220,7 @@ const Generate = () => {
               <Button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim() || !selectedModel}
-                className="w-full bg-[var(--gradient-primary)] hover:opacity-90 transition-opacity"
+                className="w-full"
                 size="lg"
               >
                 {isGenerating ? (

@@ -100,7 +100,7 @@ const Test = () => {
             <Button
               onClick={handleTest}
               disabled={isGenerating}
-              className="mt-6 w-full bg-[var(--gradient-primary)] hover:opacity-90"
+              className="mt-6 w-full"
               size="lg"
             >
               {isGenerating ? (
