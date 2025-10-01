@@ -95,9 +95,35 @@ const History = () => {
 
                   <p className="mb-2 text-sm line-clamp-2">{item.prompt}</p>
                   
-                  <p className="text-xs text-muted-foreground">
-                    模型: {item.model_name}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      模型: {item.model_name}
+                    </p>
+                    
+                    {item.task_uuid && (
+                      <p className="text-xs text-muted-foreground">
+                        任务ID: {item.task_uuid.substring(0, 8)}...
+                      </p>
+                    )}
+                    
+                    {item.template_uuid && (
+                      <p className="text-xs text-muted-foreground">
+                        模板: {item.template_uuid === "6f7c4652458d4802969f8d089cf5b91f" ? "F.1文生图" : "1.5/XL文生图"}
+                      </p>
+                    )}
+                    
+                    {item.checkpoint_id && (
+                      <p className="text-xs text-muted-foreground">
+                        底模: {item.checkpoint_id.substring(0, 8)}...
+                      </p>
+                    )}
+                    
+                    {item.lora_models && Array.isArray(item.lora_models) && item.lora_models.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        LoRA: {(item.lora_models[0] as any).modelId.substring(0, 8)}... (权重: {(item.lora_models[0] as any).weight})
+                      </p>
+                    )}
+                  </div>
 
                   {item.error_message && (
                     <p className="mt-2 text-xs text-destructive">

@@ -16,36 +16,48 @@ export type Database = {
     Tables: {
       generation_history: {
         Row: {
+          checkpoint_id: string | null
           created_at: string | null
           error_message: string | null
           id: string
           image_url: string | null
+          lora_models: Json | null
           model_id: string
           model_name: string
           prompt: string
           status: string | null
+          task_uuid: string | null
+          template_uuid: string | null
           user_id: string | null
         }
         Insert: {
+          checkpoint_id?: string | null
           created_at?: string | null
           error_message?: string | null
           id?: string
           image_url?: string | null
+          lora_models?: Json | null
           model_id: string
           model_name: string
           prompt: string
           status?: string | null
+          task_uuid?: string | null
+          template_uuid?: string | null
           user_id?: string | null
         }
         Update: {
+          checkpoint_id?: string | null
           created_at?: string | null
           error_message?: string | null
           id?: string
           image_url?: string | null
+          lora_models?: Json | null
           model_id?: string
           model_name?: string
           prompt?: string
           status?: string | null
+          task_uuid?: string | null
+          template_uuid?: string | null
           user_id?: string | null
         }
         Relationships: []

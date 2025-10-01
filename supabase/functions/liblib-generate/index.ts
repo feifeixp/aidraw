@@ -98,6 +98,12 @@ serve(async (req) => {
         model_id: modelId,
         model_name: modelName,
         status: "processing",
+        template_uuid: modelData.base_algo === 3 ? "6f7c4652458d4802969f8d089cf5b91f" : "e10adc3949ba59abbe56e057f20f883e",
+        checkpoint_id: modelData.checkpoint_id,
+        lora_models: modelData.lora_version_id ? [{
+          modelId: modelData.lora_version_id,
+          weight: modelData.lora_weight || 0.8
+        }] : null,
       })
       .select()
       .single();
@@ -121,11 +127,21 @@ serve(async (req) => {
     // Build URL with signature parameters
     const apiUrl = `https://openapi.liblibai.cloud${uri}?AccessKey=${LIBLIB_ACCESS_KEY}&Signature=${signature}&Timestamp=${timestamp}&SignatureNonce=${signatureNonce}`;
 
+    // 根据base_algo选择正确的模板UUID
+    let templateUuid: string;
+    if (modelData.base_algo === 3) {
+      // F.1 (Flux) 模型使用专用模板
+      templateUuid = "6f7c4652458d4802969f8d089cf5b91f";
+    } else {
+      // 1.5和XL模型使用通用模板
+      templateUuid = "e10adc3949ba59abbe56e057f20f883e";
+    }
+
     // 构建生成参数
     const generateParams: any = {
       prompt: prompt,
       negativePrompt: defaultNegativePrompt,
-      sampler: modelData.sampler || 1, // Euler sampler
+      sampler: modelData.sampler || 1,
       steps: 20,
       cfgScale: modelData.cfg_scale || 3.5,
       width: width,
@@ -136,39 +152,24 @@ serve(async (req) => {
       restoreFaces: 0,
     };
 
+    // 所有模型统一使用additionalNetwork传递LoRA
+    if (modelData.lora_version_id) {
+      generateParams.additionalNetwork = [
+        {
+          modelId: modelData.lora_version_id,
+          weight: modelData.lora_weight || 0.8,
+        },
+      ];
+    }
+
     const requestBody: any = {
-      templateUuid: "e10adc3949ba59abbe56e057f20f883e",
+      templateUuid: templateUuid,
+      generateParams: generateParams,
     };
 
-    // 根据base_algo选择不同的生成方式
-    if (modelData.base_algo === 3) {
-      // Flux模型：使用modelUuid指定LoRA模型，并通过loraStrength控制权重
-      requestBody.modelUuid = modelData.lora_version_id || modelId;
-      // 为Flux模型添加LoRA强度参数
-      generateParams.loraStrength = modelData.lora_weight || 0.8;
-      requestBody.generateParams = generateParams;
-      
-      console.log("Flux model with LoRA strength:", {
-        modelUuid: requestBody.modelUuid,
-        loraStrength: generateParams.loraStrength
-      });
-    } else {
-      // SD/XL模型：使用additionalNetwork传递LoRA
-      if (modelData.lora_version_id) {
-        generateParams.additionalNetwork = [
-          {
-            modelId: modelData.lora_version_id,
-            weight: modelData.lora_weight || 0.8,
-          },
-        ];
-      }
-      
-      // 如果有checkpoint_id，添加到请求体
-      if (modelData.checkpoint_id) {
-        requestBody.checkPointId = modelData.checkpoint_id;
-      }
-      
-      requestBody.generateParams = generateParams;
+    // 如果有checkpoint_id，添加到请求体
+    if (modelData.checkpoint_id) {
+      requestBody.checkPointId = modelData.checkpoint_id;
     }
 
     console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
@@ -302,6 +303,14 @@ serve(async (req) => {
         }
 
         console.log("Background: Generation started with UUID:", generateUuid);
+        
+        // 更新历史记录，添加任务UUID
+        await supabase
+          .from("generation_history")
+          .update({
+            task_uuid: generateUuid,
+          })
+          .eq("id", historyRecord.id);
 
         // Poll for result - increased to 120 attempts * 2 seconds = 4 minutes max
         let attempts = 0;
