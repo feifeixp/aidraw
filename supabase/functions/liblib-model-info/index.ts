@@ -105,21 +105,9 @@ serve(async (req) => {
     // baseAlgo: 1=SD1.5, 2=SDXL, 3=Flux, 9=Qwen-Image
     // showType: 1=LoRA, 2=Checkpoint
     // Qwen-Image (baseAlgo=9) 应该被识别为 checkpoint
-    // 
-    // 注意：有些模型URL中的versionUuid可能指向的是checkpoint的某个版本，
-    // 但API返回的showType可能还是1（LoRA）。我们通过modelUrl来二次确认。
     const baseAlgo = result.data.baseAlgo;
     const isQwenImage = baseAlgo === 9;
-    
-    // 如果modelUrl包含versionUuid参数，说明这可能是checkpoint的特定版本
-    let modelType = (result.data.showType === 2 || isQwenImage) ? "checkpoint" : "lora";
-    
-    // 二次检查：如果URL中同时有modelinfo和versionUuid，可能是checkpoint
-    if (result.data.modelUrl && result.data.modelUrl.includes('versionUuid=')) {
-      console.log("URL contains versionUuid, treating as checkpoint version");
-      modelType = "checkpoint";
-    }
-    
+    const modelType = (result.data.showType === 2 || isQwenImage) ? "checkpoint" : "lora";
     console.log("Successfully fetched model info:", result.data.modelName || "Unknown", "Type:", modelType, "BaseAlgo:", baseAlgo, "ShowType:", result.data.showType);
     
     return new Response(
