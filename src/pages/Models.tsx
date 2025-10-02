@@ -488,7 +488,7 @@ const Models = () => {
             <p className="text-muted-foreground">加载中...</p>
           </div>
         ) : models && models.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {models.map((model) => (
               <Card key={model.id} className="overflow-hidden bg-gradient-to-br from-card via-card to-primary/5 border-primary/20">
                 {model.thumbnail_url ? (
