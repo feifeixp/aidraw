@@ -376,23 +376,53 @@ const Generate = () => {
                 {message.type === "user" && (
                   <div className="flex justify-end">
                     <Card className="max-w-2xl p-4 bg-primary/10 border-primary/20">
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">{message.prompt}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="text-xs">
-                            {message.modelName}
-                          </Badge>
-                          {message.aiReasoning && (
-                            <span className="flex items-center gap-1">
-                              <Wand2 className="h-3 w-3" />
-                              AI推荐
-                            </span>
-                          )}
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">提示词</p>
+                          <p className="text-sm font-medium">{message.prompt}</p>
                         </div>
+                        
+                        <div className="space-y-2 pt-2 border-t border-primary/20">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {message.checkpointId && (
+                              <div>
+                                <span className="text-muted-foreground">底模: </span>
+                                <span className="font-medium">
+                                  {models?.find(m => m.model_id === message.checkpointId)?.name || "未知"}
+                                </span>
+                              </div>
+                            )}
+                            {message.loraIds && message.loraIds.length > 0 && (
+                              <div>
+                                <span className="text-muted-foreground">风格: </span>
+                                <span className="font-medium">
+                                  {message.loraIds.map(id => 
+                                    models?.find(m => m.model_id === id)?.name
+                                  ).filter(Boolean).join(", ")}
+                                </span>
+                              </div>
+                            )}
+                            <div>
+                              <span className="text-muted-foreground">宽高比: </span>
+                              <span className="font-medium">{message.aspectRatio}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">数量: </span>
+                              <span className="font-medium">{message.imageCount} 张</span>
+                            </div>
+                          </div>
+                        </div>
+
                         {message.aiReasoning && (
-                          <p className="text-xs text-muted-foreground italic">
-                            💡 {message.aiReasoning}
-                          </p>
+                          <div className="pt-2 border-t border-primary/20">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                              <Wand2 className="h-3 w-3" />
+                              AI推荐理由
+                            </div>
+                            <p className="text-xs text-muted-foreground italic">
+                              {message.aiReasoning}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </Card>
