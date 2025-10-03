@@ -194,7 +194,7 @@ serve(async (req) => {
               const { data: loraModels } = await supabase
                 .from('liblib_models')
                 .select('*')
-                .in('model_id', enhanceData.lora_ids || []);
+                .in('lora_version_id', enhanceData.lora_ids || []);
 
               // Build model name
               const loraNames = loraModels?.map(l => l.name).join(' + ') || '';
