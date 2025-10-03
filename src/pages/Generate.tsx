@@ -166,6 +166,8 @@ const Generate = () => {
     // 使用AI选择时用override，否则检查用户选择
     let checkpointModel = null;
     let loraModelsSelected: any[] = [];
+    let finalPrompt = currentPrompt;
+    let finalReasoning = reasoning;
 
     if (modelIdOverride) {
       const model = models?.find(m => m.model_id === modelIdOverride);
@@ -181,10 +183,64 @@ const Generate = () => {
       if (selectedLoras.length > 0) {
         loraModelsSelected = models?.filter(m => selectedLoras.includes(m.model_id)) || [];
       }
+
+      // 如果用户没有选择底模或风格，使用AI自动选择并优化提示词
+      if (!checkpointModel && loraModelsSelected.length === 0) {
+        try {
+          toast({
+            title: "AI正在分析",
+            description: "正在优化提示词并推荐模型...",
+          });
+
+          const { data: enhanceData, error: enhanceError } = await supabase.functions.invoke(
+            'ai-enhance-prompt',
+            { body: { userInput: currentPrompt } }
+          );
+
+          if (enhanceError) {
+            console.error("AI enhancement error:", enhanceError);
+            toast({
+              title: "请选择模型",
+              description: "请至少选择一个底模或风格模型",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          if (enhanceData) {
+            console.log("AI enhancement result:", enhanceData);
+            finalPrompt = enhanceData.enhanced_prompt || currentPrompt;
+            finalReasoning = enhanceData.reasoning;
+            
+            if (enhanceData.checkpoint_id) {
+              checkpointModel = models?.find(m => m.model_id === enhanceData.checkpoint_id);
+            }
+            
+            if (enhanceData.lora_ids && enhanceData.lora_ids.length > 0) {
+              loraModelsSelected = models?.filter(m => 
+                enhanceData.lora_ids.includes(m.model_id)
+              ) || [];
+            }
+
+            toast({
+              title: "AI推荐完成",
+              description: enhanceData.reasoning,
+            });
+          }
+        } catch (error: any) {
+          console.error("AI enhancement failed:", error);
+          toast({
+            title: "请选择模型",
+            description: "请至少选择一个底模或风格模型",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
     }
 
     // 至少需要选择一个模型
-      if (!checkpointModel && loraModelsSelected.length === 0) {
+    if (!checkpointModel && loraModelsSelected.length === 0) {
       toast({
         title: "请选择模型",
         description: "请至少选择一个底模或风格模型",
@@ -203,10 +259,10 @@ const Generate = () => {
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       type: "user",
-      prompt: currentPrompt,
+      prompt: finalPrompt,
       modelName: displayModelName,
       modelId: primaryModelId,
-      aiReasoning: reasoning,
+      aiReasoning: finalReasoning,
       timestamp: new Date(),
       checkpointId: checkpointModel?.model_id,
       loraIds: loraModelsSelected.map(l => l.model_id),
@@ -235,7 +291,7 @@ const Generate = () => {
     try {
       const { data, error } = await supabase.functions.invoke("liblib-generate", {
         body: {
-          prompt: currentPrompt,
+          prompt: finalPrompt,
           modelId: primaryModelId,
           modelName: displayModelName,
           checkpointId: checkpointModel?.model_id,
