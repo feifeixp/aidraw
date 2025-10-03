@@ -261,8 +261,8 @@ const Generate = () => {
 
           const jsonStr = line.slice(6).trim();
           if (jsonStr === "[DONE]") {
-            streamDone = true;
-            break;
+            // Don't break immediately - continue reading for tool_result
+            continue;
           }
 
           try {
