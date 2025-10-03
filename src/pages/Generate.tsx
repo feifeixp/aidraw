@@ -20,6 +20,7 @@ interface ChatMessage {
   modelName?: string;
   modelId?: string;
   imageUrl?: string;
+  images?: string[];
   status?: "processing" | "completed" | "failed";
   aiReasoning?: string;
   timestamp: Date;
@@ -276,18 +277,19 @@ const Generate = () => {
             return;
           }
 
-          if (historyData.status === "completed" && historyData.image_url) {
+          if (historyData.status === "completed" && (historyData.images || historyData.image_url)) {
             clearInterval(pollInterval);
+            const imageUrls = historyData.images || (historyData.image_url ? [historyData.image_url] : []);
             setChatMessages(prev => prev.map(msg => 
               msg.id === assistantMessageId 
-                ? { ...msg, status: "completed" as const, imageUrl: historyData.image_url }
+                ? { ...msg, status: "completed" as const, images: imageUrls, imageUrl: imageUrls[0] }
                 : msg
             ));
             setIsGenerating(false);
             setIsAISelecting(false);
             toast({
               title: "生成成功",
-              description: "图片已生成",
+              description: `已生成 ${imageUrls.length} 张图片`,
             });
           } else if (historyData.status === "failed") {
             clearInterval(pollInterval);
@@ -401,17 +403,21 @@ const Generate = () => {
                         </div>
                       )}
 
-                      {message.status === "completed" && message.imageUrl && (
+                      {message.status === "completed" && (message.images || message.imageUrl) && (
                         <div className="space-y-3">
-                          <div className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted">
-                            <img
-                              src={message.imageUrl}
-                              alt="Generated"
-                              className="h-full w-full object-cover"
-                            />
+                          <div className="grid grid-cols-2 gap-2">
+                            {(message.images || [message.imageUrl]).filter(Boolean).map((url, idx) => (
+                              <div key={idx} className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted">
+                                <img
+                                  src={url!}
+                                  alt={`Generated ${idx + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            ))}
                           </div>
                           <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
-                            已完成
+                            已完成 ({(message.images || [message.imageUrl]).filter(Boolean).length} 张)
                           </Badge>
                         </div>
                       )}
