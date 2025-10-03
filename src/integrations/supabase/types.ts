@@ -21,6 +21,7 @@ export type Database = {
           error_message: string | null
           id: string
           image_url: string | null
+          images: string[] | null
           lora_models: Json | null
           model_id: string
           model_name: string
@@ -36,6 +37,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           lora_models?: Json | null
           model_id: string
           model_name: string
@@ -51,6 +53,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           lora_models?: Json | null
           model_id?: string
           model_name?: string

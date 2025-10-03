@@ -410,39 +410,44 @@ serve(async (req) => {
           console.log(`Background: Status check ${attempts}: status=${statusResult.data?.generateStatus}, code=${statusResult.code}`);
           
           if (statusResult.data?.generateStatus === 5) {
-            imageUrl = statusResult.data?.images?.[0]?.imageUrl;
-            console.log("Background: Generation completed! Image URL:", imageUrl);
-            break;
+            // 获取所有生成的图片URL
+            const allImages = statusResult.data?.images || [];
+            const imageUrls = allImages.map((img: any) => img.imageUrl).filter(Boolean);
+            
+            if (imageUrls.length > 0) {
+              // 保存所有图片URL到数组
+              await supabase
+                .from("generation_history")
+                .update({
+                  status: "completed",
+                  images: imageUrls,
+                  image_url: imageUrls[0], // 保留兼容性
+                })
+                .eq("id", historyRecord.id);
+              
+              console.log(`Background: Generation completed! Generated ${imageUrls.length} images`);
+              return;
+            } else {
+              console.error("Background: No images in successful response");
+              throw new Error("No images generated");
+            }
           } else if (statusResult.data?.generateStatus === 4) {
             console.error("Background: Generation failed with status 4");
             throw new Error("Generation failed");
           }
         }
 
-        if (!imageUrl) {
-          console.error("Background: Timeout - no image generated after", maxAttempts * 2, "seconds");
-          await supabase
-            .from("generation_history")
-            .update({
-              status: "failed",
-              error_message: "Generation timeout - please try again",
-            })
-            .eq("id", historyRecord.id);
-          
-          return;
-        }
-
-        // 更新历史记录为成功
-        console.log("Background: Updating history record with image URL");
+        // 如果循环结束还没有生成图片，说明超时了
+        console.error("Background: Timeout - no images generated after", maxAttempts * 2, "seconds");
         await supabase
           .from("generation_history")
           .update({
-            status: "completed",
-            image_url: imageUrl,
+            status: "failed",
+            error_message: "Generation timeout - please try again",
           })
           .eq("id", historyRecord.id);
         
-        console.log("Background: Generation process completed successfully");
+        console.log("Background: Generation process timed out");
       } catch (bgError) {
         console.error("Background: Error in background processing:", bgError);
         await supabase

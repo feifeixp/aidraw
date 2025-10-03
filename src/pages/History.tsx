@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Clock, Image as ImageIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { useState } from "react";
 
 const History = () => {
   const { data: history, isLoading } = useQuery({
@@ -65,19 +66,51 @@ const History = () => {
           </div>
         ) : history && history.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {history.map((item) => (
-              <Card key={item.id} className="overflow-hidden bg-gradient-to-br from-card via-card to-accent/5 border-accent/20">
-                <div className="aspect-square w-full overflow-hidden bg-muted flex items-center justify-center">
-                  {item.image_url ? (
+            {history.map((item) => {
+              const ImageDisplay = () => {
+                const [currentImageIndex, setCurrentImageIndex] = useState(0);
+                const images = (item as any).images || (item.image_url ? [item.image_url] : []);
+                
+                if (images.length === 0) {
+                  return <ImageIcon className="h-12 w-12 text-muted-foreground/50" />;
+                }
+
+                return (
+                  <div className="relative w-full h-full">
                     <img
-                      src={item.image_url}
+                      src={images[currentImageIndex]}
                       alt={item.prompt}
                       className="h-full w-full object-cover"
                     />
-                  ) : (
-                    <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
-                  )}
-                </div>
+                    {images.length > 1 && (
+                      <>
+                        <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                          {currentImageIndex + 1}/{images.length}
+                        </div>
+                        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+                          {images.map((_: any, idx: number) => (
+                            <button
+                              key={idx}
+                              onClick={() => setCurrentImageIndex(idx)}
+                              className={`w-2 h-2 rounded-full transition-all ${
+                                idx === currentImageIndex 
+                                  ? 'bg-white w-4' 
+                                  : 'bg-white/50 hover:bg-white/70'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              };
+
+              return (
+                <Card key={item.id} className="overflow-hidden bg-gradient-to-br from-card via-card to-accent/5 border-accent/20">
+                  <div className="aspect-square w-full overflow-hidden bg-muted flex items-center justify-center">
+                    <ImageDisplay />
+                  </div>
                 
                 <div className="p-4">
                   <div className="mb-2 flex items-start justify-between gap-2">
@@ -130,9 +163,10 @@ const History = () => {
                       错误: {item.error_message}
                     </p>
                   )}
-                </div>
-              </Card>
-            ))}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card className="p-12 text-center">
