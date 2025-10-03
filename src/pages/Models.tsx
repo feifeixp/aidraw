@@ -10,6 +10,7 @@ import { Plus, Edit2, Trash2, Save, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 interface ModelFormData {
   model_id: string;
@@ -32,6 +33,7 @@ const Models = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<any>(null);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [isCheckpoint, setIsCheckpoint] = useState(false);
   const [formData, setFormData] = useState<ModelFormData>({
     model_id: "",
     name: "",
@@ -106,23 +108,26 @@ const Models = () => {
       if (data.success && data.data) {
         const modelInfo = data.data;
         const baseAlgo = modelInfo.baseAlgo || 1;
-        const isCheckpoint = modelInfo.modelType === "checkpoint";
+        const isCheckpointModel = modelInfo.modelType === "checkpoint";
+        
+        // 更新是否为底模的状态
+        setIsCheckpoint(isCheckpointModel);
         
         // 根据模型类型设置不同的ID字段
         setFormData(prev => ({
           ...prev,
-          lora_version_id: isCheckpoint ? '' : versionUuid,
-          checkpoint_id: isCheckpoint ? versionUuid : '',
+          lora_version_id: isCheckpointModel ? '' : versionUuid,
+          checkpoint_id: isCheckpointModel ? versionUuid : '',
           model_id: versionUuid,
           name: `${modelInfo.modelName || ''} ${modelInfo.versionName || ''}`.trim(),
-          description: `基础算法: ${modelInfo.baseAlgoName || modelInfo.baseAlgo}\n${modelInfo.commercialUse === 1 ? '可商用' : '不可商用'}\n模型类型: ${isCheckpoint ? '底模(Checkpoint)' : 'LoRA'}`,
+          description: `基础算法: ${modelInfo.baseAlgoName || modelInfo.baseAlgo}\n${modelInfo.commercialUse === 1 ? '可商用' : '不可商用'}\n模型类型: ${isCheckpointModel ? '底模(Checkpoint)' : 'LoRA'}`,
           thumbnail_url: modelInfo.modelUrl || '',
           base_algo: String(baseAlgo),
         }));
         
         toast({
           title: "模型信息获取成功",
-          description: `${modelInfo.modelName} - ${modelInfo.baseAlgoName} (${isCheckpoint ? '底模' : 'LoRA'})`,
+          description: `${modelInfo.modelName} - ${modelInfo.baseAlgoName} (${isCheckpointModel ? '底模' : 'LoRA'})`,
         });
       } else {
         throw new Error(data.error || "获取模型信息失败");
@@ -231,10 +236,12 @@ const Models = () => {
       base_algo: "1",
     });
     setEditingModel(null);
+    setIsCheckpoint(false);
   };
 
   const handleEdit = (model: any) => {
     setEditingModel(model);
+    setIsCheckpoint(!!model.checkpoint_id);
     setFormData({
       model_id: model.model_id,
       name: model.name,
@@ -252,6 +259,28 @@ const Models = () => {
       base_algo: String(model.base_algo || 1),
     });
     setIsDialogOpen(true);
+  };
+
+  const handleCheckpointToggle = (checked: boolean) => {
+    setIsCheckpoint(checked);
+    // 当切换时，自动调整checkpoint_id和lora_version_id
+    if (formData.model_id) {
+      if (checked) {
+        // 切换为底模：将model_id设为checkpoint_id，清空lora_version_id
+        setFormData(prev => ({
+          ...prev,
+          checkpoint_id: prev.model_id,
+          lora_version_id: '',
+        }));
+      } else {
+        // 切换为LoRA：将model_id设为lora_version_id，清空checkpoint_id
+        setFormData(prev => ({
+          ...prev,
+          checkpoint_id: '',
+          lora_version_id: prev.model_id,
+        }));
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -339,6 +368,22 @@ const Models = () => {
                       readOnly
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-md bg-muted/50">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="is_checkpoint" className="text-base">
+                      底模模型
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      勾选表示这是一个底模(Checkpoint)，否则为LoRA模型
+                    </p>
+                  </div>
+                  <Switch
+                    id="is_checkpoint"
+                    checked={isCheckpoint}
+                    onCheckedChange={handleCheckpointToggle}
+                  />
                 </div>
 
                 <div>
