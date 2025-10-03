@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X, Download, ZoomIn, RotateCcw, Edit } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -24,6 +24,10 @@ interface ChatMessage {
   status?: "processing" | "completed" | "failed";
   aiReasoning?: string;
   timestamp: Date;
+  checkpointId?: string;
+  loraIds?: string[];
+  aspectRatio?: string;
+  imageCount?: string;
 }
 
 const ASPECT_RATIOS = [
@@ -46,6 +50,7 @@ const Generate = () => {
   const [isAISelecting, setIsAISelecting] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -203,6 +208,10 @@ const Generate = () => {
       modelId: primaryModelId,
       aiReasoning: reasoning,
       timestamp: new Date(),
+      checkpointId: checkpointModel?.model_id,
+      loraIds: loraModelsSelected.map(l => l.model_id),
+      aspectRatio: selectedAspectRatio,
+      imageCount: imageCount,
     };
 
     setChatMessages(prev => [...prev, userMessage]);
@@ -407,18 +416,75 @@ const Generate = () => {
                         <div className="space-y-3">
                           <div className="grid grid-cols-4 gap-2">
                             {(message.images || [message.imageUrl]).filter(Boolean).map((url, idx) => (
-                              <div key={idx} className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted">
+                              <div 
+                                key={idx} 
+                                className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted cursor-pointer relative group"
+                                onClick={() => setEnlargedImage(url!)}
+                              >
                                 <img
                                   src={url!}
                                   alt={`Generated ${idx + 1}`}
-                                  className="h-full w-full object-cover"
+                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
                                 />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                  <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
                               </div>
                             ))}
                           </div>
-                          <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
-                            已完成 ({(message.images || [message.imageUrl]).filter(Boolean).length} 张)
-                          </Badge>
+                          <div className="flex items-center justify-between">
+                            <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+                              已完成 ({(message.images || [message.imageUrl]).filter(Boolean).length} 张)
+                            </Badge>
+                            <div className="flex gap-2">
+                              {(() => {
+                                const prevUserMessage = chatMessages.find(
+                                  m => m.type === "user" && 
+                                  chatMessages.indexOf(m) === chatMessages.indexOf(message) - 1
+                                );
+                                return prevUserMessage ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setPrompt(prevUserMessage.prompt || "");
+                                        setSelectedCheckpoint(prevUserMessage.checkpointId || "");
+                                        setSelectedLoras(prevUserMessage.loraIds || []);
+                                        setSelectedAspectRatio(prevUserMessage.aspectRatio || "1:1");
+                                        setImageCount(prevUserMessage.imageCount || "1");
+                                        toast({
+                                          title: "已加载参数",
+                                          description: "参数已填入输入框，可以修改后重新生成",
+                                        });
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4 mr-1" />
+                                      编辑
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setPrompt(prevUserMessage.prompt || "");
+                                        setSelectedCheckpoint(prevUserMessage.checkpointId || "");
+                                        setSelectedLoras(prevUserMessage.loraIds || []);
+                                        setSelectedAspectRatio(prevUserMessage.aspectRatio || "1:1");
+                                        setImageCount(prevUserMessage.imageCount || "1");
+                                        setTimeout(() => {
+                                          handleGenerate();
+                                        }, 100);
+                                      }}
+                                      disabled={isGenerating || isAISelecting}
+                                    >
+                                      <RotateCcw className="h-4 w-4 mr-1" />
+                                      重新生成
+                                    </Button>
+                                  </>
+                                ) : null;
+                              })()}
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -680,6 +746,44 @@ const Generate = () => {
           </div>
         </div>
       </div>
+
+      {/* 图片放大查看对话框 */}
+      <Dialog open={!!enlargedImage} onOpenChange={(open) => !open && setEnlargedImage(null)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] p-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle>查看图片</DialogTitle>
+          </DialogHeader>
+          {enlargedImage && (
+            <div className="flex flex-col items-center gap-4 p-6 pt-2">
+              <div className="w-full max-h-[70vh] overflow-auto">
+                <img
+                  src={enlargedImage}
+                  alt="Enlarged"
+                  className="w-full h-auto rounded-lg"
+                />
+              </div>
+              <Button
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = enlargedImage;
+                  link.download = `generated-image-${Date.now()}.png`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  toast({
+                    title: "下载已开始",
+                    description: "图片正在下载中...",
+                  });
+                }}
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                下载图片
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
