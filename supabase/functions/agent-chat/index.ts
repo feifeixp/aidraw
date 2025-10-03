@@ -196,12 +196,21 @@ serve(async (req) => {
                 .select('*')
                 .in('lora_version_id', enhanceData.lora_ids || []);
 
+              // Filter out any LoRAs that weren't found in database
+              const validLoraModels = loraModels?.filter(m => m && m.lora_version_id) || [];
+              
+              // Only use LoRA IDs that actually exist in the database
+              const validLoraIds = validLoraModels.map(m => m.lora_version_id);
+              
+              console.log('AI suggested LoRA IDs:', enhanceData.lora_ids);
+              console.log('Valid LoRA IDs from database:', validLoraIds);
+
               // Build model name
-              const loraNames = loraModels?.map(l => l.name).join(' + ') || '';
+              const loraNames = validLoraModels.map(l => l.name).join(' + ');
               const displayModelName = checkpointModel 
                 ? (loraNames ? `${checkpointModel.name} + ${loraNames}` : checkpointModel.name)
                 : loraNames || "未知模型";
-              const primaryModelId = checkpointModel?.model_id || loraModels?.[0]?.model_id || '';
+              const primaryModelId = checkpointModel?.model_id || validLoraModels[0]?.model_id || '';
 
               // Get aspect ratio dimensions
               const aspectRatioMap: Record<string, {width: number, height: number}> = {
@@ -213,7 +222,7 @@ serve(async (req) => {
               };
               const dimensions = aspectRatioMap[args.aspect_ratio || '1:1'] || { width: 1024, height: 1024 };
 
-              // Call liblib-generate with enhanced parameters
+              // Call liblib-generate with enhanced parameters (only valid LoRAs)
               const generateResponse = await fetch(`${SUPABASE_URL}/functions/v1/liblib-generate`, {
                 method: 'POST',
                 headers: {
@@ -225,7 +234,7 @@ serve(async (req) => {
                   modelId: primaryModelId,
                   modelName: displayModelName,
                   checkpointId: enhanceData.checkpoint_id,
-                  loraIds: enhanceData.lora_ids || [],
+                  loraIds: validLoraIds, // Only pass valid LoRA IDs
                   width: dimensions.width,
                   height: dimensions.height,
                   imgCount: args.image_count || 1,
@@ -282,7 +291,7 @@ serve(async (req) => {
                 images: finalImages,
                 metadata: {
                   checkpoint_id: enhanceData.checkpoint_id,
-                  lora_ids: enhanceData.lora_ids,
+                  lora_ids: validLoraIds, // Return only the valid LoRA IDs that were used
                   aspect_ratio: args.aspect_ratio || '1:1',
                   image_count: args.image_count || 1,
                   reasoning: enhanceData.reasoning
