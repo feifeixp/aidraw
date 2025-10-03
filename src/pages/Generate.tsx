@@ -23,10 +23,21 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+const ASPECT_RATIOS = [
+  { label: "1:1", ratio: "1:1", width: 1024, height: 1024 },
+  { label: "3:4", ratio: "3:4", width: 768, height: 1024 },
+  { label: "4:3", ratio: "4:3", width: 1024, height: 768 },
+  { label: "16:9", ratio: "16:9", width: 1024, height: 576 },
+  { label: "9:16", ratio: "9:16", width: 576, height: 1024 },
+  { label: "2:1", ratio: "2:1", width: 1024, height: 512 },
+  { label: "1:2", ratio: "1:2", width: 512, height: 1024 },
+];
+
 const Generate = () => {
   const [prompt, setPrompt] = useState("");
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string>("");
   const [selectedLoras, setSelectedLoras] = useState<string[]>([]);
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState("1:1");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAISelecting, setIsAISelecting] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -205,6 +216,9 @@ const Generate = () => {
 
     setChatMessages(prev => [...prev, assistantMessage]);
 
+    // 获取选中比例的尺寸
+    const aspectRatio = ASPECT_RATIOS.find(ar => ar.ratio === selectedAspectRatio) || ASPECT_RATIOS[0];
+
     try {
       const { data, error } = await supabase.functions.invoke("liblib-generate", {
         body: {
@@ -213,6 +227,8 @@ const Generate = () => {
           modelName: displayModelName,
           checkpointId: checkpointModel?.model_id,
           loraIds: loraModelsSelected.map(l => l.model_id),
+          width: aspectRatio.width,
+          height: aspectRatio.height,
         },
       });
 
@@ -576,6 +592,23 @@ const Generate = () => {
               )}
               <span className="ml-2">AI选择</span>
             </Button>
+          </div>
+
+          {/* 图片比例选择 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">图片比例:</span>
+            {ASPECT_RATIOS.map((ar) => (
+              <Button
+                key={ar.ratio}
+                variant={selectedAspectRatio === ar.ratio ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedAspectRatio(ar.ratio)}
+                disabled={isGenerating || isAISelecting}
+                className="min-w-[60px]"
+              >
+                {ar.label}
+              </Button>
+            ))}
           </div>
 
           {/* 输入框 */}
