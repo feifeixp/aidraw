@@ -184,6 +184,35 @@ serve(async (req) => {
               const enhanceData = await enhanceResponse.json();
               console.log('Enhanced prompt data:', enhanceData);
 
+              // Get model info from Supabase
+              const { data: checkpointModel } = await supabase
+                .from('liblib_models')
+                .select('*')
+                .eq('model_id', enhanceData.checkpoint_id)
+                .single();
+
+              const { data: loraModels } = await supabase
+                .from('liblib_models')
+                .select('*')
+                .in('model_id', enhanceData.lora_ids || []);
+
+              // Build model name
+              const loraNames = loraModels?.map(l => l.name).join(' + ') || '';
+              const displayModelName = checkpointModel 
+                ? (loraNames ? `${checkpointModel.name} + ${loraNames}` : checkpointModel.name)
+                : loraNames || "未知模型";
+              const primaryModelId = checkpointModel?.model_id || loraModels?.[0]?.model_id || '';
+
+              // Get aspect ratio dimensions
+              const aspectRatioMap: Record<string, {width: number, height: number}> = {
+                "1:1": { width: 1024, height: 1024 },
+                "16:9": { width: 1024, height: 576 },
+                "9:16": { width: 576, height: 1024 },
+                "4:3": { width: 1024, height: 768 },
+                "3:4": { width: 768, height: 1024 },
+              };
+              const dimensions = aspectRatioMap[args.aspect_ratio || '1:1'] || { width: 1024, height: 1024 };
+
               // Call liblib-generate with enhanced parameters
               const generateResponse = await fetch(`${SUPABASE_URL}/functions/v1/liblib-generate`, {
                 method: 'POST',
@@ -193,22 +222,64 @@ serve(async (req) => {
                 },
                 body: JSON.stringify({
                   prompt: enhanceData.enhanced_prompt,
+                  modelId: primaryModelId,
+                  modelName: displayModelName,
                   checkpointId: enhanceData.checkpoint_id,
                   loraIds: enhanceData.lora_ids || [],
-                  aspectRatio: args.aspect_ratio || '1:1',
-                  imageCount: args.image_count || 1,
+                  width: dimensions.width,
+                  height: dimensions.height,
+                  imgCount: args.image_count || 1,
                 }),
               });
 
               const generateData = await generateResponse.json();
               console.log('Generation result:', generateData);
 
+              if (!generateData.success || !generateData.historyId) {
+                throw new Error(generateData.error || 'Generation failed');
+              }
+
+              // Poll generation_history table for completion
+              const historyId = generateData.historyId;
+              let pollAttempts = 0;
+              const maxPollAttempts = 60; // 2 minutes max
+              let finalImages: string[] = [];
+              let generationSuccess = false;
+
+              while (pollAttempts < maxPollAttempts && !generationSuccess) {
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+                pollAttempts++;
+
+                const { data: historyData, error: historyError } = await supabase
+                  .from('generation_history')
+                  .select('*')
+                  .eq('id', historyId)
+                  .single();
+
+                if (historyError) {
+                  console.error('Polling error:', historyError);
+                  continue;
+                }
+
+                if (historyData.status === 'completed' && (historyData.images || historyData.image_url)) {
+                  finalImages = historyData.images || (historyData.image_url ? [historyData.image_url] : []);
+                  generationSuccess = true;
+                  break;
+                } else if (historyData.status === 'failed') {
+                  throw new Error(historyData.error_message || 'Generation failed');
+                }
+              }
+
+              if (!generationSuccess) {
+                throw new Error('Generation timeout - images are still being processed');
+              }
+
               // Send tool call result as a message
               const toolResultMessage = {
                 role: 'assistant',
-                content: `图片生成完成！使用模型：${generateData.modelName || '未知'}，提示词已优化为："${enhanceData.enhanced_prompt}"`,
+                content: `图片生成完成！使用模型：${displayModelName}，提示词已优化为："${enhanceData.enhanced_prompt}"`,
                 tool_call_id: toolCallBuffer.id,
-                images: generateData.images || [],
+                images: finalImages,
                 metadata: {
                   checkpoint_id: enhanceData.checkpoint_id,
                   lora_ids: enhanceData.lora_ids,
