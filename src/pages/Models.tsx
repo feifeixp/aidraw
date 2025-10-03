@@ -311,7 +311,7 @@ const Models = () => {
                 添加模型
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>
                   {editingModel ? "编辑模型" : "添加新模型"}
@@ -321,7 +321,8 @@ const Models = () => {
                 填写模型信息以便AI智能选择使用
               </p>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+                <div className="space-y-4 overflow-y-auto pr-2 flex-1">
                 <div>
                   <Label htmlFor="model_url">LibLib模型URL *</Label>
                   <div className="flex gap-2">
@@ -505,8 +506,9 @@ const Models = () => {
                     />
                   </div>
                 </div>
+                </div>
 
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 pt-4 border-t mt-4">
                   <Button
                     type="button"
                     variant="outline"
