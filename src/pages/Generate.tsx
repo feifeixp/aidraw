@@ -5,18 +5,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X, Download, ZoomIn, RotateCcw, Edit } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X, Download, ZoomIn, RotateCcw, Edit, ChevronDown, Check } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+type GenerationMode = "agent" | "imageGeneration";
 
 interface ChatMessage {
   id: string;
   type: "user" | "assistant";
   prompt?: string;
+  content?: string;
   modelName?: string;
   modelId?: string;
   imageUrl?: string;
@@ -28,6 +32,7 @@ interface ChatMessage {
   loraIds?: string[];
   aspectRatio?: string;
   imageCount?: string;
+  mode?: GenerationMode;
 }
 
 const ASPECT_RATIOS = [
@@ -41,6 +46,7 @@ const ASPECT_RATIOS = [
 ];
 
 const Generate = () => {
+  const [mode, setMode] = useState<GenerationMode>("agent");
   const [prompt, setPrompt] = useState("");
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string>("");
   const [selectedLoras, setSelectedLoras] = useState<string[]>([]);
@@ -148,6 +154,142 @@ const Generate = () => {
         variant: "destructive",
       });
       setIsAISelecting(false);
+    }
+  };
+
+  const handleAgentChat = async () => {
+    const currentPrompt = prompt.trim();
+    
+    if (!currentPrompt) {
+      toast({
+        title: "请输入内容",
+        description: "请描述您的需求",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 添加用户消息
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      type: "user",
+      content: currentPrompt,
+      timestamp: new Date(),
+      mode: "agent",
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setPrompt("");
+    setIsGenerating(true);
+
+    // 添加助手消息占位
+    const assistantMessageId = `assistant-${Date.now()}`;
+    const assistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      type: "assistant",
+      content: "",
+      status: "processing",
+      timestamp: new Date(),
+      mode: "agent",
+    };
+
+    setChatMessages(prev => [...prev, assistantMessage]);
+
+    try {
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-chat`;
+      
+      // 获取对话历史
+      const conversationHistory = chatMessages
+        .filter(msg => msg.mode === "agent" && (msg.content || msg.prompt))
+        .map(msg => ({
+          role: msg.type === "user" ? "user" : "assistant",
+          content: msg.content || msg.prompt || "",
+        }));
+
+      const response = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ 
+          messages: [
+            ...conversationHistory,
+            { role: "user", content: currentPrompt }
+          ] 
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error("请求过于频繁，请稍后再试");
+        }
+        if (response.status === 402) {
+          throw new Error("需要充值，请前往设置添加余额");
+        }
+        throw new Error("AI 服务暂时不可用");
+      }
+
+      if (!response.body) throw new Error("无法获取响应流");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let assistantContent = "";
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") {
+            streamDone = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              setChatMessages(prev => prev.map(msg => 
+                msg.id === assistantMessageId 
+                  ? { ...msg, content: assistantContent, status: "completed" as const }
+                  : msg
+              ));
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+      setIsGenerating(false);
+    } catch (error: any) {
+      console.error("Agent chat error:", error);
+      setChatMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { ...msg, status: "failed" as const }
+          : msg
+      ));
+      setIsGenerating(false);
+      toast({
+        title: "对话失败",
+        description: error.message || "请稍后重试",
+        variant: "destructive",
+      });
     }
   };
 
@@ -268,6 +410,7 @@ const Generate = () => {
       loraIds: loraModelsSelected.map(l => l.model_id),
       aspectRatio: selectedAspectRatio,
       imageCount: imageCount,
+      mode: "imageGeneration",
     };
 
     setChatMessages(prev => [...prev, userMessage]);
@@ -287,6 +430,7 @@ const Generate = () => {
       aspectRatio: selectedAspectRatio,
       imageCount: imageCount,
       modelName: displayModelName,
+      mode: "imageGeneration",
     };
 
     setChatMessages(prev => [...prev, assistantMessage]);
@@ -438,11 +582,14 @@ const Generate = () => {
                 {message.type === "user" && (
                   <div className="flex justify-end">
                     <Card className="max-w-2xl p-4 bg-primary/10 border-primary/20">
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">提示词</p>
-                          <p className="text-sm font-medium">{message.prompt}</p>
-                        </div>
+                      {message.mode === "agent" ? (
+                        <p className="text-sm font-medium">{message.content || message.prompt}</p>
+                      ) : (
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">提示词</p>
+                            <p className="text-sm font-medium">{message.prompt}</p>
+                          </div>
                         
                         <div className="space-y-2 pt-2 border-t border-primary/20">
                           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -475,18 +622,19 @@ const Generate = () => {
                           </div>
                         </div>
 
-                        {message.aiReasoning && (
-                          <div className="pt-2 border-t border-primary/20">
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                              <Wand2 className="h-3 w-3" />
-                              AI推荐理由
+                          {message.aiReasoning && (
+                            <div className="pt-2 border-t border-primary/20">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                                <Wand2 className="h-3 w-3" />
+                                AI推荐理由
+                              </div>
+                              <p className="text-xs text-muted-foreground italic">
+                                {message.aiReasoning}
+                              </p>
                             </div>
-                            <p className="text-xs text-muted-foreground italic">
-                              {message.aiReasoning}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
                     </Card>
                   </div>
                 )}
@@ -494,7 +642,13 @@ const Generate = () => {
                 {message.type === "assistant" && (
                   <div className="flex justify-start">
                     <Card className="max-w-2xl p-4 bg-card border-accent/20">
-                      {message.status === "processing" && (
+                      {message.mode === "agent" && message.content && (
+                        <div className="prose prose-sm max-w-none">
+                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        </div>
+                      )}
+
+                      {message.mode === "imageGeneration" && message.status === "processing" && (
                         <div className="flex flex-col items-center gap-4 py-8">
                           <Loader2 className="h-12 w-12 animate-spin text-primary" />
                           <p className="text-sm text-muted-foreground">正在生成图片...</p>
@@ -504,7 +658,7 @@ const Generate = () => {
                         </div>
                       )}
 
-                      {message.status === "completed" && (message.images || message.imageUrl) && (
+                      {message.mode === "imageGeneration" && message.status === "completed" && (message.images || message.imageUrl) && (
                         <div className="space-y-3">
                           {/* 显示最终使用的参数 */}
                           <div className="pb-3 border-b border-border">
@@ -624,7 +778,7 @@ const Generate = () => {
                         </div>
                       )}
 
-                      {message.status === "failed" && (
+                      {message.mode === "imageGeneration" && message.status === "failed" && (
                         <div className="flex flex-col items-center gap-4 py-8 text-destructive">
                           <ImageIcon className="h-12 w-12" />
                           <p className="text-sm">生成失败，请重试</p>
@@ -646,8 +800,11 @@ const Generate = () => {
       {/* 底部输入区域 */}
       <div className="flex-shrink-0 border-t bg-card/50 backdrop-blur-sm p-4">
         <div className="max-w-4xl mx-auto space-y-3">
-          {/* 模型选择 */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* 模式选择和输入区域 */}
+          {mode === "imageGeneration" && (
+            <>
+              {/* 模型选择 */}
+              <div className="flex items-center gap-2 flex-wrap">
             {/* 底模选择 */}
             <Select value={selectedCheckpoint} onValueChange={setSelectedCheckpoint}>
               <SelectTrigger className="w-auto min-w-[180px]">
@@ -850,35 +1007,103 @@ const Generate = () => {
             </RadioGroup>
           </div>
 
-          {/* 输入框 */}
-          <div className="flex gap-2">
-            <Textarea
-              placeholder="输入提示词..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (!isGenerating && !isAISelecting && prompt.trim() && (selectedCheckpoint || selectedLoras.length > 0)) {
-                    handleGenerate();
+              {/* 输入框 */}
+              <div className="flex gap-2">
+                <Textarea
+                  placeholder='请输入图片生成的提示词，例如：做一张"中秋节"海报'
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!isGenerating && !isAISelecting && prompt.trim() && (selectedCheckpoint || selectedLoras.length > 0)) {
+                        handleGenerate();
+                      }
+                    }
+                  }}
+                  className="min-h-[60px] resize-none"
+                  disabled={isGenerating || isAISelecting}
+                />
+                <Button
+                  onClick={() => handleGenerate()}
+                  disabled={isGenerating || isAISelecting || !prompt.trim() || (!selectedCheckpoint && selectedLoras.length === 0)}
+                  size="lg"
+                  className="px-6"
+                >
+                  {isGenerating || isAISelecting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {mode === "agent" && (
+            <div className="flex gap-2 items-end">
+              <Textarea
+                placeholder="说说今天想做点什么"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!isGenerating && prompt.trim()) {
+                      handleAgentChat();
+                    }
                   }
-                }
-              }}
-              className="min-h-[60px] resize-none"
-              disabled={isGenerating || isAISelecting}
-            />
-            <Button
-              onClick={() => handleGenerate()}
-              disabled={isGenerating || isAISelecting || !prompt.trim() || (!selectedCheckpoint && selectedLoras.length === 0)}
-              size="lg"
-              className="px-6"
-            >
-              {isGenerating || isAISelecting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-            </Button>
+                }}
+                className="min-h-[60px] resize-none flex-1"
+                disabled={isGenerating}
+              />
+              <Button
+                onClick={handleAgentChat}
+                disabled={isGenerating || !prompt.trim()}
+                size="lg"
+                className="px-6"
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* 模式选择器 */}
+          <div className="flex justify-start">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  {mode === "agent" ? "Agent 模式" : "图片生成"}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                  创作类型
+                </div>
+                <DropdownMenuItem 
+                  onClick={() => setMode("agent")}
+                  className="flex items-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Agent 模式</span>
+                  {mode === "agent" && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setMode("imageGeneration")}
+                  className="flex items-center gap-2"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                  <span>图片生成</span>
+                  {mode === "imageGeneration" && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
