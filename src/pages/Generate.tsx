@@ -272,22 +272,22 @@ const Generate = () => {
             // Handle tool result (image generation)
             if (delta?.tool_result) {
               const toolResult = delta.tool_result;
-              const newMessage: ChatMessage = {
-                id: `assistant-tool-${Date.now()}`,
-                type: "assistant",
-                content: toolResult.content,
-                status: "completed",
-                timestamp: new Date(),
-                mode: "agent",
-                images: toolResult.images,
-                metadata: toolResult.metadata,
-                checkpointId: toolResult.metadata?.checkpoint_id,
-                loraIds: toolResult.metadata?.lora_ids,
-                aspectRatio: toolResult.metadata?.aspect_ratio,
-                imageCount: toolResult.metadata?.image_count?.toString(),
-              };
-              setChatMessages(prev => [...prev, newMessage]);
-              assistantContent = ''; // Reset for next response
+              // Update existing assistant message with tool result
+              setChatMessages(prev => prev.map(msg => 
+                msg.id === assistantMessageId 
+                  ? { 
+                      ...msg, 
+                      content: (msg.content || '') + (toolResult.content || ''),
+                      status: "completed" as const,
+                      images: toolResult.images,
+                      metadata: toolResult.metadata,
+                      checkpointId: toolResult.metadata?.checkpoint_id,
+                      loraIds: toolResult.metadata?.lora_ids,
+                      aspectRatio: toolResult.metadata?.aspect_ratio,
+                      imageCount: toolResult.metadata?.image_count?.toString(),
+                    }
+                  : msg
+              ));
             } else {
               // Handle regular content
               const content = delta?.content as string | undefined;
