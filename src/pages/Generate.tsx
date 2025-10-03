@@ -33,6 +33,13 @@ interface ChatMessage {
   aspectRatio?: string;
   imageCount?: string;
   mode?: GenerationMode;
+  metadata?: {
+    checkpoint_id?: string;
+    lora_ids?: string[];
+    aspect_ratio?: string;
+    image_count?: number;
+    reasoning?: string;
+  };
 }
 
 const ASPECT_RATIOS = [
@@ -260,14 +267,38 @@ const Generate = () => {
 
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              assistantContent += content;
-              setChatMessages(prev => prev.map(msg => 
-                msg.id === assistantMessageId 
-                  ? { ...msg, content: assistantContent, status: "completed" as const }
-                  : msg
-              ));
+            const delta = parsed.choices?.[0]?.delta;
+
+            // Handle tool result (image generation)
+            if (delta?.tool_result) {
+              const toolResult = delta.tool_result;
+              const newMessage: ChatMessage = {
+                id: `assistant-tool-${Date.now()}`,
+                type: "assistant",
+                content: toolResult.content,
+                status: "completed",
+                timestamp: new Date(),
+                mode: "agent",
+                images: toolResult.images,
+                metadata: toolResult.metadata,
+                checkpointId: toolResult.metadata?.checkpoint_id,
+                loraIds: toolResult.metadata?.lora_ids,
+                aspectRatio: toolResult.metadata?.aspect_ratio,
+                imageCount: toolResult.metadata?.image_count?.toString(),
+              };
+              setChatMessages(prev => [...prev, newMessage]);
+              assistantContent = ''; // Reset for next response
+            } else {
+              // Handle regular content
+              const content = delta?.content as string | undefined;
+              if (content) {
+                assistantContent += content;
+                setChatMessages(prev => prev.map(msg => 
+                  msg.id === assistantMessageId 
+                    ? { ...msg, content: assistantContent, status: "completed" as const }
+                    : msg
+                ));
+              }
             }
           } catch {
             textBuffer = line + "\n" + textBuffer;
@@ -642,9 +673,93 @@ const Generate = () => {
                 {message.type === "assistant" && (
                   <div className="flex justify-start">
                     <Card className="max-w-2xl p-4 bg-card border-accent/20">
-                      {message.mode === "agent" && message.content && (
-                        <div className="prose prose-sm max-w-none">
-                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      {message.mode === "agent" && (
+                        <div className="space-y-3">
+                          {message.content && (
+                            <div className="prose prose-sm max-w-none">
+                              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            </div>
+                          )}
+
+                          {/* Agent生成的图片 */}
+                          {message.images && message.images.length > 0 && (
+                            <>
+                              {message.metadata && (
+                                <div className="pt-3 border-t border-border">
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                                    <Sparkles className="h-3 w-3" />
+                                    生成参数
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      {message.checkpointId && (
+                                        <div>
+                                          <span className="text-muted-foreground">底模: </span>
+                                          <span className="font-medium">
+                                            {models?.find(m => m.model_id === message.checkpointId)?.name || message.checkpointId}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {message.loraIds && message.loraIds.length > 0 && (
+                                        <div>
+                                          <span className="text-muted-foreground">风格: </span>
+                                          <span className="font-medium">
+                                            {message.loraIds.map(id => 
+                                              models?.find(m => m.model_id === id)?.name
+                                            ).filter(Boolean).join(", ") || `${message.loraIds.length} 个 LoRA`}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {message.aspectRatio && (
+                                        <div>
+                                          <span className="text-muted-foreground">宽高比: </span>
+                                          <span className="font-medium">{message.aspectRatio}</span>
+                                        </div>
+                                      )}
+                                      {message.imageCount && (
+                                        <div>
+                                          <span className="text-muted-foreground">数量: </span>
+                                          <span className="font-medium">{message.imageCount} 张</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    {message.metadata.reasoning && (
+                                      <div className="pt-2 border-t border-border">
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                                          <Wand2 className="h-3 w-3" />
+                                          AI选择理由
+                                        </div>
+                                        <p className="text-xs text-muted-foreground italic">
+                                          {message.metadata.reasoning}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="grid grid-cols-4 gap-2">
+                                {message.images.map((url, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted cursor-pointer relative group"
+                                    onClick={() => setEnlargedImage(url)}
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={`Generated ${idx + 1}`}
+                                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                      <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+                                已完成 ({message.images.length} 张)
+                              </Badge>
+                            </>
+                          )}
                         </div>
                       )}
 
