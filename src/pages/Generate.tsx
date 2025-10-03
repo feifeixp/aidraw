@@ -281,6 +281,12 @@ const Generate = () => {
       type: "assistant",
       status: "processing",
       timestamp: new Date(),
+      prompt: finalPrompt,
+      checkpointId: checkpointModel?.model_id,
+      loraIds: loraModelsSelected.map(l => l.model_id),
+      aspectRatio: selectedAspectRatio,
+      imageCount: imageCount,
+      modelName: displayModelName,
     };
 
     setChatMessages(prev => [...prev, assistantMessage]);
@@ -500,6 +506,50 @@ const Generate = () => {
 
                       {message.status === "completed" && (message.images || message.imageUrl) && (
                         <div className="space-y-3">
+                          {/* 显示最终使用的参数 */}
+                          <div className="pb-3 border-b border-border">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                              <Sparkles className="h-3 w-3" />
+                              最终使用的生成参数
+                            </div>
+                            <div className="space-y-2">
+                              {message.prompt && (
+                                <div>
+                                  <span className="text-xs text-muted-foreground">提示词: </span>
+                                  <span className="text-xs font-medium">{message.prompt}</span>
+                                </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                {message.checkpointId && (
+                                  <div>
+                                    <span className="text-muted-foreground">底模: </span>
+                                    <span className="font-medium">
+                                      {models?.find(m => m.model_id === message.checkpointId)?.name || "未知"}
+                                    </span>
+                                  </div>
+                                )}
+                                {message.loraIds && message.loraIds.length > 0 && (
+                                  <div>
+                                    <span className="text-muted-foreground">风格: </span>
+                                    <span className="font-medium">
+                                      {message.loraIds.map(id => 
+                                        models?.find(m => m.model_id === id)?.name
+                                      ).filter(Boolean).join(", ")}
+                                    </span>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-muted-foreground">宽高比: </span>
+                                  <span className="font-medium">{message.aspectRatio}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">数量: </span>
+                                  <span className="font-medium">{message.imageCount} 张</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="grid grid-cols-4 gap-2">
                             {(message.images || [message.imageUrl]).filter(Boolean).map((url, idx) => (
                               <div 
