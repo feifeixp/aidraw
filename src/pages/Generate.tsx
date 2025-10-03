@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface ChatMessage {
   id: string;
@@ -38,6 +40,7 @@ const Generate = () => {
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string>("");
   const [selectedLoras, setSelectedLoras] = useState<string[]>([]);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState("1:1");
+  const [imageCount, setImageCount] = useState("1");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAISelecting, setIsAISelecting] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -229,6 +232,7 @@ const Generate = () => {
           loraIds: loraModelsSelected.map(l => l.model_id),
           width: aspectRatio.width,
           height: aspectRatio.height,
+          imgCount: parseInt(imageCount),
         },
       });
 
@@ -609,6 +613,33 @@ const Generate = () => {
                 {ar.label}
               </Button>
             ))}
+          </div>
+
+          {/* 生成次数选择 */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">生成数量:</span>
+            <RadioGroup 
+              value={imageCount} 
+              onValueChange={setImageCount}
+              className="flex gap-2"
+              disabled={isGenerating || isAISelecting}
+            >
+              {[1, 2, 3, 4].map((count) => (
+                <div key={count} className="flex items-center space-x-2">
+                  <RadioGroupItem 
+                    value={count.toString()} 
+                    id={`count-${count}`}
+                    disabled={isGenerating || isAISelecting}
+                  />
+                  <Label 
+                    htmlFor={`count-${count}`}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {count}张
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
           </div>
 
           {/* 输入框 */}
