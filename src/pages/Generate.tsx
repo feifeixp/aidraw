@@ -405,7 +405,7 @@ const Generate = () => {
 
                       {message.status === "completed" && (message.images || message.imageUrl) && (
                         <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-4 gap-2">
                             {(message.images || [message.imageUrl]).filter(Boolean).map((url, idx) => (
                               <div key={idx} className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted">
                                 <img
