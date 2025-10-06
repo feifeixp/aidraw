@@ -1,13 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import { Clock, Image as ImageIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Clock, Image as ImageIcon, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const History = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   const { data: history, isLoading } = useQuery({
     queryKey: ["generation-history"],
     queryFn: async () => {
@@ -19,6 +24,31 @@ const History = () => {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  const toggleTemplateMutation = useMutation({
+    mutationFn: async ({ id, isTemplate }: { id: string; isTemplate: boolean }) => {
+      const { error } = await supabase
+        .from("generation_history")
+        .update({ is_template: isTemplate })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["generation-history"] });
+      toast({
+        title: "成功",
+        description: "模板状态已更新",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "错误",
+        description: "更新失败，请重试",
+        variant: "destructive",
+      });
     },
   });
 
@@ -114,9 +144,17 @@ const History = () => {
                 
                 <div className="p-4">
                   <div className="mb-2 flex items-start justify-between gap-2">
-                    <Badge className={getStatusColor(item.status)}>
-                      {getStatusText(item.status)}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(item.status)}>
+                        {getStatusText(item.status)}
+                      </Badge>
+                      {item.is_template && (
+                        <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                          <Star className="h-3 w-3 mr-1" />
+                          模板
+                        </Badge>
+                      )}
+                    </div>
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {formatDistanceToNow(new Date(item.created_at), {
@@ -162,6 +200,21 @@ const History = () => {
                     <p className="mt-2 text-xs text-destructive">
                       错误: {item.error_message}
                     </p>
+                  )}
+
+                  {item.status === "completed" && (
+                    <Button
+                      variant={item.is_template ? "secondary" : "outline"}
+                      size="sm"
+                      className="mt-3 w-full"
+                      onClick={() => toggleTemplateMutation.mutate({ 
+                        id: item.id, 
+                        isTemplate: !item.is_template 
+                      })}
+                    >
+                      <Star className={`h-4 w-4 mr-2 ${item.is_template ? 'fill-current' : ''}`} />
+                      {item.is_template ? "取消模板" : "设为模板"}
+                    </Button>
                   )}
                   </div>
                 </Card>

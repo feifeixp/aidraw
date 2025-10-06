@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useSearchParams } from "react-router-dom";
 
 type GenerationMode = "agent" | "imageGeneration";
 
@@ -53,6 +54,7 @@ const ASPECT_RATIOS = [
 ];
 
 const Generate = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState<GenerationMode>("agent");
   const [prompt, setPrompt] = useState("");
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string>("");
@@ -111,6 +113,43 @@ const Generate = () => {
   useEffect(() => {
     scrollToBottom();
   }, [chatMessages]);
+
+  // 从URL参数加载模板数据
+  useEffect(() => {
+    const promptParam = searchParams.get("prompt");
+    const checkpointParam = searchParams.get("checkpoint");
+    const lorasParam = searchParams.get("loras");
+    const aspectRatioParam = searchParams.get("aspectRatio");
+    const imageCountParam = searchParams.get("imageCount");
+
+    if (promptParam) {
+      setPrompt(promptParam);
+      setMode("imageGeneration"); // 使用模板时切换到图片生成模式
+    }
+    if (checkpointParam) {
+      setSelectedCheckpoint(checkpointParam);
+    }
+    if (lorasParam) {
+      try {
+        const loraModels = JSON.parse(lorasParam);
+        const loraIds = loraModels.map((lora: any) => lora.modelId);
+        setSelectedLoras(loraIds);
+      } catch (e) {
+        console.error("Failed to parse loras:", e);
+      }
+    }
+    if (aspectRatioParam) {
+      setSelectedAspectRatio(aspectRatioParam);
+    }
+    if (imageCountParam) {
+      setImageCount(imageCountParam);
+    }
+
+    // 清除URL参数
+    if (promptParam || checkpointParam || lorasParam) {
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleAISelect = async () => {
     if (!prompt.trim()) {

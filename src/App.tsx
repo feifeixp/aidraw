@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Generate from "./pages/Generate";
 import Models from "./pages/Models";
 import History from "./pages/History";
+import Inspiration from "./pages/Inspiration";
 import Test from "./pages/Test";
 import DebugQwen from "./pages/DebugQwen";
 import Navigation from "./components/Navigation";
@@ -23,6 +24,7 @@ const App = () => (
         <div className="pt-16">
           <Routes>
             <Route path="/" element={<Generate />} />
+            <Route path="/inspiration" element={<Inspiration />} />
             <Route path="/models" element={<Models />} />
             <Route path="/history" element={<History />} />
             <Route path="/test" element={<Test />} />

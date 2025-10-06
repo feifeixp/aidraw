@@ -1,12 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Database, History, TestTube2, Bug } from "lucide-react";
+import { Sparkles, Database, History, TestTube2, Bug, Star } from "lucide-react";
 
 const Navigation = () => {
   const location = useLocation();
 
   const links = [
     { to: "/", label: "智能生成", icon: Sparkles },
+    { to: "/inspiration", label: "灵感广场", icon: Star },
     { to: "/models", label: "模型管理", icon: Database },
     { to: "/history", label: "生成历史", icon: History },
     { to: "/test", label: "API测试", icon: TestTube2 },

@@ -22,6 +22,7 @@ export type Database = {
           id: string
           image_url: string | null
           images: string[] | null
+          is_template: boolean | null
           lora_models: Json | null
           model_id: string
           model_name: string
@@ -38,6 +39,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
+          is_template?: boolean | null
           lora_models?: Json | null
           model_id: string
           model_name: string
@@ -54,6 +56,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
+          is_template?: boolean | null
           lora_models?: Json | null
           model_id?: string
           model_name?: string
