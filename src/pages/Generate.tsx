@@ -44,11 +44,17 @@ interface ChatMessage {
 }
 
 const ASPECT_RATIOS = [
-  { label: "1:1", ratio: "1:1", width: 1024, height: 1024 },
-  { label: "3:4", ratio: "3:4", width: 768, height: 1024 },
-  { label: "4:3", ratio: "4:3", width: 1024, height: 768 },
-  { label: "16:9", ratio: "16:9", width: 1024, height: 576 },
-  { label: "9:16", ratio: "9:16", width: 576, height: 1024 },
+  { label: "1:1 标清", ratio: "1:1", width: 1024, height: 1024 },
+  { label: "1:1 高清", ratio: "1:1-hd", width: 2048, height: 2048 },
+  { label: "3:4 标清", ratio: "3:4", width: 768, height: 1024 },
+  { label: "3:4 高清", ratio: "3:4-hd", width: 1536, height: 2048 },
+  { label: "3:4 超清", ratio: "3:4-uhd", width: 2304, height: 3072 },
+  { label: "4:3 标清", ratio: "4:3", width: 1024, height: 768 },
+  { label: "4:3 高清", ratio: "4:3-hd", width: 2048, height: 1536 },
+  { label: "16:9 标清", ratio: "16:9", width: 1024, height: 576 },
+  { label: "16:9 高清", ratio: "16:9-hd", width: 1920, height: 1080 },
+  { label: "9:16 标清", ratio: "9:16", width: 576, height: 1024 },
+  { label: "9:16 高清", ratio: "9:16-hd", width: 1080, height: 1920 },
   { label: "2:1", ratio: "2:1", width: 1024, height: 512 },
   { label: "1:2", ratio: "1:2", width: 512, height: 1024 },
 ];

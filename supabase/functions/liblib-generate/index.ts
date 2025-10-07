@@ -201,7 +201,7 @@ serve(async (req) => {
       prompt: prompt,
       negativePrompt: defaultNegativePrompt,
       sampler: primaryModel.sampler || 1,
-      steps: 20,
+      steps: 30,
       cfgScale: primaryModel.cfg_scale || 3.5,
       width: width,
       height: height,
