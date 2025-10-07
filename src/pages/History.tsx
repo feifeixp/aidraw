@@ -95,7 +95,7 @@ const History = () => {
             <p className="text-muted-foreground">加载中...</p>
           </div>
         ) : history && history.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {history.map((item) => {
               const ImageDisplay = () => {
                 const [currentImageIndex, setCurrentImageIndex] = useState(0);
