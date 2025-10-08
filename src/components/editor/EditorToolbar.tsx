@@ -16,6 +16,7 @@ import { Layer } from "@/pages/Editor";
 import { toast } from "sonner";
 import { removeBackground, loadImage } from "@/lib/backgroundRemoval";
 import { supabase } from "@/integrations/supabase/client";
+import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
 
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
@@ -44,22 +45,43 @@ export const EditorToolbar = ({
       return;
     }
 
-    toast.info("正在去除背景，请稍候...");
+    toast.info("正在使用 AI 去除背景，请稍候...");
     try {
-      // Convert blob URL to base64
+      // Step 1: Convert blob URL to base64
       const response = await fetch(activeLayer.imageUrl);
       const blob = await response.blob();
+      const reader = new FileReader();
       
-      // Use local transformers.js method for true PNG transparency
-      const img = await loadImage(blob);
-      const resultBlob = await removeBackground(img);
-      const resultUrl = URL.createObjectURL(resultBlob);
-      
-      updateLayer(activeLayer.id, { 
-        imageUrl: resultUrl,
-        fabricObjects: []
+      const base64Image = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
       });
-      toast.success("背景已去除");
+
+      // Step 2: Use AI to replace background with magenta
+      const { data: aiData, error: aiError } = await supabase.functions.invoke(
+        'ai-remove-background',
+        {
+          body: { imageUrl: base64Image }
+        }
+      );
+
+      if (aiError) throw aiError;
+
+      if (aiData?.imageUrl) {
+        // Step 3: Convert magenta color to transparent
+        toast.info("正在处理透明通道...");
+        const transparentUrl = await convertMagentaToTransparent(aiData.imageUrl);
+        
+        // Update layer with transparent image
+        updateLayer(activeLayer.id, { 
+          imageUrl: transparentUrl,
+          fabricObjects: []
+        });
+        toast.success("背景已去除");
+      } else {
+        throw new Error('No image returned from AI');
+      }
     } catch (error) {
       console.error("Remove background error:", error);
       toast.error("去除背景失败");
