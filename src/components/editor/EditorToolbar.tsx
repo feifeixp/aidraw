@@ -83,6 +83,14 @@ export const EditorToolbar = ({
         toast.info("正在处理透明通道...");
         const transparentUrl = await convertMagentaToTransparent(aiData.imageUrl, featherStrength);
         
+        // Remove old fabric objects from canvas before updating
+        if (canvas && activeLayer.fabricObjects.length > 0) {
+          activeLayer.fabricObjects.forEach(obj => {
+            canvas.remove(obj);
+          });
+          canvas.renderAll();
+        }
+        
         // Update layer with transparent image
         updateLayer(activeLayer.id, { 
           imageUrl: transparentUrl,
@@ -146,6 +154,15 @@ export const EditorToolbar = ({
     toast.info("正在重新处理透明通道...");
     try {
       const transparentUrl = await convertMagentaToTransparent(originalAiImage, featherStrength);
+      
+      // Remove old fabric objects from canvas before updating
+      if (canvas && activeLayer.fabricObjects.length > 0) {
+        activeLayer.fabricObjects.forEach(obj => {
+          canvas.remove(obj);
+        });
+        canvas.renderAll();
+      }
+      
       updateLayer(activeLayer.id, { 
         imageUrl: transparentUrl,
         fabricObjects: []
