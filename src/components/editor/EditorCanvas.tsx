@@ -55,20 +55,22 @@ export const EditorCanvas = ({
 
     layers.forEach(layer => {
       if (layer.imageUrl && layer.fabricObjects.length === 0) {
-        FabricImage.fromURL(layer.imageUrl).then(img => {
+        FabricImage.fromURL(layer.imageUrl, { crossOrigin: 'anonymous' }).then(img => {
           if (!img) return;
           
           // Scale image to fit canvas while maintaining aspect ratio
           const canvasWidth = canvas.width || 1024;
           const canvasHeight = canvas.height || 768;
-          const scaleX = canvasWidth / (img.width || 1);
-          const scaleY = canvasHeight / (img.height || 1);
-          const scale = Math.min(scaleX, scaleY);
+          const imgWidth = img.width || 1;
+          const imgHeight = img.height || 1;
+          const scaleX = canvasWidth / imgWidth;
+          const scaleY = canvasHeight / imgHeight;
+          const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down if needed
           
           img.scale(scale);
           img.set({
-            left: (canvasWidth - (img.width || 0) * scale) / 2,
-            top: (canvasHeight - (img.height || 0) * scale) / 2,
+            left: (canvasWidth - imgWidth * scale) / 2,
+            top: (canvasHeight - imgHeight * scale) / 2,
             selectable: !layer.locked,
             opacity: layer.opacity / 100,
             visible: layer.visible,
@@ -79,6 +81,8 @@ export const EditorCanvas = ({
           
           // Update layer with fabric object
           updateLayer(layer.id, { fabricObjects: [img] });
+        }).catch(error => {
+          console.error('Error loading image:', error);
         });
       }
     });

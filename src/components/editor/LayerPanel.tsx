@@ -49,7 +49,7 @@ export const LayerPanel = ({
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-          updateLayer(layerId, { imageUrl: event.target?.result as string });
+          updateLayer(layerId, { imageUrl: event.target?.result as string, fabricObjects: [] });
           toast.success("图片已上传");
         };
         reader.readAsDataURL(file);
@@ -74,7 +74,7 @@ export const LayerPanel = ({
       if (error) throw error;
       
       if (data?.images?.[0]?.url) {
-        updateLayer(layerId, { imageUrl: data.images[0].url });
+        updateLayer(layerId, { imageUrl: data.images[0].url, fabricObjects: [] });
         toast.success("图片生成成功");
       }
     } catch (error) {
