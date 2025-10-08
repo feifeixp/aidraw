@@ -40,6 +40,11 @@ interface EditorToolbarProps {
   activeLayer?: Layer;
   updateLayer: (id: string, updates: Partial<Layer>) => void;
   addLayer: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  saveState: () => void;
 }
 
 export const EditorToolbar = ({
@@ -49,6 +54,11 @@ export const EditorToolbar = ({
   activeLayer,
   updateLayer,
   addLayer,
+  undo,
+  redo,
+  canUndo,
+  canRedo,
+  saveState,
 }: EditorToolbarProps) => {
   const [featherStrength, setFeatherStrength] = useState(50);
   const [showFeatherControl, setShowFeatherControl] = useState(false);
@@ -114,6 +124,7 @@ export const EditorToolbar = ({
           imageUrl: transparentUrl,
           fabricObjects: []
         });
+        saveState();
         toast.success("背景已去除");
         setShowFeatherControl(true);
       } else {
@@ -131,6 +142,7 @@ export const EditorToolbar = ({
     if (activeObject) {
       activeObject.set("flipX", !activeObject.flipX);
       canvas.renderAll();
+      saveState();
       toast.success("已镜像反转");
     } else {
       toast.error("请先选择一个对象");
@@ -156,11 +168,11 @@ export const EditorToolbar = ({
   };
 
   const handleUndo = () => {
-    toast.info("撤销功能开发中");
+    undo();
   };
 
   const handleRedo = () => {
-    toast.info("重做功能开发中");
+    redo();
   };
 
   const handleReprocessFeather = async () => {
@@ -409,6 +421,9 @@ export const EditorToolbar = ({
         canvas.add(fabricImg);
         canvas.renderAll();
         
+        // Save state for undo/redo
+        saveState();
+        
         // Create a new layer for the redrawn image
         addLayer();
         
@@ -437,10 +452,10 @@ export const EditorToolbar = ({
 
         <Separator orientation="vertical" className="h-6" />
 
-        <Button variant="outline" size="sm" onClick={handleUndo}>
+        <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo}>
           <Undo className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="sm" onClick={handleRedo}>
+        <Button variant="outline" size="sm" onClick={handleRedo} disabled={!canRedo}>
           <Redo className="h-4 w-4" />
         </Button>
 

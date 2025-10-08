@@ -9,6 +9,7 @@ interface EditorCanvasProps {
   activeLayerId: string;
   activeTool: string;
   updateLayer: (id: string, updates: Partial<Layer>) => void;
+  saveState: () => void;
 }
 
 export const EditorCanvas = ({
@@ -17,7 +18,8 @@ export const EditorCanvas = ({
   layers,
   activeLayerId,
   activeTool,
-  updateLayer
+  updateLayer,
+  saveState
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -40,18 +42,25 @@ export const EditorCanvas = ({
           });
           fabricCanvas.discardActiveObject();
           fabricCanvas.renderAll();
+          saveState();
         }
       }
     };
 
+    // Add event listeners for canvas modifications
+    fabricCanvas.on('object:modified', saveState);
+    fabricCanvas.on('object:added', saveState);
+    
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
     return () => {
+      fabricCanvas.off('object:modified', saveState);
+      fabricCanvas.off('object:added', saveState);
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
-  }, []);
+  }, [saveState]);
 
   useEffect(() => {
     if (!canvas) return;
