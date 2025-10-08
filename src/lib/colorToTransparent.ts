@@ -2,8 +2,13 @@
  * Intelligently detect and remove background color from an image
  * Samples the four corners to determine the background color
  * Uses edge feathering for cleaner results
+ * @param imageUrl - The image URL to process
+ * @param featherStrength - Edge feathering strength (0-100), higher = more aggressive
  */
-export const convertMagentaToTransparent = async (imageUrl: string): Promise<string> => {
+export const convertMagentaToTransparent = async (
+  imageUrl: string,
+  featherStrength: number = 50
+): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -65,9 +70,14 @@ export const convertMagentaToTransparent = async (imageUrl: string): Promise<str
       
       console.log('Detected background color:', avgColor);
       
+      // Calculate tolerance based on featherStrength (0-100)
+      // Higher strength = more aggressive background removal
+      const minTolerance = 20 + (featherStrength * 0.3);  // 20-50
+      const maxTolerance = 40 + (featherStrength * 0.6);  // 40-100
+      
+      console.log('Using tolerances:', { minTolerance, maxTolerance, featherStrength });
+      
       // First pass: Mark pixels for transparency with feathering
-      const minTolerance = 30;  // Pixels within this are fully transparent
-      const maxTolerance = 60;  // Pixels beyond this are fully opaque
       
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i];

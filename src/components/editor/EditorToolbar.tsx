@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
 import {
   MousePointer2,
   Crop,
@@ -17,6 +19,7 @@ import { toast } from "sonner";
 import { removeBackground, loadImage } from "@/lib/backgroundRemoval";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
+import { useState } from "react";
 
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
@@ -33,6 +36,9 @@ export const EditorToolbar = ({
   activeLayer,
   updateLayer,
 }: EditorToolbarProps) => {
+  const [featherStrength, setFeatherStrength] = useState(50);
+  const [showFeatherControl, setShowFeatherControl] = useState(false);
+
   const handleCrop = () => {
     if (!canvas) return;
     toast.info("请在画布上框选要裁剪的区域");
@@ -69,9 +75,9 @@ export const EditorToolbar = ({
       if (aiError) throw aiError;
 
       if (aiData?.imageUrl) {
-        // Step 3: Convert magenta color to transparent
+        // Step 3: Convert magenta color to transparent with feather strength
         toast.info("正在处理透明通道...");
-        const transparentUrl = await convertMagentaToTransparent(aiData.imageUrl);
+        const transparentUrl = await convertMagentaToTransparent(aiData.imageUrl, featherStrength);
         
         // Update layer with transparent image
         updateLayer(activeLayer.id, { 
@@ -79,6 +85,7 @@ export const EditorToolbar = ({
           fabricObjects: []
         });
         toast.success("背景已去除");
+        setShowFeatherControl(true);
       } else {
         throw new Error('No image returned from AI');
       }
@@ -127,53 +134,77 @@ export const EditorToolbar = ({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant={activeTool === "select" ? "default" : "outline"}
-        size="sm"
-        onClick={() => setActiveTool("select")}
-      >
-        <MousePointer2 className="h-4 w-4" />
-      </Button>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Button
+          variant={activeTool === "select" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTool("select")}
+        >
+          <MousePointer2 className="h-4 w-4" />
+        </Button>
 
-      <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6" />
 
-      <Button variant="outline" size="sm" onClick={handleUndo}>
-        <Undo className="h-4 w-4" />
-      </Button>
-      <Button variant="outline" size="sm" onClick={handleRedo}>
-        <Redo className="h-4 w-4" />
-      </Button>
+        <Button variant="outline" size="sm" onClick={handleUndo}>
+          <Undo className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleRedo}>
+          <Redo className="h-4 w-4" />
+        </Button>
 
-      <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6" />
 
-      <Button variant="outline" size="sm" onClick={handleCrop}>
-        <Crop className="h-4 w-4 mr-1" />
-        裁剪
-      </Button>
-      <Button variant="outline" size="sm">
-        <Scissors className="h-4 w-4 mr-1" />
-        绘制裁剪
-      </Button>
-      <Button variant="outline" size="sm" onClick={handleRemoveBackground}>
-        <ImageOff className="h-4 w-4 mr-1" />
-        去背景
-      </Button>
-      <Button variant="outline" size="sm" onClick={handleFlip}>
-        <FlipHorizontal className="h-4 w-4 mr-1" />
-        镜像
-      </Button>
-      <Button variant="outline" size="sm" onClick={handleColorAdjust}>
-        <Palette className="h-4 w-4 mr-1" />
-        颜色
-      </Button>
+        <Button variant="outline" size="sm" onClick={handleCrop}>
+          <Crop className="h-4 w-4 mr-1" />
+          裁剪
+        </Button>
+        <Button variant="outline" size="sm">
+          <Scissors className="h-4 w-4 mr-1" />
+          绘制裁剪
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleRemoveBackground}>
+          <ImageOff className="h-4 w-4 mr-1" />
+          去背景
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleFlip}>
+          <FlipHorizontal className="h-4 w-4 mr-1" />
+          镜像
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleColorAdjust}>
+          <Palette className="h-4 w-4 mr-1" />
+          颜色
+        </Button>
 
-      <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6" />
 
-      <Button variant="outline" size="sm" onClick={handleExport}>
-        <Download className="h-4 w-4 mr-1" />
-        导出
-      </Button>
+        <Button variant="outline" size="sm" onClick={handleExport}>
+          <Download className="h-4 w-4 mr-1" />
+          导出
+        </Button>
+      </div>
+
+      {showFeatherControl && (
+        <div className="flex items-center gap-4 p-3 bg-muted rounded-md">
+          <Label className="text-sm whitespace-nowrap">边缘羽化强度:</Label>
+          <Slider
+            value={[featherStrength]}
+            onValueChange={(value) => setFeatherStrength(value[0])}
+            min={0}
+            max={100}
+            step={5}
+            className="flex-1"
+          />
+          <span className="text-sm font-medium w-12 text-right">{featherStrength}</span>
+          <Button 
+            size="sm" 
+            onClick={handleRemoveBackground}
+            variant="secondary"
+          >
+            重新处理
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
