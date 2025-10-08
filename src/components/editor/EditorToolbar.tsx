@@ -391,6 +391,15 @@ export const EditorToolbar = ({
             <Button variant="outline" onClick={() => handleAdjustAngle("three-quarter front view")}>
               正面3/4
             </Button>
+            <Button variant="outline" onClick={() => handleAdjustAngle("three-quarter back view")}>
+              背后3/4
+            </Button>
+            <Button variant="outline" onClick={() => handleAdjustAngle("top view from above")}>
+              上方
+            </Button>
+            <Button variant="outline" onClick={() => handleAdjustAngle("bottom view from below")}>
+              下方
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
