@@ -1,5 +1,6 @@
 /**
- * Convert a specific color (magenta RGB: 255, 0, 255) to transparent in an image
+ * Intelligently detect and remove background color from an image
+ * Samples the four corners to determine the background color
  */
 export const convertMagentaToTransparent = async (imageUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -24,19 +25,63 @@ export const convertMagentaToTransparent = async (imageUrl: string): Promise<str
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
       
-      // Convert magenta (255, 0, 255) to transparent
-      // Allow some tolerance for color matching
-      const tolerance = 30;
+      // Sample the four corners to detect background color
+      const sampleSize = 10; // Sample a 10x10 area from each corner
+      const corners = [
+        { x: 0, y: 0 }, // Top-left
+        { x: canvas.width - sampleSize, y: 0 }, // Top-right
+        { x: 0, y: canvas.height - sampleSize }, // Bottom-left
+        { x: canvas.width - sampleSize, y: canvas.height - sampleSize } // Bottom-right
+      ];
+      
+      // Collect color samples from corners
+      const colorSamples: { r: number; g: number; b: number }[] = [];
+      
+      corners.forEach(corner => {
+        for (let dy = 0; dy < sampleSize; dy++) {
+          for (let dx = 0; dx < sampleSize; dx++) {
+            const x = Math.min(corner.x + dx, canvas.width - 1);
+            const y = Math.min(corner.y + dy, canvas.height - 1);
+            const i = (y * canvas.width + x) * 4;
+            colorSamples.push({
+              r: data[i],
+              g: data[i + 1],
+              b: data[i + 2]
+            });
+          }
+        }
+      });
+      
+      // Calculate average background color
+      const avgColor = colorSamples.reduce(
+        (acc, color) => ({
+          r: acc.r + color.r / colorSamples.length,
+          g: acc.g + color.g / colorSamples.length,
+          b: acc.b + color.b / colorSamples.length
+        }),
+        { r: 0, g: 0, b: 0 }
+      );
+      
+      console.log('Detected background color:', avgColor);
+      
+      // Convert pixels similar to background color to transparent
+      // Use a higher tolerance for better results
+      const tolerance = 40;
+      
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
         
-        // Check if pixel is close to magenta (255, 0, 255)
-        if (Math.abs(r - 255) < tolerance && 
-            g < tolerance && 
-            Math.abs(b - 255) < tolerance) {
-          // Make it transparent
+        // Calculate color distance from background
+        const distance = Math.sqrt(
+          Math.pow(r - avgColor.r, 2) +
+          Math.pow(g - avgColor.g, 2) +
+          Math.pow(b - avgColor.b, 2)
+        );
+        
+        // If color is close to background, make it transparent
+        if (distance < tolerance) {
           data[i + 3] = 0;
         }
       }
