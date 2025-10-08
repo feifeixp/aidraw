@@ -30,9 +30,25 @@ export const EditorCanvas = ({
       backgroundColor: "#ffffff",
     });
 
+    // Add keyboard event listener for Delete key
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const activeObjects = fabricCanvas.getActiveObjects();
+        if (activeObjects.length > 0) {
+          activeObjects.forEach(obj => {
+            fabricCanvas.remove(obj);
+          });
+          fabricCanvas.discardActiveObject();
+          fabricCanvas.renderAll();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
     return () => {
+      window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
   }, []);

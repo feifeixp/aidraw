@@ -47,6 +47,16 @@ const Editor = () => {
 
   const deleteLayer = (id: string) => {
     if (layers.length <= 1) return;
+    
+    // Remove fabric objects from canvas before deleting layer
+    const layerToDelete = layers.find(l => l.id === id);
+    if (canvas && layerToDelete) {
+      layerToDelete.fabricObjects.forEach(obj => {
+        canvas.remove(obj);
+      });
+      canvas.renderAll();
+    }
+    
     setLayers(prev => prev.filter(l => l.id !== id));
     if (activeLayerId === id) {
       setActiveLayerId(layers[0].id);
