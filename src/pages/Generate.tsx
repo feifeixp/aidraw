@@ -5,15 +5,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X, Download, ZoomIn, RotateCcw, Edit, ChevronDown, Check } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X, Download, ZoomIn, RotateCcw, Edit, ChevronDown, Check, History as HistoryIcon, MessageSquare } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSearchParams } from "react-router-dom";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
 type GenerationMode = "agent" | "imageGeneration";
 
@@ -72,8 +75,11 @@ const Generate = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // 获取模型列表
   const { data: models, isLoading: modelsLoading } = useQuery({
@@ -87,6 +93,69 @@ const Generate = () => {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  // 获取对话历史
+  const { data: conversationHistory } = useQuery({
+    queryKey: ["chat-conversations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("chat_conversations")
+        .select(`
+          *,
+          chat_messages (*)
+        `)
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // 保存对话记录的mutation
+  const saveConversationMutation = useMutation({
+    mutationFn: async ({ conversationId, messages }: { conversationId: string | null, messages: ChatMessage[] }) => {
+      let convId = conversationId;
+      
+      // 如果没有会话ID，创建新会话
+      if (!convId) {
+        const { data: newConv, error: convError } = await supabase
+          .from("chat_conversations")
+          .insert({})
+          .select()
+          .single();
+        
+        if (convError) throw convError;
+        convId = newConv.id;
+        setCurrentConversationId(convId);
+      }
+
+      // 删除旧消息
+      await supabase
+        .from("chat_messages")
+        .delete()
+        .eq("conversation_id", convId);
+
+      // 保存新消息
+      const messagesToSave = messages.map(msg => ({
+        conversation_id: convId,
+        role: msg.type === "user" ? "user" : "assistant",
+        content: msg.content || msg.prompt || "",
+        images: msg.images ? { images: msg.images } : null,
+      }));
+
+      const { error: msgError } = await supabase
+        .from("chat_messages")
+        .insert(messagesToSave);
+
+      if (msgError) throw msgError;
+      
+      return convId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-conversations"] });
     },
   });
 
@@ -118,6 +187,18 @@ const Generate = () => {
 
   useEffect(() => {
     scrollToBottom();
+    
+    // 自动保存对话记录
+    if (chatMessages.length > 0) {
+      const timeoutId = setTimeout(() => {
+        saveConversationMutation.mutate({
+          conversationId: currentConversationId,
+          messages: chatMessages,
+        });
+      }, 1000); // 延迟1秒保存，避免频繁保存
+
+      return () => clearTimeout(timeoutId);
+    }
   }, [chatMessages]);
 
   // 从URL参数加载模板数据
@@ -635,12 +716,90 @@ const Generate = () => {
     <div className="flex flex-col h-screen bg-gradient-to-br from-background via-background to-accent/5">
       {/* 顶部标题 */}
       <header className="flex-shrink-0 border-b bg-card/50 backdrop-blur-sm px-6 py-4">
-        <h1 className="text-2xl font-bold bg-[var(--gradient-primary)] bg-clip-text text-transparent">
-          AI智能绘图
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          描述您的创意，AI会自动选择最合适的模型为您生成图片
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold bg-[var(--gradient-primary)] bg-clip-text text-transparent">
+              AI智能绘图
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              描述您的创意，AI会自动选择最合适的模型为您生成图片
+            </p>
+          </div>
+          <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <HistoryIcon className="h-4 w-4" />
+                生成历史
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-[400px] sm:w-[540px]">
+              <SheetHeader>
+                <SheetTitle>对话历史</SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-100px)] mt-4">
+                <div className="space-y-4">
+                  {conversationHistory && conversationHistory.length > 0 ? (
+                    conversationHistory.map((conversation: any) => {
+                      const firstMessage = conversation.chat_messages?.[0];
+                      const messageCount = conversation.chat_messages?.length || 0;
+                      
+                      return (
+                        <Card 
+                          key={conversation.id} 
+                          className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                          onClick={() => {
+                            // 恢复对话
+                            const messages: ChatMessage[] = conversation.chat_messages.map((msg: any, idx: number) => ({
+                              id: `${msg.id}-${idx}`,
+                              type: msg.role as "user" | "assistant",
+                              content: msg.content,
+                              prompt: msg.content,
+                              images: msg.images?.images || [],
+                              timestamp: new Date(msg.created_at),
+                              mode: "agent" as GenerationMode,
+                            }));
+                            setChatMessages(messages);
+                            setCurrentConversationId(conversation.id);
+                            setIsHistoryOpen(false);
+                            toast({
+                              title: "已恢复对话",
+                              description: `共 ${messageCount} 条消息`,
+                            });
+                          }}
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="outline" className="gap-1">
+                                <MessageSquare className="h-3 w-3" />
+                                {messageCount} 条消息
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(conversation.updated_at), { 
+                                  addSuffix: true,
+                                  locale: zhCN 
+                                })}
+                              </span>
+                            </div>
+                            {firstMessage && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {firstMessage.content}
+                              </p>
+                            )}
+                          </div>
+                        </Card>
+                      );
+                    })
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">暂无对话历史</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        </div>
       </header>
 
       {/* 对话列表区域 */}
