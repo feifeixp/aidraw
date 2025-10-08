@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
@@ -48,7 +49,7 @@ export const EditorToolbar = ({
   const [featherStrength, setFeatherStrength] = useState(50);
   const [showFeatherControl, setShowFeatherControl] = useState(false);
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
-  const [showAngleDialog, setShowAngleDialog] = useState(false);
+  const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [showPoseDialog, setShowPoseDialog] = useState(false);
   const [customPose, setCustomPose] = useState("");
 
@@ -186,14 +187,14 @@ export const EditorToolbar = ({
     }
   };
 
-  const handleAdjustAngle = async (angle: string) => {
+  const handleAdjustCamera = async (setting: string, description: string) => {
     if (!canvas || !activeLayer?.imageUrl) {
       toast.error("请先选择包含图片的图层");
       return;
     }
 
-    setShowAngleDialog(false);
-    toast.info(`正在调整到${angle}，请稍候...`);
+    setShowCameraDialog(false);
+    toast.info(`正在调整镜头：${description}，请稍候...`);
 
     try {
       const response = await fetch(activeLayer.imageUrl);
@@ -206,7 +207,7 @@ export const EditorToolbar = ({
         reader.readAsDataURL(blob);
       });
 
-      const instruction = `Transform this character to show them from a ${angle} view angle. Keep the character's appearance, clothing, and style exactly the same, only change the viewing angle.`;
+      const instruction = `Transform this image to use ${setting}. Keep the subject's appearance, clothing, and style exactly the same, only change the camera framing or angle as specified.`;
 
       const { data: aiData, error: aiError } = await supabase.functions.invoke(
         'ai-edit-image',
@@ -229,13 +230,13 @@ export const EditorToolbar = ({
           imageUrl: aiData.imageUrl,
           fabricObjects: []
         });
-        toast.success("角度调整完成");
+        toast.success("镜头调整完成");
       } else {
         throw new Error('No image returned from AI');
       }
     } catch (error) {
-      console.error("Adjust angle error:", error);
-      toast.error("角度调整失败");
+      console.error("Adjust camera error:", error);
+      toast.error("镜头调整失败");
     }
   };
 
@@ -334,9 +335,9 @@ export const EditorToolbar = ({
           <Palette className="h-4 w-4 mr-1" />
           颜色
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setShowAngleDialog(true)}>
+        <Button variant="outline" size="sm" onClick={() => setShowCameraDialog(true)}>
           <RotateCw className="h-4 w-4 mr-1" />
-          调整角度
+          调整相机
         </Button>
         <Button variant="outline" size="sm" onClick={() => setShowPoseDialog(true)}>
           <PersonStanding className="h-4 w-4 mr-1" />
@@ -373,34 +374,107 @@ export const EditorToolbar = ({
         </div>
       )}
 
-      <Dialog open={showAngleDialog} onOpenChange={setShowAngleDialog}>
-        <DialogContent>
+      <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>选择角度</DialogTitle>
+            <DialogTitle>调整相机</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-4">
-            <Button variant="outline" onClick={() => handleAdjustAngle("front view")}>
-              正面
-            </Button>
-            <Button variant="outline" onClick={() => handleAdjustAngle("back view")}>
-              背面
-            </Button>
-            <Button variant="outline" onClick={() => handleAdjustAngle("side view")}>
-              侧面
-            </Button>
-            <Button variant="outline" onClick={() => handleAdjustAngle("three-quarter front view")}>
-              正面3/4
-            </Button>
-            <Button variant="outline" onClick={() => handleAdjustAngle("three-quarter back view")}>
-              背后3/4
-            </Button>
-            <Button variant="outline" onClick={() => handleAdjustAngle("top view from above")}>
-              上方
-            </Button>
-            <Button variant="outline" onClick={() => handleAdjustAngle("bottom view from below")}>
-              下方
-            </Button>
-          </div>
+          <Tabs defaultValue="shot-types" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="shot-types">镜头类型</TabsTrigger>
+              <TabsTrigger value="angles">镜头角度</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="shot-types" className="space-y-4 py-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">基础镜头</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" onClick={() => handleAdjustCamera("extreme long shot (ELS)", "大远景")}>
+                    大远景 (ELS)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("long shot / wide shot (LS/WS)", "远景")}>
+                    远景 (LS/WS)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("full shot (FS)", "全身镜头")}>
+                    全身镜头 (FS)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("medium long shot / cowboy shot (MLS)", "中远景")}>
+                    中远景 (MLS)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("medium shot (MS)", "中景")}>
+                    中景 (MS)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("medium close-up (MCU)", "中近景")}>
+                    中近景 (MCU)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("close-up (CU)", "近景")}>
+                    近景 (CU)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("extreme close-up (ECU/XCU)", "大特写")}>
+                    大特写 (ECU)
+                  </Button>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">特殊镜头</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" onClick={() => handleAdjustCamera("point of view shot (POV)", "主观视角")}>
+                    主观视角 (POV)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("over the shoulder shot (OTS)", "过肩镜头")}>
+                    过肩镜头 (OTS)
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("two shot", "双人镜头")}>
+                    双人镜头
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("three shot", "三人镜头")}>
+                    三人镜头
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("insert shot", "插入镜头")}>
+                    插入镜头
+                  </Button>
+                  <Button variant="outline" onClick={() => handleAdjustCamera("reaction shot", "反应镜头")}>
+                    反应镜头
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="angles" className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => handleAdjustCamera("eye-level angle", "平视角度")}>
+                  平视角度
+                </Button>
+                <Button variant="outline" onClick={() => handleAdjustCamera("high-angle shot", "俯视角度")}>
+                  俯视角度
+                </Button>
+                <Button variant="outline" onClick={() => handleAdjustCamera("low-angle shot", "仰视角度")}>
+                  仰视角度
+                </Button>
+                <Button variant="outline" onClick={() => handleAdjustCamera("worm's-eye view", "虫瞻视角")}>
+                  虫瞻视角
+                </Button>
+                <Button variant="outline" onClick={() => handleAdjustCamera("bird's-eye view / top-down shot", "鸟瞰视角")}>
+                  鸟瞰视角
+                </Button>
+                <Button variant="outline" onClick={() => handleAdjustCamera("dutch angle / canted angle", "荷兰式倾斜")}>
+                  荷兰式倾斜
+                </Button>
+                <Button variant="outline" onClick={() => handleAdjustCamera("hip-level shot", "齐腰镜头")}>
+                  齐腰镜头
+                </Button>
+                <Button variant="outline" onClick={() => handleAdjustCamera("knee-level shot", "齐膝镜头")}>
+                  齐膝镜头
+                </Button>
+                <Button variant="outline" onClick={() => handleAdjustCamera("ground-level shot", "地面镜头")}>
+                  地面镜头
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
