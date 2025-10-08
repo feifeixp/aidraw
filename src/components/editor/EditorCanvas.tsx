@@ -47,20 +47,22 @@ export const EditorCanvas = ({
       }
     };
 
-    // Add event listeners for canvas modifications
-    fabricCanvas.on('object:modified', saveState);
-    fabricCanvas.on('object:added', saveState);
+    // Add event listener for canvas modifications (but not for initial object additions)
+    const handleObjectModified = () => {
+      saveState();
+    };
+    
+    fabricCanvas.on('object:modified', handleObjectModified);
     
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
     return () => {
-      fabricCanvas.off('object:modified', saveState);
-      fabricCanvas.off('object:added', saveState);
+      fabricCanvas.off('object:modified', handleObjectModified);
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
-  }, [saveState]);
+  }, []);
 
   useEffect(() => {
     if (!canvas) return;
@@ -104,14 +106,17 @@ export const EditorCanvas = ({
           canvas.add(img);
           canvas.renderAll();
           
-          // Update layer with fabric object
+          // Update layer with fabric object and save state after image is loaded
           updateLayer(layer.id, { fabricObjects: [img] });
+          
+          // Save state after image is successfully added
+          setTimeout(() => saveState(), 100);
         }).catch(error => {
           console.error('Error loading image:', error);
         });
       }
     });
-  }, [layers, canvas, updateLayer]);
+  }, [layers, canvas, updateLayer, saveState]);
 
   useEffect(() => {
     if (!canvas) return;
