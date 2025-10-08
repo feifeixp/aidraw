@@ -1201,12 +1201,12 @@ const Generate = () => {
                                 }
                               }}
                             >
-                              <div className="relative aspect-square overflow-hidden rounded-t-lg bg-muted">
+                              <div className="relative aspect-[3/4] overflow-hidden rounded-t-lg bg-muted">
                                 {model.thumbnail_url ? (
                                   <img
                                     src={model.thumbnail_url}
                                     alt={model.name}
-                                    className="h-full w-full object-cover"
+                                    className="h-full w-full object-contain"
                                   />
                                 ) : (
                                   <div className="flex items-center justify-center h-full">
