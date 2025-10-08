@@ -38,6 +38,7 @@ export const EditorToolbar = ({
 }: EditorToolbarProps) => {
   const [featherStrength, setFeatherStrength] = useState(50);
   const [showFeatherControl, setShowFeatherControl] = useState(false);
+  const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
 
   const handleCrop = () => {
     if (!canvas) return;
@@ -75,6 +76,9 @@ export const EditorToolbar = ({
       if (aiError) throw aiError;
 
       if (aiData?.imageUrl) {
+        // Save the original AI image for reprocessing
+        setOriginalAiImage(aiData.imageUrl);
+        
         // Step 3: Convert magenta color to transparent with feather strength
         toast.info("正在处理透明通道...");
         const transparentUrl = await convertMagentaToTransparent(aiData.imageUrl, featherStrength);
@@ -131,6 +135,26 @@ export const EditorToolbar = ({
 
   const handleRedo = () => {
     toast.info("重做功能开发中");
+  };
+
+  const handleReprocessFeather = async () => {
+    if (!originalAiImage || !activeLayer) {
+      toast.error("没有可重新处理的图片");
+      return;
+    }
+
+    toast.info("正在重新处理透明通道...");
+    try {
+      const transparentUrl = await convertMagentaToTransparent(originalAiImage, featherStrength);
+      updateLayer(activeLayer.id, { 
+        imageUrl: transparentUrl,
+        fabricObjects: []
+      });
+      toast.success("重新处理完成");
+    } catch (error) {
+      console.error("Reprocess error:", error);
+      toast.error("重新处理失败");
+    }
   };
 
   return (
@@ -198,7 +222,7 @@ export const EditorToolbar = ({
           <span className="text-sm font-medium w-12 text-right">{featherStrength}</span>
           <Button 
             size="sm" 
-            onClick={handleRemoveBackground}
+            onClick={handleReprocessFeather}
             variant="secondary"
           >
             重新处理
