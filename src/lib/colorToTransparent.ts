@@ -71,15 +71,16 @@ export const convertMagentaToTransparent = async (
       console.log('Detected background color:', avgColor);
       
       // Calculate tolerance based on featherStrength (0-100)
-      // Higher strength = more aggressive background removal
-      const minTolerance = 20 + (featherStrength * 0.3);  // 20-50
-      const maxTolerance = 40 + (featherStrength * 0.6);  // 40-100
+      const baseThreshold = 30; // Base threshold for background detection
+      const featherRange = 10 + (featherStrength * 0.5); // 10-60 range for feathering
       
-      console.log('Using tolerances:', { minTolerance, maxTolerance, featherStrength });
+      console.log('Using threshold:', baseThreshold, 'feather range:', featherRange, 'strength:', featherStrength);
       
-      // First pass: Mark pixels for transparency with feathering
+      // First pass: Identify background pixels (strict threshold)
+      const isBackground = new Uint8Array(canvas.width * canvas.height);
       
       for (let i = 0; i < data.length; i += 4) {
+        const pixelIndex = i / 4;
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
@@ -91,29 +92,74 @@ export const convertMagentaToTransparent = async (
           Math.pow(b - avgColor.b, 2)
         );
         
-        if (distance < minTolerance) {
-          // Fully transparent
-          data[i + 3] = 0;
-        } else if (distance < maxTolerance) {
-          // Gradual transparency for edge feathering
-          const alpha = ((distance - minTolerance) / (maxTolerance - minTolerance)) * 255;
-          data[i + 3] = Math.min(255, alpha);
+        if (distance < baseThreshold) {
+          isBackground[pixelIndex] = 1;
+          data[i + 3] = 0; // Make fully transparent
         }
-        // else: keep original alpha (fully opaque)
       }
       
-      // Second pass: Edge cleanup - remove color spill from semi-transparent pixels
-      for (let i = 0; i < data.length; i += 4) {
-        const alpha = data[i + 3];
-        
-        // For semi-transparent pixels, reduce the background color influence
-        if (alpha > 0 && alpha < 255) {
-          const factor = alpha / 255;
+      // Second pass: Detect edge pixels and apply feathering only to edges
+      const featherRadius = Math.ceil(featherRange / 10); // Convert to pixel radius
+      
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const pixelIndex = y * canvas.width + x;
+          const i = pixelIndex * 4;
           
-          // Remove background color tint from RGB channels
-          data[i] = Math.min(255, (data[i] - avgColor.r * (1 - factor)) / factor);
-          data[i + 1] = Math.min(255, (data[i + 1] - avgColor.g * (1 - factor)) / factor);
-          data[i + 2] = Math.min(255, (data[i + 2] - avgColor.b * (1 - factor)) / factor);
+          // Skip if already marked as background
+          if (isBackground[pixelIndex]) continue;
+          
+          // Check if this pixel is near a transparent pixel (i.e., it's an edge)
+          let nearTransparent = false;
+          let minDistToBackground = Infinity;
+          
+          // Check surrounding pixels within feather radius
+          for (let dy = -featherRadius; dy <= featherRadius; dy++) {
+            for (let dx = -featherRadius; dx <= featherRadius; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              
+              // Skip out of bounds
+              if (nx < 0 || nx >= canvas.width || ny < 0 || ny >= canvas.height) continue;
+              
+              const neighborIndex = ny * canvas.width + nx;
+              
+              if (isBackground[neighborIndex]) {
+                nearTransparent = true;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                minDistToBackground = Math.min(minDistToBackground, dist);
+              }
+            }
+          }
+          
+          // Apply feathering only to edge pixels
+          if (nearTransparent && minDistToBackground < featherRadius) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            
+            // Calculate color distance from background
+            const colorDistance = Math.sqrt(
+              Math.pow(r - avgColor.r, 2) +
+              Math.pow(g - avgColor.g, 2) +
+              Math.pow(b - avgColor.b, 2)
+            );
+            
+            // Apply soft feathering based on both spatial and color distance
+            const spatialFactor = minDistToBackground / featherRadius;
+            const colorFactor = Math.min(1, colorDistance / featherRange);
+            const alpha = Math.max(spatialFactor, colorFactor) * 255;
+            
+            data[i + 3] = Math.min(255, alpha);
+            
+            // Remove background color spill from semi-transparent pixels
+            if (alpha > 0 && alpha < 255) {
+              const factor = alpha / 255;
+              data[i] = Math.min(255, (data[i] - avgColor.r * (1 - factor)) / factor);
+              data[i + 1] = Math.min(255, (data[i + 1] - avgColor.g * (1 - factor)) / factor);
+              data[i + 2] = Math.min(255, (data[i + 2] - avgColor.b * (1 - factor)) / factor);
+            }
+          }
         }
       }
       
