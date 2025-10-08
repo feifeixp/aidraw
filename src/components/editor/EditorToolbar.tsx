@@ -14,6 +14,7 @@ import {
   Redo,
   RotateCw,
   PersonStanding,
+  Users,
 } from "lucide-react";
 import { Canvas as FabricCanvas } from "fabric";
 import { Layer } from "@/pages/Editor";
@@ -51,6 +52,7 @@ export const EditorToolbar = ({
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [showPoseDialog, setShowPoseDialog] = useState(false);
+  const [showSubjectAngleDialog, setShowSubjectAngleDialog] = useState(false);
   const [customPose, setCustomPose] = useState("");
 
   const handleCrop = () => {
@@ -293,6 +295,59 @@ export const EditorToolbar = ({
     }
   };
 
+  const handleAdjustSubjectAngle = async (angle: string, description: string) => {
+    if (!canvas || !activeLayer?.imageUrl) {
+      toast.error("请先选择包含图片的图层");
+      return;
+    }
+
+    setShowSubjectAngleDialog(false);
+    toast.info(`正在调整为${description}，请稍候...`);
+
+    try {
+      const response = await fetch(activeLayer.imageUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      const base64Image = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const instruction = `Rotate this subject to show them from ${angle}. Keep the subject's appearance, clothing, style, pose, and background exactly the same, only rotate the subject's body orientation to face ${angle}.`;
+
+      const { data: aiData, error: aiError } = await supabase.functions.invoke(
+        'ai-edit-image',
+        {
+          body: { imageUrl: base64Image, instruction }
+        }
+      );
+
+      if (aiError) throw aiError;
+
+      if (aiData?.imageUrl) {
+        if (canvas && activeLayer.fabricObjects.length > 0) {
+          activeLayer.fabricObjects.forEach(obj => {
+            canvas.remove(obj);
+          });
+          canvas.renderAll();
+        }
+        
+        updateLayer(activeLayer.id, { 
+          imageUrl: aiData.imageUrl,
+          fabricObjects: []
+        });
+        toast.success("主体角度调整完成");
+      } else {
+        throw new Error('No image returned from AI');
+      }
+    } catch (error) {
+      console.error("Adjust subject angle error:", error);
+      toast.error("主体角度调整失败");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -338,6 +393,10 @@ export const EditorToolbar = ({
         <Button variant="outline" size="sm" onClick={() => setShowCameraDialog(true)}>
           <RotateCw className="h-4 w-4 mr-1" />
           调整相机
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setShowSubjectAngleDialog(true)}>
+          <Users className="h-4 w-4 mr-1" />
+          调整主体角度
         </Button>
         <Button variant="outline" size="sm" onClick={() => setShowPoseDialog(true)}>
           <PersonStanding className="h-4 w-4 mr-1" />
@@ -475,6 +534,33 @@ export const EditorToolbar = ({
               </div>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSubjectAngleDialog} onOpenChange={setShowSubjectAngleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>调整主体角度</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" onClick={() => handleAdjustSubjectAngle("the front", "正面")}>
+                正面
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustSubjectAngle("the back", "背面")}>
+                背面
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustSubjectAngle("the side", "侧面")}>
+                侧面
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustSubjectAngle("three-quarter front view", "正侧面")}>
+                正侧面 (3/4前)
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustSubjectAngle("three-quarter back view", "背侧面")}>
+                背侧面 (3/4后)
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
