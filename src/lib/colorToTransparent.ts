@@ -1,6 +1,7 @@
 /**
  * Intelligently detect and remove background color from an image
  * Samples the four corners to determine the background color
+ * Uses edge feathering for cleaner results
  */
 export const convertMagentaToTransparent = async (imageUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -26,12 +27,12 @@ export const convertMagentaToTransparent = async (imageUrl: string): Promise<str
       const data = imageData.data;
       
       // Sample the four corners to detect background color
-      const sampleSize = 10; // Sample a 10x10 area from each corner
+      const sampleSize = 10;
       const corners = [
-        { x: 0, y: 0 }, // Top-left
-        { x: canvas.width - sampleSize, y: 0 }, // Top-right
-        { x: 0, y: canvas.height - sampleSize }, // Bottom-left
-        { x: canvas.width - sampleSize, y: canvas.height - sampleSize } // Bottom-right
+        { x: 0, y: 0 },
+        { x: canvas.width - sampleSize, y: 0 },
+        { x: 0, y: canvas.height - sampleSize },
+        { x: canvas.width - sampleSize, y: canvas.height - sampleSize }
       ];
       
       // Collect color samples from corners
@@ -64,9 +65,9 @@ export const convertMagentaToTransparent = async (imageUrl: string): Promise<str
       
       console.log('Detected background color:', avgColor);
       
-      // Convert pixels similar to background color to transparent
-      // Use a higher tolerance for better results
-      const tolerance = 40;
+      // First pass: Mark pixels for transparency with feathering
+      const minTolerance = 30;  // Pixels within this are fully transparent
+      const maxTolerance = 60;  // Pixels beyond this are fully opaque
       
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
@@ -80,9 +81,29 @@ export const convertMagentaToTransparent = async (imageUrl: string): Promise<str
           Math.pow(b - avgColor.b, 2)
         );
         
-        // If color is close to background, make it transparent
-        if (distance < tolerance) {
+        if (distance < minTolerance) {
+          // Fully transparent
           data[i + 3] = 0;
+        } else if (distance < maxTolerance) {
+          // Gradual transparency for edge feathering
+          const alpha = ((distance - minTolerance) / (maxTolerance - minTolerance)) * 255;
+          data[i + 3] = Math.min(255, alpha);
+        }
+        // else: keep original alpha (fully opaque)
+      }
+      
+      // Second pass: Edge cleanup - remove color spill from semi-transparent pixels
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3];
+        
+        // For semi-transparent pixels, reduce the background color influence
+        if (alpha > 0 && alpha < 255) {
+          const factor = alpha / 255;
+          
+          // Remove background color tint from RGB channels
+          data[i] = Math.min(255, (data[i] - avgColor.r * (1 - factor)) / factor);
+          data[i + 1] = Math.min(255, (data[i + 1] - avgColor.g * (1 - factor)) / factor);
+          data[i + 2] = Math.min(255, (data[i + 2] - avgColor.b * (1 - factor)) / factor);
         }
       }
       
