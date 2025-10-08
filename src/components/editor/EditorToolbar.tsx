@@ -15,6 +15,7 @@ import {
   RotateCw,
   PersonStanding,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { Canvas as FabricCanvas } from "fabric";
 import { Layer } from "@/pages/Editor";
@@ -348,6 +349,66 @@ export const EditorToolbar = ({
     }
   };
 
+  const handleRedraw = async () => {
+    if (!canvas) {
+      toast.error("画布未初始化");
+      return;
+    }
+
+    toast.info("正在融合图层并重新绘制，请稍候...");
+
+    try {
+      // Export the entire canvas as a single image
+      const canvasDataURL = canvas.toDataURL({
+        format: "png",
+        quality: 1,
+        multiplier: 1,
+      });
+
+      const instruction = `Redraw this image with professional lighting and shading. Enhance the lighting, add proper shadows and highlights based on the environment and composition. Make it look more polished and professionally lit while keeping all subjects and elements in their exact positions.`;
+
+      const { data: aiData, error: aiError } = await supabase.functions.invoke(
+        'ai-edit-image',
+        {
+          body: { imageUrl: canvasDataURL, instruction }
+        }
+      );
+
+      if (aiError) throw aiError;
+
+      if (aiData?.imageUrl) {
+        // Clear all existing objects from canvas
+        canvas.clear();
+        canvas.backgroundColor = "#ffffff";
+        
+        // Load the redrawn image and add it to canvas
+        const htmlImg = await loadImage(aiData.imageUrl);
+        const { FabricImage } = await import("fabric");
+        const fabricImg = new FabricImage(htmlImg, {
+          left: 0,
+          top: 0,
+          selectable: false,
+        });
+        
+        // Scale to fit canvas if needed
+        const scaleX = canvas.width! / fabricImg.width!;
+        const scaleY = canvas.height! / fabricImg.height!;
+        const scale = Math.min(scaleX, scaleY);
+        fabricImg.scale(scale);
+        
+        canvas.add(fabricImg);
+        canvas.renderAll();
+        
+        toast.success("重绘完成");
+      } else {
+        throw new Error('No image returned from AI');
+      }
+    } catch (error) {
+      console.error("Redraw error:", error);
+      toast.error("重绘失败");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -385,6 +446,10 @@ export const EditorToolbar = ({
         <Button variant="outline" size="sm" onClick={handleFlip}>
           <FlipHorizontal className="h-4 w-4 mr-1" />
           镜像
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleRedraw}>
+          <Sparkles className="h-4 w-4 mr-1" />
+          重绘
         </Button>
         <Button variant="outline" size="sm" onClick={handleColorAdjust}>
           <Palette className="h-4 w-4 mr-1" />
