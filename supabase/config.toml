@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.ai-enhance-prompt]
 verify_jwt = false
 
+[functions.ai-remove-background]
+verify_jwt = false
+
 [functions.ai-select-model]
 verify_jwt = false
 

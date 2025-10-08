@@ -15,6 +15,7 @@ import { Canvas as FabricCanvas } from "fabric";
 import { Layer } from "@/pages/Editor";
 import { toast } from "sonner";
 import { removeBackground, loadImage } from "@/lib/backgroundRemoval";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
@@ -43,15 +44,38 @@ export const EditorToolbar = ({
       return;
     }
 
-    toast.info("正在去除背景，请稍候...");
+    toast.info("正在使用 AI 去除背景，请稍候...");
     try {
+      // First try AI background removal
+      const { data: aiData, error: aiError } = await supabase.functions.invoke(
+        'ai-remove-background',
+        {
+          body: { imageUrl: activeLayer.imageUrl }
+        }
+      );
+
+      if (aiError) throw aiError;
+
+      if (aiData?.imageUrl) {
+        // Clear fabricObjects to force canvas reload
+        updateLayer(activeLayer.id, { 
+          imageUrl: aiData.imageUrl,
+          fabricObjects: []
+        });
+        toast.success("AI 背景已去除");
+        return;
+      }
+
+      // Fallback to local background removal if AI fails
+      toast.info("使用本地方法去除背景...");
       const img = await loadImage(await fetch(activeLayer.imageUrl).then(r => r.blob()));
       const resultBlob = await removeBackground(img);
       const resultUrl = URL.createObjectURL(resultBlob);
       
-      if (activeLayer) {
-        updateLayer(activeLayer.id, { imageUrl: resultUrl });
-      }
+      updateLayer(activeLayer.id, { 
+        imageUrl: resultUrl,
+        fabricObjects: []
+      });
       toast.success("背景已去除");
     } catch (error) {
       console.error("Remove background error:", error);
