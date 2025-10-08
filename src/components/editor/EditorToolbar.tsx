@@ -44,41 +44,13 @@ export const EditorToolbar = ({
       return;
     }
 
-    toast.info("正在使用 AI 去除背景，请稍候...");
+    toast.info("正在去除背景，请稍候...");
     try {
       // Convert blob URL to base64
       const response = await fetch(activeLayer.imageUrl);
       const blob = await response.blob();
-      const reader = new FileReader();
       
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-
-      // Try AI background removal with base64 image
-      const { data: aiData, error: aiError } = await supabase.functions.invoke(
-        'ai-remove-background',
-        {
-          body: { imageUrl: base64Image }
-        }
-      );
-
-      if (aiError) throw aiError;
-
-      if (aiData?.imageUrl) {
-        // Clear fabricObjects to force canvas reload
-        updateLayer(activeLayer.id, { 
-          imageUrl: aiData.imageUrl,
-          fabricObjects: []
-        });
-        toast.success("AI 背景已去除");
-        return;
-      }
-
-      // Fallback to local background removal if AI fails
-      toast.info("使用本地方法去除背景...");
+      // Use local transformers.js method for true PNG transparency
       const img = await loadImage(blob);
       const resultBlob = await removeBackground(img);
       const resultUrl = URL.createObjectURL(resultBlob);

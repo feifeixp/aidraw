@@ -15,53 +15,13 @@ Deno.serve(async (req) => {
     }
 
     console.log('Removing background from image...');
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Remove the background from this image and make it completely transparent. The output must be a PNG image with a true alpha channel (transparent background), not a checkered pattern. Keep only the main subject and make everything else fully transparent."
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageUrl
-                }
-              }
-            ]
-          }
-        ],
-        modalities: ["image", "text"]
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error:', errorText);
-      throw new Error(`API request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('API response received');
-
-    const editedImageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-    if (!editedImageUrl) {
-      throw new Error('No image returned from API');
-    }
-
+    
+    // Gemini's image editing may not support true transparent backgrounds
+    // So we'll skip AI and use the local method directly
+    console.log('Using local background removal method for true transparency');
+    
     return new Response(
-      JSON.stringify({ imageUrl: editedImageUrl }),
+      JSON.stringify({ imageUrl: null, useLocal: true }),
       { 
         headers: { 
           ...corsHeaders,
