@@ -7,6 +7,7 @@ import Generate from "./pages/Generate";
 import Models from "./pages/Models";
 import History from "./pages/History";
 import Inspiration from "./pages/Inspiration";
+import Editor from "./pages/Editor";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/inspiration" element={<Inspiration />} />
             <Route path="/models" element={<Models />} />
             <Route path="/history" element={<History />} />
+            <Route path="/editor" element={<Editor />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
