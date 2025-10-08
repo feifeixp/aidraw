@@ -76,6 +76,7 @@ const Editor = () => {
           setActiveTool={setActiveTool}
           activeLayer={activeLayer}
           updateLayer={updateLayer}
+          addLayer={addLayer}
         />
       </div>
       

@@ -39,6 +39,7 @@ interface EditorToolbarProps {
   setActiveTool: (tool: string) => void;
   activeLayer?: Layer;
   updateLayer: (id: string, updates: Partial<Layer>) => void;
+  addLayer: () => void;
 }
 
 export const EditorToolbar = ({
@@ -47,6 +48,7 @@ export const EditorToolbar = ({
   setActiveTool,
   activeLayer,
   updateLayer,
+  addLayer,
 }: EditorToolbarProps) => {
   const [featherStrength, setFeatherStrength] = useState(50);
   const [showFeatherControl, setShowFeatherControl] = useState(false);
@@ -358,7 +360,7 @@ export const EditorToolbar = ({
     toast.info("正在融合图层并重新绘制，请稍候...");
 
     try {
-      // Export the entire canvas as a single image
+      // Export the entire canvas as a single image (without clearing it first)
       const canvasDataURL = canvas.toDataURL({
         format: "png",
         quality: 1,
@@ -374,20 +376,19 @@ export const EditorToolbar = ({
         }
       );
 
-      if (aiError) throw aiError;
+      if (aiError) {
+        console.error("AI service error:", aiError);
+        throw new Error(`AI服务错误: ${aiError.message || '未知错误'}`);
+      }
 
       if (aiData?.imageUrl) {
-        // Clear all existing objects from canvas
-        canvas.clear();
-        canvas.backgroundColor = "#ffffff";
-        
-        // Load the redrawn image and add it to canvas
+        // Load the redrawn image
         const htmlImg = await loadImage(aiData.imageUrl);
         const { FabricImage } = await import("fabric");
         const fabricImg = new FabricImage(htmlImg, {
           left: 0,
           top: 0,
-          selectable: false,
+          selectable: true,
         });
         
         // Scale to fit canvas if needed
@@ -396,16 +397,22 @@ export const EditorToolbar = ({
         const scale = Math.min(scaleX, scaleY);
         fabricImg.scale(scale);
         
+        // Add to canvas first
         canvas.add(fabricImg);
         canvas.renderAll();
         
-        toast.success("重绘完成");
+        // Create a new layer for the redrawn image
+        addLayer();
+        
+        toast.success("重绘完成！已添加到新图层");
       } else {
-        throw new Error('No image returned from AI');
+        throw new Error('AI未返回图片');
       }
     } catch (error) {
       console.error("Redraw error:", error);
-      toast.error("重绘失败");
+      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      toast.error(`重绘失败: ${errorMessage}`);
+      // Original canvas remains intact - no need to restore
     }
   };
 
