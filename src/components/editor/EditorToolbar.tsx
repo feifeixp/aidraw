@@ -382,10 +382,18 @@ export const EditorToolbar = ({
       }
 
       if (aiData?.imageUrl) {
-        // Load the redrawn image
-        const htmlImg = await loadImage(aiData.imageUrl);
+        // Load the redrawn image directly from base64
         const { FabricImage } = await import("fabric");
-        const fabricImg = new FabricImage(htmlImg, {
+        
+        // Create image from base64 data URL
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = aiData.imageUrl;
+        });
+        
+        const fabricImg = new FabricImage(img, {
           left: 0,
           top: 0,
           selectable: true,
