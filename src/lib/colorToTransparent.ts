@@ -72,9 +72,14 @@ export const convertMagentaToTransparent = async (
       
       // Calculate tolerance based on featherStrength (0-100)
       const baseThreshold = 30; // Base threshold for background detection
-      const featherRange = 10 + (featherStrength * 0.5); // 10-60 range for feathering
+      const featherRange = 20 + (featherStrength * 0.8); // 20-100 range for color feathering
       
-      console.log('Using threshold:', baseThreshold, 'feather range:', featherRange, 'strength:', featherStrength);
+      // Increased edge detection radius based on feather strength
+      const baseEdgeRadius = 3; // Minimum edge detection radius
+      const maxEdgeRadius = 15; // Maximum edge detection radius
+      const featherRadius = baseEdgeRadius + Math.ceil((featherStrength / 100) * (maxEdgeRadius - baseEdgeRadius));
+      
+      console.log('Using threshold:', baseThreshold, 'feather range:', featherRange, 'feather radius:', featherRadius, 'strength:', featherStrength);
       
       // First pass: Identify background pixels (strict threshold)
       const isBackground = new Uint8Array(canvas.width * canvas.height);
@@ -99,7 +104,6 @@ export const convertMagentaToTransparent = async (
       }
       
       // Second pass: Detect edge pixels and apply feathering only to edges
-      const featherRadius = Math.ceil(featherRange / 10); // Convert to pixel radius
       
       for (let y = 0; y < canvas.height; y++) {
         for (let x = 0; x < canvas.width; x++) {
