@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Remove the background from this image. Keep only the main subject with a transparent background."
+                text: "Remove the background from this image and make it completely transparent. The output must be a PNG image with a true alpha channel (transparent background), not a checkered pattern. Keep only the main subject and make everything else fully transparent."
               },
               {
                 type: "image_url",
