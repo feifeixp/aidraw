@@ -12,6 +12,8 @@ import {
   Download,
   Undo,
   Redo,
+  RotateCw,
+  PersonStanding,
 } from "lucide-react";
 import { Canvas as FabricCanvas } from "fabric";
 import { Layer } from "@/pages/Editor";
@@ -20,6 +22,13 @@ import { removeBackground, loadImage } from "@/lib/backgroundRemoval";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
 import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
@@ -39,6 +48,9 @@ export const EditorToolbar = ({
   const [featherStrength, setFeatherStrength] = useState(50);
   const [showFeatherControl, setShowFeatherControl] = useState(false);
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
+  const [showAngleDialog, setShowAngleDialog] = useState(false);
+  const [showPoseDialog, setShowPoseDialog] = useState(false);
+  const [customPose, setCustomPose] = useState("");
 
   const handleCrop = () => {
     if (!canvas) return;
@@ -174,6 +186,112 @@ export const EditorToolbar = ({
     }
   };
 
+  const handleAdjustAngle = async (angle: string) => {
+    if (!canvas || !activeLayer?.imageUrl) {
+      toast.error("请先选择包含图片的图层");
+      return;
+    }
+
+    setShowAngleDialog(false);
+    toast.info(`正在调整到${angle}，请稍候...`);
+
+    try {
+      const response = await fetch(activeLayer.imageUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      const base64Image = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const instruction = `Transform this character to show them from a ${angle} view angle. Keep the character's appearance, clothing, and style exactly the same, only change the viewing angle.`;
+
+      const { data: aiData, error: aiError } = await supabase.functions.invoke(
+        'ai-edit-image',
+        {
+          body: { imageUrl: base64Image, instruction }
+        }
+      );
+
+      if (aiError) throw aiError;
+
+      if (aiData?.imageUrl) {
+        if (canvas && activeLayer.fabricObjects.length > 0) {
+          activeLayer.fabricObjects.forEach(obj => {
+            canvas.remove(obj);
+          });
+          canvas.renderAll();
+        }
+        
+        updateLayer(activeLayer.id, { 
+          imageUrl: aiData.imageUrl,
+          fabricObjects: []
+        });
+        toast.success("角度调整完成");
+      } else {
+        throw new Error('No image returned from AI');
+      }
+    } catch (error) {
+      console.error("Adjust angle error:", error);
+      toast.error("角度调整失败");
+    }
+  };
+
+  const handleAdjustPose = async (pose: string) => {
+    if (!canvas || !activeLayer?.imageUrl) {
+      toast.error("请先选择包含图片的图层");
+      return;
+    }
+
+    setShowPoseDialog(false);
+    toast.info(`正在调整为${pose}姿势，请稍候...`);
+
+    try {
+      const response = await fetch(activeLayer.imageUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      const base64Image = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const instruction = `Change this character's pose to: ${pose}. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position.`;
+
+      const { data: aiData, error: aiError } = await supabase.functions.invoke(
+        'ai-edit-image',
+        {
+          body: { imageUrl: base64Image, instruction }
+        }
+      );
+
+      if (aiError) throw aiError;
+
+      if (aiData?.imageUrl) {
+        if (canvas && activeLayer.fabricObjects.length > 0) {
+          activeLayer.fabricObjects.forEach(obj => {
+            canvas.remove(obj);
+          });
+          canvas.renderAll();
+        }
+        
+        updateLayer(activeLayer.id, { 
+          imageUrl: aiData.imageUrl,
+          fabricObjects: []
+        });
+        toast.success("姿势调整完成");
+      } else {
+        throw new Error('No image returned from AI');
+      }
+    } catch (error) {
+      console.error("Adjust pose error:", error);
+      toast.error("姿势调整失败");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -216,6 +334,14 @@ export const EditorToolbar = ({
           <Palette className="h-4 w-4 mr-1" />
           颜色
         </Button>
+        <Button variant="outline" size="sm" onClick={() => setShowAngleDialog(true)}>
+          <RotateCw className="h-4 w-4 mr-1" />
+          调整角度
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setShowPoseDialog(true)}>
+          <PersonStanding className="h-4 w-4 mr-1" />
+          调整动作
+        </Button>
 
         <Separator orientation="vertical" className="h-6" />
 
@@ -246,6 +372,85 @@ export const EditorToolbar = ({
           </Button>
         </div>
       )}
+
+      <Dialog open={showAngleDialog} onOpenChange={setShowAngleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>选择角度</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-4">
+            <Button variant="outline" onClick={() => handleAdjustAngle("front view")}>
+              正面
+            </Button>
+            <Button variant="outline" onClick={() => handleAdjustAngle("back view")}>
+              背面
+            </Button>
+            <Button variant="outline" onClick={() => handleAdjustAngle("side view")}>
+              侧面
+            </Button>
+            <Button variant="outline" onClick={() => handleAdjustAngle("three-quarter front view")}>
+              正面3/4
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPoseDialog} onOpenChange={setShowPoseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>选择或输入动作</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" onClick={() => handleAdjustPose("standing")}>
+                站立
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustPose("sitting")}>
+                坐着
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustPose("walking")}>
+                行走
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustPose("running")}>
+                奔跑
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustPose("jumping")}>
+                跳跃
+              </Button>
+              <Button variant="outline" onClick={() => handleAdjustPose("waving")}>
+                挥手
+              </Button>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <Label>自定义动作</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="输入自定义动作描述..."
+                  value={customPose}
+                  onChange={(e) => setCustomPose(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && customPose.trim()) {
+                      handleAdjustPose(customPose);
+                      setCustomPose("");
+                    }
+                  }}
+                />
+                <Button 
+                  onClick={() => {
+                    if (customPose.trim()) {
+                      handleAdjustPose(customPose);
+                      setCustomPose("");
+                    }
+                  }}
+                >
+                  应用
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

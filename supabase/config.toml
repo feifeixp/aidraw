@@ -3,6 +3,9 @@ project_id = "fosvwmuvanqdwlqtlhlx"
 [functions.agent-chat]
 verify_jwt = false
 
+[functions.ai-edit-image]
+verify_jwt = false
+
 [functions.ai-enhance-prompt]
 verify_jwt = false
 
