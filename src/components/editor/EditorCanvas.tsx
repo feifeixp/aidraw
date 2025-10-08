@@ -49,6 +49,41 @@ export const EditorCanvas = ({
     }
   }, [activeTool, canvas]);
 
+  // Load images when imageUrl changes
+  useEffect(() => {
+    if (!canvas) return;
+
+    layers.forEach(layer => {
+      if (layer.imageUrl && layer.fabricObjects.length === 0) {
+        FabricImage.fromURL(layer.imageUrl).then(img => {
+          if (!img) return;
+          
+          // Scale image to fit canvas while maintaining aspect ratio
+          const canvasWidth = canvas.width || 1024;
+          const canvasHeight = canvas.height || 768;
+          const scaleX = canvasWidth / (img.width || 1);
+          const scaleY = canvasHeight / (img.height || 1);
+          const scale = Math.min(scaleX, scaleY);
+          
+          img.scale(scale);
+          img.set({
+            left: (canvasWidth - (img.width || 0) * scale) / 2,
+            top: (canvasHeight - (img.height || 0) * scale) / 2,
+            selectable: !layer.locked,
+            opacity: layer.opacity / 100,
+            visible: layer.visible,
+          });
+          
+          canvas.add(img);
+          canvas.renderAll();
+          
+          // Update layer with fabric object
+          updateLayer(layer.id, { fabricObjects: [img] });
+        });
+      }
+    });
+  }, [layers, canvas, updateLayer]);
+
   useEffect(() => {
     if (!canvas) return;
 
@@ -58,6 +93,7 @@ export const EditorCanvas = ({
         if (obj) {
           obj.visible = layer.visible;
           obj.opacity = layer.opacity / 100;
+          obj.selectable = !layer.locked;
         }
       });
     });
