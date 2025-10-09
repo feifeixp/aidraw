@@ -36,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 
 interface LeftToolbarProps {
   canvas: FabricCanvas | null;
@@ -49,6 +50,7 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
   const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [showSubjectAngleDialog, setShowSubjectAngleDialog] = useState(false);
   const [showPoseDialog, setShowPoseDialog] = useState(false);
+  const [showRemoveBgDialog, setShowRemoveBgDialog] = useState(false);
 
   // Add Image
   const handleUploadImage = () => {
@@ -185,6 +187,7 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
       return;
     }
 
+    setShowRemoveBgDialog(false);
     toast.info("正在使用 AI 去除背景，请稍候...");
     try {
       const imageDataURL = (activeObject as any).toDataURL({
@@ -456,7 +459,7 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
         <Separator />
 
         {/* Image Editing */}
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleRemoveBackground}>
+        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowRemoveBgDialog(true)}>
           <ImageOff className="h-4 w-4 mr-2" />
           去背景
         </Button>
@@ -542,6 +545,35 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
             <Button onClick={() => handleAdjustPose("walking")} className="w-full">行走</Button>
             <Button onClick={() => handleAdjustPose("running")} className="w-full">跑步</Button>
             <Button onClick={() => handleAdjustPose("jumping")} className="w-full">跳跃</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Background Dialog */}
+      <Dialog open={showRemoveBgDialog} onOpenChange={setShowRemoveBgDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>去除背景设置</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="feather-strength">透明通道羽化强度: {featherStrength}</Label>
+              <Slider
+                id="feather-strength"
+                min={0}
+                max={100}
+                step={1}
+                value={[featherStrength]}
+                onValueChange={(value) => setFeatherStrength(value[0])}
+                className="w-full"
+              />
+              <p className="text-sm text-muted-foreground">
+                较低的值会产生更锐利的边缘，较高的值会产生更柔和的过渡
+              </p>
+            </div>
+            <Button onClick={handleRemoveBackground} className="w-full">
+              开始去除背景
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
