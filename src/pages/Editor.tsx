@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer } from "react";
+import { useState, useEffect, useReducer, useCallback } from "react";
 import { Canvas as FabricCanvas } from "fabric";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
@@ -65,14 +65,14 @@ const Editor = () => {
   });
 
   // Save canvas state to history
-  const saveState = () => {
+  const saveState = useCallback(() => {
     if (!canvas) return;
     const state = JSON.stringify(canvas.toJSON());
     dispatchHistory({ type: "SAVE_STATE", payload: state });
-  };
+  }, [canvas]);
 
   // Undo function
-  const undo = async () => {
+  const undo = useCallback(async () => {
     if (!canvas || historyIndex <= 0) return;
     
     dispatchHistory({ type: "UNDO" });
@@ -83,10 +83,10 @@ const Editor = () => {
     } catch (error) {
       console.error("Undo error:", error);
     }
-  };
+  }, [canvas, historyIndex, history]);
 
   // Redo function
-  const redo = async () => {
+  const redo = useCallback(async () => {
     if (!canvas || historyIndex >= history.length - 1) return;
     
     dispatchHistory({ type: "REDO" });
@@ -97,14 +97,18 @@ const Editor = () => {
     } catch (error) {
       console.error("Redo error:", error);
     }
-  };
+  }, [canvas, historyIndex, history]);
 
   // Save initial state when canvas is created
   useEffect(() => {
     if (canvas && history.length === 0) {
-      saveState();
+      // Small delay to ensure canvas is fully initialized
+      const timer = setTimeout(() => {
+        saveState();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [canvas]);
+  }, [canvas, history.length, saveState]);
 
   return (
     <div className="h-screen w-full bg-background flex flex-col">

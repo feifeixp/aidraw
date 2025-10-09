@@ -54,6 +54,13 @@ export const EditorCanvas = ({
     const handleObjectModified = () => {
       saveState();
     };
+    
+    const handleObjectAdded = () => {
+      // Delay to ensure object is fully added
+      setTimeout(() => {
+        saveState();
+      }, 50);
+    };
 
     // Handle double click on text objects
     const canvasElement = canvasRef.current;
@@ -67,19 +74,21 @@ export const EditorCanvas = ({
     };
     
     fabricCanvas.on('object:modified', handleObjectModified);
+    fabricCanvas.on('object:added', handleObjectAdded);
     canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
     return () => {
       fabricCanvas.off('object:modified', handleObjectModified);
+      fabricCanvas.off('object:added', handleObjectAdded);
       if (canvasElement) {
         canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
       }
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
-  }, []);
+  }, [saveState]);
 
   useEffect(() => {
     if (!canvas) return;
@@ -154,6 +163,11 @@ export const EditorCanvas = ({
       canvas.bringObjectToFront(img);
       canvas.setActiveObject(img);
       canvas.renderAll();
+      
+      // Delay saveState to ensure image is fully loaded
+      setTimeout(() => {
+        saveState();
+      }, 100);
       
       toast.success("图片已添加");
     }).catch(error => {
