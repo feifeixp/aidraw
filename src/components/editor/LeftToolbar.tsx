@@ -495,24 +495,32 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
 
       {/* Camera Dialog */}
       <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>调整镜头</DialogTitle>
           </DialogHeader>
-          <Tabs defaultValue="angle" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="angle">镜头角度</TabsTrigger>
+          <Tabs defaultValue="distance" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="distance">拍摄距离</TabsTrigger>
+              <TabsTrigger value="angle">镜头角度</TabsTrigger>
+              <TabsTrigger value="special">特殊镜头</TabsTrigger>
             </TabsList>
-            <TabsContent value="angle" className="space-y-2">
-              <Button onClick={() => handleAdjustCamera("a low angle shot looking up", "低角度仰拍")} className="w-full">低角度仰拍</Button>
-              <Button onClick={() => handleAdjustCamera("a high angle shot looking down", "高角度俯拍")} className="w-full">高角度俯拍</Button>
-              <Button onClick={() => handleAdjustCamera("an eye level shot", "平视角度")} className="w-full">平视角度</Button>
-            </TabsContent>
             <TabsContent value="distance" className="space-y-2">
-              <Button onClick={() => handleAdjustCamera("a close-up shot", "特写镜头")} className="w-full">特写镜头</Button>
-              <Button onClick={() => handleAdjustCamera("a medium shot", "中景镜头")} className="w-full">中景镜头</Button>
-              <Button onClick={() => handleAdjustCamera("a wide shot", "远景镜头")} className="w-full">远景镜头</Button>
+              <Button onClick={() => handleAdjustCamera("an establishing shot showing the full environment and context", "建立镜头")} className="w-full">建立镜头 (Establishing Shot)</Button>
+              <Button onClick={() => handleAdjustCamera("a full shot showing the entire subject from head to toe", "全景镜头")} className="w-full">全景镜头 (Full Shot)</Button>
+              <Button onClick={() => handleAdjustCamera("a medium shot from waist up", "中景镜头")} className="w-full">中景镜头 (Medium Shot)</Button>
+              <Button onClick={() => handleAdjustCamera("a close shot showing head and shoulders", "近景镜头")} className="w-full">近景镜头 (Close Shot)</Button>
+              <Button onClick={() => handleAdjustCamera("an extreme close-up shot focusing on facial details or specific features", "特写镜头")} className="w-full">特写镜头 (Extreme Close Shot)</Button>
+            </TabsContent>
+            <TabsContent value="angle" className="space-y-2">
+              <Button onClick={() => handleAdjustCamera("an up shot from a low angle looking upward", "仰视镜头")} className="w-full">仰视镜头 (Up Shot)</Button>
+              <Button onClick={() => handleAdjustCamera("a down shot from a high angle looking downward", "俯视镜头")} className="w-full">俯视镜头 (Down Shot)</Button>
+              <Button onClick={() => handleAdjustCamera("an eye level shot at the subject's eye level", "平视镜头")} className="w-full">平视镜头 (Eye Level)</Button>
+            </TabsContent>
+            <TabsContent value="special" className="space-y-2">
+              <Button onClick={() => handleAdjustCamera("an over-the-shoulder shot looking past one person's shoulder at another", "肩上镜头")} className="w-full">肩上镜头 (Over The Shoulder)</Button>
+              <Button onClick={() => handleAdjustCamera("a two-shot framing two subjects in the same frame", "双人镜头")} className="w-full">双人镜头 (Two-Shot)</Button>
+              <Button onClick={() => handleAdjustCamera("a POV shot from the subject's point of view perspective", "主观视角")} className="w-full">主观视角 (POV Shot)</Button>
             </TabsContent>
           </Tabs>
         </DialogContent>
