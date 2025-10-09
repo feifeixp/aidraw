@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Canvas as FabricCanvas } from "fabric";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
+import { LeftToolbar } from "@/components/editor/LeftToolbar";
 
 const Editor = () => {
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
@@ -72,13 +73,21 @@ const Editor = () => {
         />
       </div>
       
-      <div className="flex-1 overflow-hidden">
-        <EditorCanvas
-          canvas={canvas}
-          setCanvas={setCanvas}
-          activeTool={activeTool}
-          saveState={saveState}
-        />
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-48">
+          <LeftToolbar 
+            canvas={canvas}
+            saveState={saveState}
+          />
+        </div>
+        <div className="flex-1">
+          <EditorCanvas
+            canvas={canvas}
+            setCanvas={setCanvas}
+            activeTool={activeTool}
+            saveState={saveState}
+          />
+        </div>
       </div>
     </div>
   );
