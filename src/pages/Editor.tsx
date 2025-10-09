@@ -1,54 +1,101 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useReducer } from "react";
 import { Canvas as FabricCanvas } from "fabric";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
 
+type HistoryState = {
+  history: string[];
+  historyIndex: number;
+};
+
+type HistoryAction =
+  | { type: "SAVE_STATE"; payload: string }
+  | { type: "UNDO" }
+  | { type: "REDO" };
+
+const historyReducer = (state: HistoryState, action: HistoryAction): HistoryState => {
+  switch (action.type) {
+    case "SAVE_STATE": {
+      const newHistory = state.history.slice(0, state.historyIndex + 1);
+      newHistory.push(action.payload);
+      
+      // Limit history to 50 states
+      if (newHistory.length > 50) {
+        return {
+          history: newHistory.slice(1),
+          historyIndex: state.historyIndex, // Stay at same position after removing first
+        };
+      }
+      
+      return {
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      };
+    }
+    
+    case "UNDO": {
+      if (state.historyIndex <= 0) return state;
+      return {
+        ...state,
+        historyIndex: state.historyIndex - 1,
+      };
+    }
+    
+    case "REDO": {
+      if (state.historyIndex >= state.history.length - 1) return state;
+      return {
+        ...state,
+        historyIndex: state.historyIndex + 1,
+      };
+    }
+    
+    default:
+      return state;
+  }
+};
+
 const Editor = () => {
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
   const [activeTool, setActiveTool] = useState<string>("select");
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [{ history, historyIndex }, dispatchHistory] = useReducer(historyReducer, {
+    history: [],
+    historyIndex: -1,
+  });
 
   // Save canvas state to history
   const saveState = () => {
     if (!canvas) return;
-    
     const state = JSON.stringify(canvas.toJSON());
-    setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1);
-      newHistory.push(state);
-      // Limit history to 50 states
-      if (newHistory.length > 50) {
-        newHistory.shift();
-        setHistoryIndex(historyIndex);
-        return newHistory;
-      }
-      setHistoryIndex(newHistory.length - 1);
-      return newHistory;
-    });
+    dispatchHistory({ type: "SAVE_STATE", payload: state });
   };
 
   // Undo function
-  const undo = () => {
+  const undo = async () => {
     if (!canvas || historyIndex <= 0) return;
     
-    const newIndex = historyIndex - 1;
-    setHistoryIndex(newIndex);
-    canvas.loadFromJSON(JSON.parse(history[newIndex]), () => {
+    dispatchHistory({ type: "UNDO" });
+    
+    try {
+      await canvas.loadFromJSON(JSON.parse(history[historyIndex - 1]));
       canvas.renderAll();
-    });
+    } catch (error) {
+      console.error("Undo error:", error);
+    }
   };
 
   // Redo function
-  const redo = () => {
+  const redo = async () => {
     if (!canvas || historyIndex >= history.length - 1) return;
     
-    const newIndex = historyIndex + 1;
-    setHistoryIndex(newIndex);
-    canvas.loadFromJSON(JSON.parse(history[newIndex]), () => {
+    dispatchHistory({ type: "REDO" });
+    
+    try {
+      await canvas.loadFromJSON(JSON.parse(history[historyIndex + 1]));
       canvas.renderAll();
-    });
+    } catch (error) {
+      console.error("Redo error:", error);
+    }
   };
 
   // Save initial state when canvas is created
