@@ -1,9 +1,13 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { Canvas as FabricCanvas } from "fabric";
+import { Menu } from "lucide-react";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type HistoryState = {
   history: string[];
@@ -63,6 +67,8 @@ const Editor = () => {
     history: [],
     historyIndex: -1,
   });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Save canvas state to history
   const saveState = useCallback(() => {
@@ -110,36 +116,58 @@ const Editor = () => {
     }
   }, [canvas, history.length, saveState]);
 
-  return (
-    <div className="h-screen w-full bg-background flex flex-col">
-      <div className="border-b border-border p-2">
-        <EditorToolbar 
+  const leftToolbarContent = (
+    <>
+      <div className="overflow-auto">
+        <LeftToolbar 
           canvas={canvas}
-          activeTool={activeTool}
-          setActiveTool={setActiveTool}
-          undo={undo}
-          redo={redo}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < history.length - 1}
           saveState={saveState}
         />
       </div>
+      <div className="flex-1 border-t border-border overflow-hidden">
+        <PropertiesPanel 
+          canvas={canvas}
+          saveState={saveState}
+        />
+      </div>
+    </>
+  );
+
+  return (
+    <div className="h-screen w-full bg-background flex flex-col">
+      <div className="border-b border-border p-2 flex items-center gap-2">
+        {isMobile && (
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0 flex flex-col">
+              {leftToolbarContent}
+            </SheetContent>
+          </Sheet>
+        )}
+        <div className="flex-1">
+          <EditorToolbar 
+            canvas={canvas}
+            activeTool={activeTool}
+            setActiveTool={setActiveTool}
+            undo={undo}
+            redo={redo}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < history.length - 1}
+            saveState={saveState}
+          />
+        </div>
+      </div>
       
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-48 flex flex-col border-r border-border overflow-hidden">
-          <div className="overflow-auto">
-            <LeftToolbar 
-              canvas={canvas}
-              saveState={saveState}
-            />
+        {!isMobile && (
+          <div className="w-48 flex flex-col border-r border-border overflow-hidden">
+            {leftToolbarContent}
           </div>
-          <div className="flex-1 border-t border-border overflow-hidden">
-            <PropertiesPanel 
-              canvas={canvas}
-              saveState={saveState}
-            />
-          </div>
-        </div>
+        )}
         <div className="flex-1">
           <EditorCanvas
             canvas={canvas}
