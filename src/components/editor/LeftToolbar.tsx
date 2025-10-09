@@ -71,11 +71,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
           window.dispatchEvent(new CustomEvent('addImageToCanvas', { 
             detail: { imageUrl, name: file.name }
           }));
-          
-          setTimeout(() => {
-            toast.success("图片已添加");
-            onActionComplete?.();
-          }, 100);
+          onActionComplete?.();
         };
         reader.readAsDataURL(file);
       }
@@ -127,12 +123,9 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     canvas.bringObjectToFront(text);
     canvas.setActiveObject(text);
     canvas.renderAll();
-    
-    // Delay callbacks to ensure canvas operations complete
-    setTimeout(() => {
-      toast.success("文字已添加");
-      onActionComplete?.();
-    }, 100);
+    saveState();
+    toast.success("文字已添加");
+    onActionComplete?.();
   };
 
   // Add Shapes
@@ -151,11 +144,9 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     canvas.bringObjectToFront(rect);
     canvas.setActiveObject(rect);
     canvas.renderAll();
-    
-    setTimeout(() => {
-      toast.success("矩形已添加");
-      onActionComplete?.();
-    }, 100);
+    saveState();
+    toast.success("矩形已添加");
+    onActionComplete?.();
   };
 
   const handleAddCircle = () => {
@@ -172,11 +163,9 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     canvas.bringObjectToFront(circle);
     canvas.setActiveObject(circle);
     canvas.renderAll();
-    
-    setTimeout(() => {
-      toast.success("圆形已添加");
-      onActionComplete?.();
-    }, 100);
+    saveState();
+    toast.success("圆形已添加");
+    onActionComplete?.();
   };
 
   const handleAddTriangle = () => {
@@ -194,11 +183,9 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     canvas.bringObjectToFront(triangle);
     canvas.setActiveObject(triangle);
     canvas.renderAll();
-    
-    setTimeout(() => {
-      toast.success("三角形已添加");
-      onActionComplete?.();
-    }, 100);
+    saveState();
+    toast.success("三角形已添加");
+    onActionComplete?.();
   };
 
   // Remove Background

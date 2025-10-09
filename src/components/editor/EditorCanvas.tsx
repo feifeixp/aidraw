@@ -54,17 +54,6 @@ export const EditorCanvas = ({
     const handleObjectModified = () => {
       saveState();
     };
-    
-    const handleObjectAdded = () => {
-      // Only save state when not loading from JSON (undo/redo)
-      // Check for custom loading flag on canvas element
-      const canvasElement = canvasRef.current;
-      if (canvasElement && !(canvasElement as any).isLoading) {
-        setTimeout(() => {
-          saveState();
-        }, 50);
-      }
-    };
 
     // Handle double click on text objects
     const canvasElement = canvasRef.current;
@@ -78,14 +67,12 @@ export const EditorCanvas = ({
     };
     
     fabricCanvas.on('object:modified', handleObjectModified);
-    fabricCanvas.on('object:added', handleObjectAdded);
     canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
     return () => {
       fabricCanvas.off('object:modified', handleObjectModified);
-      fabricCanvas.off('object:added', handleObjectAdded);
       if (canvasElement) {
         canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
       }
@@ -167,12 +154,7 @@ export const EditorCanvas = ({
       canvas.bringObjectToFront(img);
       canvas.setActiveObject(img);
       canvas.renderAll();
-      
-      // Delay saveState to ensure image is fully loaded
-      setTimeout(() => {
-        saveState();
-      }, 100);
-      
+      saveState();
       toast.success("图片已添加");
     }).catch(error => {
       console.error('Error loading image:', error);

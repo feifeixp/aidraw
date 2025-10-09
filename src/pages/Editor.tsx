@@ -77,58 +77,24 @@ const Editor = () => {
     dispatchHistory({ type: "SAVE_STATE", payload: state });
   }, [canvas]);
 
-  // Undo function
-  const undo = useCallback(async () => {
-    if (!canvas || historyIndex <= 0) return;
+  const undo = useCallback(() => {
+    if (historyIndex <= 0 || !canvas) return;
     
-    dispatchHistory({ type: "UNDO" });
-    
-    try {
-      // Set flag to prevent saving during load
-      const canvasComponent = document.querySelector('canvas');
-      if (canvasComponent) {
-        (canvasComponent as any).isLoading = true;
-      }
-      
-      await canvas.loadFromJSON(JSON.parse(history[historyIndex - 1]));
+    dispatchHistory({ type: 'UNDO' });
+    const previousState = history[historyIndex - 1];
+    canvas.loadFromJSON(JSON.parse(previousState)).then(() => {
       canvas.renderAll();
-      
-      // Clear flag after load
-      setTimeout(() => {
-        if (canvasComponent) {
-          (canvasComponent as any).isLoading = false;
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Undo error:", error);
-    }
+    });
   }, [canvas, historyIndex, history]);
 
-  // Redo function
-  const redo = useCallback(async () => {
-    if (!canvas || historyIndex >= history.length - 1) return;
+  const redo = useCallback(() => {
+    if (historyIndex >= history.length - 1 || !canvas) return;
     
-    dispatchHistory({ type: "REDO" });
-    
-    try {
-      // Set flag to prevent saving during load
-      const canvasComponent = document.querySelector('canvas');
-      if (canvasComponent) {
-        (canvasComponent as any).isLoading = true;
-      }
-      
-      await canvas.loadFromJSON(JSON.parse(history[historyIndex + 1]));
+    const nextState = history[historyIndex + 1];
+    dispatchHistory({ type: 'REDO' });
+    canvas.loadFromJSON(JSON.parse(nextState)).then(() => {
       canvas.renderAll();
-      
-      // Clear flag after load
-      setTimeout(() => {
-        if (canvasComponent) {
-          (canvasComponent as any).isLoading = false;
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Redo error:", error);
-    }
+    });
   }, [canvas, historyIndex, history]);
 
   // Save initial state when canvas is created
