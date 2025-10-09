@@ -102,11 +102,12 @@ const Editor = () => {
     if (canvas && history.length === 0) {
       // Small delay to ensure canvas is fully initialized
       const timer = setTimeout(() => {
-        saveState();
+        const state = JSON.stringify(canvas.toJSON());
+        dispatchHistory({ type: "SAVE_STATE", payload: state });
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [canvas, history.length, saveState]);
+  }, [canvas, history.length]);
 
   const handleCloseMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
