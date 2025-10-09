@@ -10,9 +10,20 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
+  Plus,
+  Upload,
+  Sparkles,
 } from "lucide-react";
 import { Element } from "@/pages/Editor";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface LayerPanelProps {
   elements: Element[];
@@ -33,18 +44,90 @@ export const LayerPanel = ({
   moveElement,
   syncElementsWithCanvas,
 }: LayerPanelProps) => {
+  const [isGenerating, setIsGenerating] = useState(false);
   
   // Sync on mount
   useEffect(() => {
     syncElementsWithCanvas();
   }, []);
 
+  const handleUploadImage = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const imageUrl = event.target?.result as string;
+          // Trigger custom event to add image to canvas
+          window.dispatchEvent(new CustomEvent('addImageToCanvas', { 
+            detail: { imageUrl, name: file.name }
+          }));
+          toast.success("图片已添加");
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
+
+  const handleGenerateImage = async () => {
+    const prompt = window.prompt("请输入图片生成提示词：");
+    if (!prompt) return;
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("liblib-generate", {
+        body: { 
+          prompt,
+          model_id: "flux-dev"
+        }
+      });
+
+      if (error) throw error;
+      
+      if (data?.images?.[0]?.url) {
+        // Trigger custom event to add image to canvas
+        window.dispatchEvent(new CustomEvent('addImageToCanvas', { 
+          detail: { imageUrl: data.images[0].url, name: "生成的图片" }
+        }));
+        toast.success("图片生成成功");
+      }
+    } catch (error) {
+      console.error("Generation error:", error);
+      toast.error("图片生成失败");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-background border-r border-border">
       <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold">元素</h3>
-          <span className="text-xs text-muted-foreground">{elements.length} 个</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{elements.length} 个</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" disabled={isGenerating}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleUploadImage}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  上传图片
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleGenerateImage} disabled={isGenerating}>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {isGenerating ? "生成中..." : "AI生成图片"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

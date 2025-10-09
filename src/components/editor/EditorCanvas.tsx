@@ -119,8 +119,18 @@ export const EditorCanvas = ({
       }
     };
 
+    const handleAddImage = (e: CustomEvent) => {
+      const { imageUrl, name } = e.detail;
+      loadImageToCanvas(imageUrl, name);
+    };
+
     window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
+    window.addEventListener('addImageToCanvas', handleAddImage as EventListener);
+    
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('addImageToCanvas', handleAddImage as EventListener);
+    };
   }, [canvas]);
 
   const loadImageToCanvas = (imageUrl: string, name: string = "图片") => {
