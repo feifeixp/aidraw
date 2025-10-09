@@ -122,14 +122,14 @@ const Editor = () => {
       </div>
       
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-48 flex flex-col border-r border-border">
-          <div className="flex-1 overflow-auto">
+        <div className="w-48 flex flex-col border-r border-border overflow-hidden">
+          <div className="overflow-auto">
             <LeftToolbar 
               canvas={canvas}
               saveState={saveState}
             />
           </div>
-          <div className="h-80 border-t border-border">
+          <div className="flex-1 border-t border-border overflow-hidden">
             <PropertiesPanel 
               canvas={canvas}
               saveState={saveState}
