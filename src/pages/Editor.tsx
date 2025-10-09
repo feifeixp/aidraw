@@ -3,6 +3,7 @@ import { Canvas as FabricCanvas } from "fabric";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
+import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 
 type HistoryState = {
   history: string[];
@@ -121,11 +122,19 @@ const Editor = () => {
       </div>
       
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-48">
-          <LeftToolbar 
-            canvas={canvas}
-            saveState={saveState}
-          />
+        <div className="w-48 flex flex-col border-r border-border">
+          <div className="flex-1 overflow-auto">
+            <LeftToolbar 
+              canvas={canvas}
+              saveState={saveState}
+            />
+          </div>
+          <div className="h-80 border-t border-border">
+            <PropertiesPanel 
+              canvas={canvas}
+              saveState={saveState}
+            />
+          </div>
         </div>
         <div className="flex-1">
           <EditorCanvas
