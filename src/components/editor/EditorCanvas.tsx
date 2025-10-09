@@ -46,23 +46,27 @@ export const EditorCanvas = ({
       saveState();
     };
 
-    const handleDoubleClick = (e: any) => {
-      const target = e.target;
-      if (target && target.type === 'text') {
-        target.enterEditing();
-        target.selectAll();
+    // Handle double click on text objects
+    const canvasElement = canvasRef.current;
+    const handleCanvasDoubleClick = () => {
+      const activeObject = fabricCanvas.getActiveObject();
+      if (activeObject && activeObject.type === 'text') {
+        (activeObject as any).enterEditing();
+        (activeObject as any).selectAll();
         fabricCanvas.renderAll();
       }
     };
     
     fabricCanvas.on('object:modified', handleObjectModified);
-    fabricCanvas.on('mouse:dblclick', handleDoubleClick);
+    canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
     return () => {
       fabricCanvas.off('object:modified', handleObjectModified);
-      fabricCanvas.off('mouse:dblclick', handleDoubleClick);
+      if (canvasElement) {
+        canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
+      }
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
