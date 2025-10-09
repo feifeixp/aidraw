@@ -24,6 +24,7 @@ export const EditorCanvas = ({
       width: 1024,
       height: 768,
       backgroundColor: "#ffffff",
+      preserveObjectStacking: true,
     });
 
     // Add keyboard event listener for Delete key
