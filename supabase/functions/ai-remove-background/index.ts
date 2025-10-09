@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Remove the background from this image and replace it with a solid magenta color (RGB: 255, 0, 255). Keep only the main subject and make everything else pure magenta #FF00FF."
+                text: "Remove the background from this image and replace it with a pure green color (RGB: 0, 255, 0). Keep only the main subject and make everything else pure green #00FF00."
               },
               {
                 type: "image_url",

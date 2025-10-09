@@ -79,14 +79,14 @@ export const convertMagentaToTransparent = async (
       const maxEdgeRadius = 20; // Increased maximum edge detection radius
       const featherRadius = baseEdgeRadius + Math.ceil((featherStrength / 100) * (maxEdgeRadius - baseEdgeRadius));
       
-      // Enhanced magenta/purple detection
-      const isMagentaLike = (r: number, g: number, b: number) => {
-        // Magenta typically has high R and B, low G
-        const isHighRed = r > 180;
-        const isHighBlue = b > 180;
-        const isLowGreen = g < 100;
-        const magentaRatio = (r + b) / (g + 1); // Avoid division by zero
-        return (isHighRed && isHighBlue && isLowGreen) || magentaRatio > 3.5;
+      // Enhanced green detection
+      const isGreenLike = (r: number, g: number, b: number) => {
+        // Green typically has high G, low R and B
+        const isHighGreen = g > 180;
+        const isLowRed = r < 100;
+        const isLowBlue = b < 100;
+        const greenRatio = g / (r + b + 1); // Avoid division by zero
+        return (isHighGreen && isLowRed && isLowBlue) || greenRatio > 2;
       };
       
       console.log('Using threshold:', baseThreshold, 'feather range:', featherRange, 'feather radius:', featherRadius, 'strength:', featherStrength);
@@ -107,8 +107,8 @@ export const convertMagentaToTransparent = async (
           Math.pow(b - avgColor.b, 2)
         );
         
-        // Mark as background if similar to detected background OR if it's magenta-like
-        if (distance < baseThreshold || isMagentaLike(r, g, b)) {
+        // Mark as background if similar to detected background OR if it's green-like
+        if (distance < baseThreshold || isGreenLike(r, g, b)) {
           isBackground[pixelIndex] = 1;
           data[i + 3] = 0; // Make fully transparent
         }
@@ -171,22 +171,22 @@ export const convertMagentaToTransparent = async (
             if (alpha > 0 && alpha < 255) {
               const factor = alpha / 255;
               
-              // Remove both detected background color AND magenta spill
+              // Remove both detected background color AND green spill
               const bgRemovalStrength = 1 - factor;
-              const magentaRemovalStrength = isMagentaLike(r, g, b) ? 0.5 : bgRemovalStrength;
+              const greenRemovalStrength = isGreenLike(r, g, b) ? 0.5 : bgRemovalStrength;
               
               // Remove background color
               data[i] = Math.max(0, Math.min(255, (data[i] - avgColor.r * bgRemovalStrength) / Math.max(0.1, factor)));
               data[i + 1] = Math.max(0, Math.min(255, (data[i + 1] - avgColor.g * bgRemovalStrength) / Math.max(0.1, factor)));
               data[i + 2] = Math.max(0, Math.min(255, (data[i + 2] - avgColor.b * bgRemovalStrength) / Math.max(0.1, factor)));
               
-              // Additional magenta spill removal
-              if (isMagentaLike(data[i], data[i + 1], data[i + 2])) {
-                // Reduce red and blue channels that contribute to magenta
-                data[i] = Math.floor(data[i] * (1 - magentaRemovalStrength * 0.3));
-                data[i + 2] = Math.floor(data[i + 2] * (1 - magentaRemovalStrength * 0.3));
-                // Slightly boost green to neutralize
-                data[i + 1] = Math.min(255, Math.floor(data[i + 1] * (1 + magentaRemovalStrength * 0.1)));
+              // Additional green spill removal
+              if (isGreenLike(data[i], data[i + 1], data[i + 2])) {
+                // Reduce green channel
+                data[i + 1] = Math.floor(data[i + 1] * (1 - greenRemovalStrength * 0.3));
+                // Slightly boost red and blue to neutralize
+                data[i] = Math.min(255, Math.floor(data[i] * (1 + greenRemovalStrength * 0.1)));
+                data[i + 2] = Math.min(255, Math.floor(data[i + 2] * (1 + greenRemovalStrength * 0.1)));
               }
             }
           }
