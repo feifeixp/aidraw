@@ -18,7 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Canvas as FabricCanvas } from "fabric";
-import { Layer } from "@/pages/Editor";
+import { Element } from "@/pages/Editor";
 import { toast } from "sonner";
 import { removeBackground, loadImage } from "@/lib/backgroundRemoval";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,9 +37,8 @@ interface EditorToolbarProps {
   canvas: FabricCanvas | null;
   activeTool: string;
   setActiveTool: (tool: string) => void;
-  activeLayer?: Layer;
-  updateLayer: (id: string, updates: Partial<Layer>) => void;
-  addLayer: () => void;
+  activeElement?: Element;
+  updateElement: (id: string, updates: Partial<Element>) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -51,9 +50,8 @@ export const EditorToolbar = ({
   canvas,
   activeTool,
   setActiveTool,
-  activeLayer,
-  updateLayer,
-  addLayer,
+  activeElement,
+  updateElement,
   undo,
   redo,
   canUndo,
@@ -75,55 +73,53 @@ export const EditorToolbar = ({
   };
 
   const handleRemoveBackground = async () => {
-    if (!canvas || !activeLayer?.imageUrl) {
-      toast.error("请先选择包含图片的图层");
+    const activeObject = canvas?.getActiveObject();
+    if (!canvas || !activeObject || activeObject.type !== 'image') {
+      toast.error("请先选择画布上的图片");
       return;
     }
 
     toast.info("正在使用 AI 去除背景，请稍候...");
     try {
-      // Step 1: Convert blob URL to base64
-      const response = await fetch(activeLayer.imageUrl);
-      const blob = await response.blob();
-      const reader = new FileReader();
-      
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      // Convert image to dataURL
+      const imageDataURL = (activeObject as any).toDataURL({
+        format: 'png',
+        quality: 1,
       });
 
-      // Step 2: Use AI to replace background with magenta
+      // Use AI to replace background with green
       const { data: aiData, error: aiError } = await supabase.functions.invoke(
         'ai-remove-background',
         {
-          body: { imageUrl: base64Image }
+          body: { imageUrl: imageDataURL }
         }
       );
 
       if (aiError) throw aiError;
 
       if (aiData?.imageUrl) {
-        // Save the original AI image for reprocessing
         setOriginalAiImage(aiData.imageUrl);
         
-        // Step 3: Convert magenta color to transparent with feather strength
         toast.info("正在处理透明通道...");
         const transparentUrl = await convertMagentaToTransparent(aiData.imageUrl, featherStrength);
         
-        // Remove old fabric objects from canvas before updating
-        if (canvas && activeLayer.fabricObjects.length > 0) {
-          activeLayer.fabricObjects.forEach(obj => {
-            canvas.remove(obj);
-          });
-          canvas.renderAll();
-        }
+        // Load new image and replace the old one
+        const { FabricImage } = await import("fabric");
+        const img = await FabricImage.fromURL(transparentUrl, { crossOrigin: 'anonymous' });
         
-        // Update layer with transparent image
-        updateLayer(activeLayer.id, { 
-          imageUrl: transparentUrl,
-          fabricObjects: []
+        // Copy position and scale from original
+        img.set({
+          left: activeObject.left,
+          top: activeObject.top,
+          scaleX: activeObject.scaleX,
+          scaleY: activeObject.scaleY,
         });
+        
+        canvas.remove(activeObject);
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        
         saveState();
         toast.success("背景已去除");
         setShowFeatherControl(true);
@@ -176,7 +172,8 @@ export const EditorToolbar = ({
   };
 
   const handleReprocessFeather = async () => {
-    if (!originalAiImage || !activeLayer) {
+    const activeObject = canvas?.getActiveObject();
+    if (!originalAiImage || !activeObject) {
       toast.error("没有可重新处理的图片");
       return;
     }
@@ -185,18 +182,22 @@ export const EditorToolbar = ({
     try {
       const transparentUrl = await convertMagentaToTransparent(originalAiImage, featherStrength);
       
-      // Remove old fabric objects from canvas before updating
-      if (canvas && activeLayer.fabricObjects.length > 0) {
-        activeLayer.fabricObjects.forEach(obj => {
-          canvas.remove(obj);
-        });
-        canvas.renderAll();
-      }
+      // Load new image and replace the old one
+      const { FabricImage } = await import("fabric");
+      const img = await FabricImage.fromURL(transparentUrl, { crossOrigin: 'anonymous' });
       
-      updateLayer(activeLayer.id, { 
-        imageUrl: transparentUrl,
-        fabricObjects: []
+      img.set({
+        left: activeObject.left,
+        top: activeObject.top,
+        scaleX: activeObject.scaleX,
+        scaleY: activeObject.scaleY,
       });
+      
+      canvas!.remove(activeObject);
+      canvas!.add(img);
+      canvas!.setActiveObject(img);
+      canvas!.renderAll();
+      
       toast.success("重新处理完成");
     } catch (error) {
       console.error("Reprocess error:", error);
@@ -205,8 +206,9 @@ export const EditorToolbar = ({
   };
 
   const handleAdjustCamera = async (setting: string, description: string) => {
-    if (!canvas || !activeLayer?.imageUrl) {
-      toast.error("请先选择包含图片的图层");
+    const activeObject = canvas?.getActiveObject();
+    if (!canvas || !activeObject || activeObject.type !== 'image') {
+      toast.error("请先选择画布上的图片");
       return;
     }
 
@@ -214,14 +216,9 @@ export const EditorToolbar = ({
     toast.info(`正在调整镜头：${description}，请稍候...`);
 
     try {
-      const response = await fetch(activeLayer.imageUrl);
-      const blob = await response.blob();
-      const reader = new FileReader();
-      
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      const imageDataURL = (activeObject as any).toDataURL({
+        format: 'png',
+        quality: 1,
       });
 
       const instruction = `Transform this image to use ${setting}. Keep the subject's appearance, clothing, and style exactly the same, only change the camera framing or angle as specified.`;
@@ -229,24 +226,29 @@ export const EditorToolbar = ({
       const { data: aiData, error: aiError } = await supabase.functions.invoke(
         'ai-edit-image',
         {
-          body: { imageUrl: base64Image, instruction }
+          body: { imageUrl: imageDataURL, instruction }
         }
       );
 
       if (aiError) throw aiError;
 
       if (aiData?.imageUrl) {
-        if (canvas && activeLayer.fabricObjects.length > 0) {
-          activeLayer.fabricObjects.forEach(obj => {
-            canvas.remove(obj);
-          });
-          canvas.renderAll();
-        }
+        const { FabricImage } = await import("fabric");
+        const img = await FabricImage.fromURL(aiData.imageUrl, { crossOrigin: 'anonymous' });
         
-        updateLayer(activeLayer.id, { 
-          imageUrl: aiData.imageUrl,
-          fabricObjects: []
+        img.set({
+          left: activeObject.left,
+          top: activeObject.top,
+          scaleX: activeObject.scaleX,
+          scaleY: activeObject.scaleY,
         });
+        
+        canvas.remove(activeObject);
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        
+        saveState();
         toast.success("镜头调整完成");
       } else {
         throw new Error('No image returned from AI');
@@ -258,8 +260,9 @@ export const EditorToolbar = ({
   };
 
   const handleAdjustPose = async (pose: string) => {
-    if (!canvas || !activeLayer?.imageUrl) {
-      toast.error("请先选择包含图片的图层");
+    const activeObject = canvas?.getActiveObject();
+    if (!canvas || !activeObject || activeObject.type !== 'image') {
+      toast.error("请先选择画布上的图片");
       return;
     }
 
@@ -267,14 +270,9 @@ export const EditorToolbar = ({
     toast.info(`正在调整为${pose}姿势，请稍候...`);
 
     try {
-      const response = await fetch(activeLayer.imageUrl);
-      const blob = await response.blob();
-      const reader = new FileReader();
-      
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      const imageDataURL = (activeObject as any).toDataURL({
+        format: 'png',
+        quality: 1,
       });
 
       const instruction = `Change this character's pose to: ${pose}. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position.`;
@@ -282,24 +280,29 @@ export const EditorToolbar = ({
       const { data: aiData, error: aiError } = await supabase.functions.invoke(
         'ai-edit-image',
         {
-          body: { imageUrl: base64Image, instruction }
+          body: { imageUrl: imageDataURL, instruction }
         }
       );
 
       if (aiError) throw aiError;
 
       if (aiData?.imageUrl) {
-        if (canvas && activeLayer.fabricObjects.length > 0) {
-          activeLayer.fabricObjects.forEach(obj => {
-            canvas.remove(obj);
-          });
-          canvas.renderAll();
-        }
+        const { FabricImage } = await import("fabric");
+        const img = await FabricImage.fromURL(aiData.imageUrl, { crossOrigin: 'anonymous' });
         
-        updateLayer(activeLayer.id, { 
-          imageUrl: aiData.imageUrl,
-          fabricObjects: []
+        img.set({
+          left: activeObject.left,
+          top: activeObject.top,
+          scaleX: activeObject.scaleX,
+          scaleY: activeObject.scaleY,
         });
+        
+        canvas.remove(activeObject);
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        
+        saveState();
         toast.success("姿势调整完成");
       } else {
         throw new Error('No image returned from AI');
@@ -311,8 +314,9 @@ export const EditorToolbar = ({
   };
 
   const handleAdjustSubjectAngle = async (angle: string, description: string) => {
-    if (!canvas || !activeLayer?.imageUrl) {
-      toast.error("请先选择包含图片的图层");
+    const activeObject = canvas?.getActiveObject();
+    if (!canvas || !activeObject || activeObject.type !== 'image') {
+      toast.error("请先选择画布上的图片");
       return;
     }
 
@@ -320,14 +324,9 @@ export const EditorToolbar = ({
     toast.info(`正在调整为${description}，请稍候...`);
 
     try {
-      const response = await fetch(activeLayer.imageUrl);
-      const blob = await response.blob();
-      const reader = new FileReader();
-      
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      const imageDataURL = (activeObject as any).toDataURL({
+        format: 'png',
+        quality: 1,
       });
 
       const instruction = `Rotate this subject to show them from ${angle}. Keep the subject's appearance, clothing, style, pose, and background exactly the same, only rotate the subject's body orientation to face ${angle}.`;
@@ -335,24 +334,29 @@ export const EditorToolbar = ({
       const { data: aiData, error: aiError } = await supabase.functions.invoke(
         'ai-edit-image',
         {
-          body: { imageUrl: base64Image, instruction }
+          body: { imageUrl: imageDataURL, instruction }
         }
       );
 
       if (aiError) throw aiError;
 
       if (aiData?.imageUrl) {
-        if (canvas && activeLayer.fabricObjects.length > 0) {
-          activeLayer.fabricObjects.forEach(obj => {
-            canvas.remove(obj);
-          });
-          canvas.renderAll();
-        }
+        const { FabricImage } = await import("fabric");
+        const img = await FabricImage.fromURL(aiData.imageUrl, { crossOrigin: 'anonymous' });
         
-        updateLayer(activeLayer.id, { 
-          imageUrl: aiData.imageUrl,
-          fabricObjects: []
+        img.set({
+          left: activeObject.left,
+          top: activeObject.top,
+          scaleX: activeObject.scaleX,
+          scaleY: activeObject.scaleY,
         });
+        
+        canvas.remove(activeObject);
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        
+        saveState();
         toast.success("主体角度调整完成");
       } else {
         throw new Error('No image returned from AI');
@@ -424,10 +428,7 @@ export const EditorToolbar = ({
         // Save state for undo/redo
         saveState();
         
-        // Create a new layer for the redrawn image
-        addLayer();
-        
-        toast.success("重绘完成！已添加到新图层");
+        toast.success("重绘完成！");
       } else {
         throw new Error('AI未返回图片');
       }
