@@ -131,29 +131,37 @@ const Editor = () => {
     if (!canvas) return;
     
     const canvasObjects = canvas.getObjects();
-    const existingElementIds = new Set(elements.map(e => e.id));
     
-    // Add new objects that don't have elements
-    canvasObjects.forEach((obj: any) => {
-      if (!obj._elementId) {
-        const id = Date.now().toString() + Math.random();
-        obj._elementId = id;
-        const type = obj.type || 'object';
-        setElements(prev => [...prev, {
-          id,
-          name: `${type} ${prev.length + 1}`,
-          type,
-          visible: obj.visible !== false,
-          locked: obj.selectable === false,
-          opacity: Math.round((obj.opacity || 1) * 100),
-          fabricObject: obj
-        }]);
-      }
+    setElements(prev => {
+      const existingElementMap = new Map(prev.map(e => [e.fabricObject, e]));
+      const newElements: Element[] = [];
+      
+      // Process all canvas objects
+      canvasObjects.forEach((obj: any) => {
+        const existingElement = existingElementMap.get(obj);
+        
+        if (existingElement) {
+          // Keep existing element
+          newElements.push(existingElement);
+        } else {
+          // Create new element for new object
+          const id = `${Date.now()}-${Math.random()}`;
+          obj._elementId = id;
+          const type = obj.type || 'object';
+          newElements.push({
+            id,
+            name: `${type} ${newElements.length + 1}`,
+            type,
+            visible: obj.visible !== false,
+            locked: obj.selectable === false,
+            opacity: Math.round((obj.opacity || 1) * 100),
+            fabricObject: obj
+          });
+        }
+      });
+      
+      return newElements;
     });
-    
-    // Remove elements whose objects are no longer on canvas
-    const canvasObjectIds = new Set(canvasObjects.map((obj: any) => obj._elementId).filter(Boolean));
-    setElements(prev => prev.filter(e => canvasObjectIds.has(e.id) || !e.fabricObject));
   };
 
   return (
