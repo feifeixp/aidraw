@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Canvas as FabricCanvas } from "fabric";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { LayerPanel } from "@/components/editor/LayerPanel";
@@ -127,7 +127,7 @@ const Editor = () => {
   };
 
   // Sync elements list with canvas objects
-  const syncElementsWithCanvas = () => {
+  const syncElementsWithCanvas = useCallback(() => {
     if (!canvas) return;
     
     const canvasObjects = canvas.getObjects();
@@ -162,7 +162,7 @@ const Editor = () => {
       
       return newElements;
     });
-  };
+  }, [canvas]);
 
   return (
     <div className="h-[calc(100vh-4rem)] w-full bg-background">
