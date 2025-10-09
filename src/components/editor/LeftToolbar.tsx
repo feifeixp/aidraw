@@ -71,8 +71,11 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
           window.dispatchEvent(new CustomEvent('addImageToCanvas', { 
             detail: { imageUrl, name: file.name }
           }));
-          toast.success("图片已添加");
-          onActionComplete?.();
+          
+          setTimeout(() => {
+            toast.success("图片已添加");
+            onActionComplete?.();
+          }, 100);
         };
         reader.readAsDataURL(file);
       }
@@ -124,8 +127,12 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     canvas.bringObjectToFront(text);
     canvas.setActiveObject(text);
     canvas.renderAll();
-    toast.success("文字已添加");
-    onActionComplete?.();
+    
+    // Delay callbacks to ensure canvas operations complete
+    setTimeout(() => {
+      toast.success("文字已添加");
+      onActionComplete?.();
+    }, 100);
   };
 
   // Add Shapes
@@ -144,8 +151,11 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     canvas.bringObjectToFront(rect);
     canvas.setActiveObject(rect);
     canvas.renderAll();
-    toast.success("矩形已添加");
-    onActionComplete?.();
+    
+    setTimeout(() => {
+      toast.success("矩形已添加");
+      onActionComplete?.();
+    }, 100);
   };
 
   const handleAddCircle = () => {
@@ -162,8 +172,11 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     canvas.bringObjectToFront(circle);
     canvas.setActiveObject(circle);
     canvas.renderAll();
-    toast.success("圆形已添加");
-    onActionComplete?.();
+    
+    setTimeout(() => {
+      toast.success("圆形已添加");
+      onActionComplete?.();
+    }, 100);
   };
 
   const handleAddTriangle = () => {
@@ -181,8 +194,11 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     canvas.bringObjectToFront(triangle);
     canvas.setActiveObject(triangle);
     canvas.renderAll();
-    toast.success("三角形已添加");
-    onActionComplete?.();
+    
+    setTimeout(() => {
+      toast.success("三角形已添加");
+      onActionComplete?.();
+    }, 100);
   };
 
   // Remove Background
@@ -647,9 +663,15 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         <Separator />
 
         {/* Smart Compose */}
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowSmartComposeDialog(true)}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full justify-start" 
+          onClick={() => setShowSmartComposeDialog(true)}
+          disabled={isComposing}
+        >
           <Wand2 className="h-4 w-4 mr-2" />
-          智能合成
+          {isComposing ? "处理中..." : "智能合成"}
         </Button>
       </div>
 
