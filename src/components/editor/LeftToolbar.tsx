@@ -42,9 +42,10 @@ import { Slider } from "@/components/ui/slider";
 interface LeftToolbarProps {
   canvas: FabricCanvas | null;
   saveState: () => void;
+  onActionComplete?: () => void;
 }
 
-export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
+export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbarProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
   const [featherStrength, setFeatherStrength] = useState(50);
@@ -71,6 +72,7 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
             detail: { imageUrl, name: file.name }
           }));
           toast.success("图片已添加");
+          onActionComplete?.();
         };
         reader.readAsDataURL(file);
       }
@@ -122,8 +124,8 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
     canvas.bringObjectToFront(text);
     canvas.setActiveObject(text);
     canvas.renderAll();
-    saveState();
     toast.success("文字已添加");
+    onActionComplete?.();
   };
 
   // Add Shapes
@@ -142,8 +144,8 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
     canvas.bringObjectToFront(rect);
     canvas.setActiveObject(rect);
     canvas.renderAll();
-    saveState();
     toast.success("矩形已添加");
+    onActionComplete?.();
   };
 
   const handleAddCircle = () => {
@@ -160,8 +162,8 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
     canvas.bringObjectToFront(circle);
     canvas.setActiveObject(circle);
     canvas.renderAll();
-    saveState();
     toast.success("圆形已添加");
+    onActionComplete?.();
   };
 
   const handleAddTriangle = () => {
@@ -179,8 +181,8 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
     canvas.bringObjectToFront(triangle);
     canvas.setActiveObject(triangle);
     canvas.renderAll();
-    saveState();
     toast.success("三角形已添加");
+    onActionComplete?.();
   };
 
   // Remove Background

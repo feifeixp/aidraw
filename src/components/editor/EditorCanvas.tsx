@@ -56,10 +56,14 @@ export const EditorCanvas = ({
     };
     
     const handleObjectAdded = () => {
-      // Delay to ensure object is fully added
-      setTimeout(() => {
-        saveState();
-      }, 50);
+      // Only save state when not loading from JSON (undo/redo)
+      // Check for custom loading flag on canvas element
+      const canvasElement = canvasRef.current;
+      if (canvasElement && !(canvasElement as any).isLoading) {
+        setTimeout(() => {
+          saveState();
+        }, 50);
+      }
     };
 
     // Handle double click on text objects

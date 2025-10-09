@@ -84,8 +84,21 @@ const Editor = () => {
     dispatchHistory({ type: "UNDO" });
     
     try {
+      // Set flag to prevent saving during load
+      const canvasComponent = document.querySelector('canvas');
+      if (canvasComponent) {
+        (canvasComponent as any).isLoading = true;
+      }
+      
       await canvas.loadFromJSON(JSON.parse(history[historyIndex - 1]));
       canvas.renderAll();
+      
+      // Clear flag after load
+      setTimeout(() => {
+        if (canvasComponent) {
+          (canvasComponent as any).isLoading = false;
+        }
+      }, 100);
     } catch (error) {
       console.error("Undo error:", error);
     }
@@ -98,8 +111,21 @@ const Editor = () => {
     dispatchHistory({ type: "REDO" });
     
     try {
+      // Set flag to prevent saving during load
+      const canvasComponent = document.querySelector('canvas');
+      if (canvasComponent) {
+        (canvasComponent as any).isLoading = true;
+      }
+      
       await canvas.loadFromJSON(JSON.parse(history[historyIndex + 1]));
       canvas.renderAll();
+      
+      // Clear flag after load
+      setTimeout(() => {
+        if (canvasComponent) {
+          (canvasComponent as any).isLoading = false;
+        }
+      }, 100);
     } catch (error) {
       console.error("Redo error:", error);
     }
@@ -116,12 +142,17 @@ const Editor = () => {
     }
   }, [canvas, history.length, saveState]);
 
+  const handleCloseMobileMenu = useCallback(() => {
+    setMobileMenuOpen(false);
+  }, []);
+
   const leftToolbarContent = (
     <>
       <div className="overflow-auto">
         <LeftToolbar 
           canvas={canvas}
           saveState={saveState}
+          onActionComplete={isMobile ? handleCloseMobileMenu : undefined}
         />
       </div>
       <div className="flex-1 border-t border-border overflow-hidden">
