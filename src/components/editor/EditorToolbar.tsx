@@ -16,9 +16,12 @@ import {
   PersonStanding,
   Users,
   Sparkles,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUp,
+  ChevronsDown,
 } from "lucide-react";
 import { Canvas as FabricCanvas } from "fabric";
-import { Element } from "@/pages/Editor";
 import { toast } from "sonner";
 import { removeBackground, loadImage } from "@/lib/backgroundRemoval";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,8 +40,6 @@ interface EditorToolbarProps {
   canvas: FabricCanvas | null;
   activeTool: string;
   setActiveTool: (tool: string) => void;
-  activeElement?: Element;
-  updateElement: (id: string, updates: Partial<Element>) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -50,8 +51,6 @@ export const EditorToolbar = ({
   canvas,
   activeTool,
   setActiveTool,
-  activeElement,
-  updateElement,
   undo,
   redo,
   canUndo,
@@ -169,6 +168,55 @@ export const EditorToolbar = ({
 
   const handleRedo = () => {
     redo();
+  };
+
+  // Layer ordering functions
+  const handleBringForward = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    canvas?.bringObjectForward(activeObject);
+    canvas?.renderAll();
+    saveState();
+    toast.success("已向前移动一层");
+  };
+
+  const handleSendBackwards = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    canvas?.sendObjectBackwards(activeObject);
+    canvas?.renderAll();
+    saveState();
+    toast.success("已向后移动一层");
+  };
+
+  const handleBringToFront = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    canvas?.bringObjectToFront(activeObject);
+    canvas?.renderAll();
+    saveState();
+    toast.success("已移到最前");
+  };
+
+  const handleSendToBack = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    canvas?.sendObjectToBack(activeObject);
+    canvas?.renderAll();
+    saveState();
+    toast.success("已移到最后");
   };
 
   const handleReprocessFeather = async () => {
@@ -497,6 +545,21 @@ export const EditorToolbar = ({
         <Button variant="outline" size="sm" onClick={() => setShowPoseDialog(true)}>
           <PersonStanding className="h-4 w-4 mr-1" />
           调整动作
+        </Button>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        <Button variant="outline" size="sm" onClick={handleBringToFront} title="移到最前">
+          <ChevronsUp className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleBringForward} title="向前一层">
+          <ArrowUp className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleSendBackwards} title="向后一层">
+          <ArrowDown className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleSendToBack} title="移到最后">
+          <ChevronsDown className="h-4 w-4" />
         </Button>
 
         <Separator orientation="vertical" className="h-6" />

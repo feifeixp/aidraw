@@ -1,31 +1,19 @@
 import { useEffect, useRef } from "react";
 import { Canvas as FabricCanvas, FabricImage } from "fabric";
-import { Element } from "@/pages/Editor";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 interface EditorCanvasProps {
   canvas: FabricCanvas | null;
   setCanvas: (canvas: FabricCanvas) => void;
-  elements: Element[];
-  activeElementId: string | null;
   activeTool: string;
-  updateElement: (id: string, updates: Partial<Element>) => void;
-  addElement: (fabricObject: any, name?: string) => string;
   saveState: () => void;
-  syncElementsWithCanvas: () => void;
 }
 
 export const EditorCanvas = ({
   canvas,
   setCanvas,
-  elements,
-  activeElementId,
   activeTool,
-  updateElement,
-  addElement,
-  saveState,
-  syncElementsWithCanvas
+  saveState
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -48,36 +36,20 @@ export const EditorCanvas = ({
           });
           fabricCanvas.discardActiveObject();
           fabricCanvas.renderAll();
-          syncElementsWithCanvas();
           saveState();
         }
       }
-    };
-
-    // Sync elements when objects are added/removed/modified
-    const handleObjectAdded = () => {
-      setTimeout(() => syncElementsWithCanvas(), 50);
-      setTimeout(() => saveState(), 100);
-    };
-    
-    const handleObjectRemoved = () => {
-      syncElementsWithCanvas();
     };
 
     const handleObjectModified = () => {
       saveState();
     };
     
-    fabricCanvas.on('object:added', handleObjectAdded);
-    fabricCanvas.on('object:removed', handleObjectRemoved);
     fabricCanvas.on('object:modified', handleObjectModified);
-    
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
     return () => {
-      fabricCanvas.off('object:added', handleObjectAdded);
-      fabricCanvas.off('object:removed', handleObjectRemoved);
       fabricCanvas.off('object:modified', handleObjectModified);
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
@@ -163,22 +135,6 @@ export const EditorCanvas = ({
       toast.error("图片加载失败");
     });
   };
-
-  // Sync element properties with fabric objects
-  useEffect(() => {
-    if (!canvas) return;
-
-    elements.forEach(element => {
-      if (element.fabricObject) {
-        element.fabricObject.visible = element.visible;
-        element.fabricObject.opacity = element.opacity / 100;
-        element.fabricObject.selectable = !element.locked;
-        element.fabricObject.evented = !element.locked;
-      }
-    });
-
-    canvas.renderAll();
-  }, [elements, canvas]);
 
   return (
     <div className="flex items-center justify-center h-full bg-muted/20 p-4 overflow-auto">
