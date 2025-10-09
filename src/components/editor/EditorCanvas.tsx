@@ -127,6 +127,7 @@ export const EditorCanvas = ({
       });
       
       canvas.add(img);
+      canvas.bringObjectToFront(img);
       canvas.setActiveObject(img);
       canvas.renderAll();
       

@@ -113,6 +113,7 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
     });
     
     canvas.add(text);
+    canvas.bringObjectToFront(text);
     canvas.setActiveObject(text);
     canvas.renderAll();
     saveState();
@@ -132,6 +133,7 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
     });
     
     canvas.add(rect);
+    canvas.bringObjectToFront(rect);
     canvas.setActiveObject(rect);
     canvas.renderAll();
     saveState();
@@ -149,6 +151,7 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
     });
     
     canvas.add(circle);
+    canvas.bringObjectToFront(circle);
     canvas.setActiveObject(circle);
     canvas.renderAll();
     saveState();
@@ -167,6 +170,7 @@ export const LeftToolbar = ({ canvas, saveState }: LeftToolbarProps) => {
     });
     
     canvas.add(triangle);
+    canvas.bringObjectToFront(triangle);
     canvas.setActiveObject(triangle);
     canvas.renderAll();
     saveState();
