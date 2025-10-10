@@ -193,19 +193,19 @@ const Editor = () => {
         </div>
       </div>
       
-      <div className="flex-1 flex overflow-hidden">
-        {!isMobile && <div className="w-48 flex flex-col border-r border-border overflow-hidden">
+      <div className="flex-1 relative overflow-hidden">
+        <EditorCanvas 
+          canvas={canvas} 
+          setCanvas={setCanvas} 
+          activeTool={activeTool} 
+          saveState={saveState}
+          canvasSize={canvasSize}
+        />
+        {!isMobile && (
+          <div className="absolute left-4 top-4 w-48 h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden">
             {leftToolbarContent}
-          </div>}
-        <div className="flex-1">
-          <EditorCanvas 
-            canvas={canvas} 
-            setCanvas={setCanvas} 
-            activeTool={activeTool} 
-            saveState={saveState}
-            canvasSize={canvasSize}
-          />
-        </div>
+          </div>
+        )}
       </div>
     </div>;
 };
