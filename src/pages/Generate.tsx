@@ -807,8 +807,8 @@ const Generate = () => {
       </header>
 
       {/* Tabs组件 */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="border-b px-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 border-b px-6">
           <TabsList className="h-12">
             <TabsTrigger value="generate" className="gap-2">
               <Sparkles className="h-4 w-4" />
@@ -826,7 +826,7 @@ const Generate = () => {
         </div>
 
         {/* 智能生成标签页 */}
-        <TabsContent value="generate" className="flex-1 flex flex-col mt-0">
+        <TabsContent value="generate" className="flex-1 flex flex-col mt-0 overflow-hidden">
       {/* 对话列表区域 */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -1454,30 +1454,34 @@ const Generate = () => {
         </TabsContent>
 
         {/* 灵感广场标签页 */}
-        <TabsContent value="inspiration" className="flex-1 overflow-y-auto px-6 py-6 mt-0">
-          <InspirationGrid 
-            onUseTemplate={(template) => {
-              // 切换回智能生成标签页
-              setActiveTab("generate");
-              // 填充模板参数
-              if (template.prompt) {
-                setPrompt(template.prompt);
-              }
-              if (template.checkpoint_id) {
-                setSelectedCheckpoint(template.checkpoint_id);
-              }
-              if (template.lora_models && Array.isArray(template.lora_models)) {
-                const loraIds = template.lora_models.map((lora: any) => lora.modelId || lora.model_id).filter(Boolean);
-                setSelectedLoras(loraIds);
-              }
-              setMode("imageGeneration");
-            }}
-          />
+        <TabsContent value="inspiration" className="flex-1 mt-0 overflow-hidden">
+          <div className="h-full overflow-y-auto px-6 py-6">
+            <InspirationGrid 
+              onUseTemplate={(template) => {
+                // 切换回智能生成标签页
+                setActiveTab("generate");
+                // 填充模板参数
+                if (template.prompt) {
+                  setPrompt(template.prompt);
+                }
+                if (template.checkpoint_id) {
+                  setSelectedCheckpoint(template.checkpoint_id);
+                }
+                if (template.lora_models && Array.isArray(template.lora_models)) {
+                  const loraIds = template.lora_models.map((lora: any) => lora.modelId || lora.model_id).filter(Boolean);
+                  setSelectedLoras(loraIds);
+                }
+                setMode("imageGeneration");
+              }}
+            />
+          </div>
         </TabsContent>
 
         {/* 图片记录标签页 */}
-        <TabsContent value="history" className="flex-1 overflow-y-auto px-6 py-6 mt-0">
-          <HistoryGrid />
+        <TabsContent value="history" className="flex-1 mt-0 overflow-hidden">
+          <div className="h-full overflow-y-auto px-6 py-6">
+            <HistoryGrid />
+          </div>
         </TabsContent>
       </Tabs>
 
