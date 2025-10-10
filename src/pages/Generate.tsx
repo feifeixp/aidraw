@@ -20,6 +20,7 @@ import { zhCN } from "date-fns/locale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InspirationGrid } from "@/components/InspirationGrid";
 import { HistoryGrid } from "@/components/HistoryGrid";
+import { useAuth } from "@/hooks/useAuth";
 type GenerationMode = "agent" | "imageGeneration";
 interface ChatMessage {
   id: string;
@@ -491,6 +492,17 @@ const Generate = () => {
     }
   };
   const handleGenerate = async (modelIdOverride?: string, reasoning?: string) => {
+    // 检查用户是否登录
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "请先登录",
+        description: "登录后才能生成图片",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const currentPrompt = prompt.trim();
     if (!currentPrompt) {
       toast({
@@ -636,7 +648,8 @@ const Generate = () => {
           loraIds: loraModelsSelected.map(l => l.model_id),
           width: aspectRatio.width,
           height: aspectRatio.height,
-          imgCount: parseInt(imageCount)
+          imgCount: parseInt(imageCount),
+          userId: session.user.id
         }
       });
       if (error) throw error;

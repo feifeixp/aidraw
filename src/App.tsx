@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import Generate from "./pages/Generate";
 import Models from "./pages/Models";
 import Editor from "./pages/Editor";
+import Auth from "./pages/Auth";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
 import logo from "@/assets/logo.png";
@@ -25,6 +26,7 @@ const App = () => <QueryClientProvider client={queryClient}>
         
         <div>
           <Routes>
+            <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Home />} />
             <Route path="/generate" element={<Generate />} />
             <Route path="/models" element={<Models />} />

@@ -1,10 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Database, Pencil, ChevronDown, Home, ExternalLink } from "lucide-react";
+import { Sparkles, Database, Pencil, ChevronDown, Home, ExternalLink, LogOut, User } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 const Navigation = () => {
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
+  const { user, signOut } = useAuth();
   const links = [{
     to: "/",
     label: "首页",
@@ -49,7 +52,7 @@ const Navigation = () => {
             </a>
           </div>
 
-          <div className="flex gap-1">
+          <div className="flex gap-1 items-center">
             {links.map(({
             to,
             label,
@@ -58,6 +61,31 @@ const Navigation = () => {
                 <Icon className="h-4 w-4" />
                 {label}
               </Link>)}
+            
+            {user ? (
+              <div className="flex items-center gap-2 ml-4">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  {user.email}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={signOut}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  登出
+                </Button>
+              </div>
+            ) : (
+              <Link
+                to="/auth"
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground ml-4"
+              >
+                登录
+              </Link>
+            )}
           </div>
         </div>
       </nav>

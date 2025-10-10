@@ -20,13 +20,21 @@ serve(async (req) => {
       loraIds = [], 
       width = 1024, 
       height = 1024, 
-      imgCount = 1 
+      imgCount = 1,
+      userId
     } = await req.json();
     
     if (!prompt || !modelId || !modelName) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: prompt, modelId, modelName" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "User not authenticated" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -158,6 +166,7 @@ serve(async (req) => {
         template_uuid: primaryModel.base_algo === 3 ? "6f7c4652458d4802969f8d089cf5b91f" : "e10adc3949ba59abbe56e057f20f883e",
         checkpoint_id: checkpointData?.checkpoint_id || null,
         lora_models: loraModels,
+        user_id: userId,
       })
       .select()
       .single();

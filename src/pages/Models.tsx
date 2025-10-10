@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 interface ModelFormData {
   model_id: string;
@@ -289,6 +290,7 @@ const Models = () => {
   };
 
   return (
+    <ProtectedRoute requireAdmin>
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-6">
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 flex items-center justify-between">
@@ -631,6 +633,7 @@ const Models = () => {
         )}
       </div>
     </div>
+  </ProtectedRoute>
   );
 };
 

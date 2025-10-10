@@ -6,25 +6,38 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Clock, Image as ImageIcon, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const History = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
   
   const { data: history, isLoading } = useQuery({
-    queryKey: ["generation-history"],
+    queryKey: ["generation-history", user?.id],
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from("generation_history")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
       
       if (error) throw error;
       return data;
     },
+    enabled: !!user,
   });
 
   const toggleTemplateMutation = useMutation({
