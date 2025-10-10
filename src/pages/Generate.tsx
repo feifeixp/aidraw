@@ -736,7 +736,7 @@ const Generate = () => {
 
       {/* Tabs组件 */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-shrink-0 border-b px-[80px] my-[30px] py-0">
+        <div className="flex-shrink-0 border-b px-[80px] py-0 my-[20px]">
           <TabsList className="h-12">
             <TabsTrigger value="generate" className="gap-2">
               <Sparkles className="h-4 w-4" />
