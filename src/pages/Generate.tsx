@@ -732,7 +732,7 @@ const Generate = () => {
             <SheetTrigger asChild>
               <Button variant="outline" className="gap-2">
                 <HistoryIcon className="h-4 w-4" />
-                生成历史
+                会话历史
               </Button>
             </SheetTrigger>
             <SheetContent className="w-[400px] sm:w-[540px]">
