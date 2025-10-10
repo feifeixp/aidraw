@@ -729,80 +729,6 @@ const Generate = () => {
               描述您的创意，AI会自动选择最合适的模型为您生成图片
             </p>
           </div>
-          <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <HistoryIcon className="h-4 w-4" />
-                会话历史
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-[400px] sm:w-[540px]">
-              <SheetHeader>
-                <SheetTitle>对话历史</SheetTitle>
-              </SheetHeader>
-              <ScrollArea className="h-[calc(100vh-100px)] mt-4">
-                <div className="space-y-4">
-                  {conversationHistory && conversationHistory.length > 0 ? (
-                    conversationHistory.map((conversation: any) => {
-                      const firstMessage = conversation.chat_messages?.[0];
-                      const messageCount = conversation.chat_messages?.length || 0;
-                      
-                      return (
-                        <Card 
-                          key={conversation.id} 
-                          className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
-                          onClick={() => {
-                            // 恢复对话
-                            const messages: ChatMessage[] = conversation.chat_messages.map((msg: any, idx: number) => ({
-                              id: `${msg.id}-${idx}`,
-                              type: msg.role as "user" | "assistant",
-                              content: msg.content,
-                              prompt: msg.content,
-                              images: msg.images?.images || [],
-                              timestamp: new Date(msg.created_at),
-                              mode: "agent" as GenerationMode,
-                            }));
-                            setChatMessages(messages);
-                            setCurrentConversationId(conversation.id);
-                            setIsHistoryOpen(false);
-                            toast({
-                              title: "已恢复对话",
-                              description: `共 ${messageCount} 条消息`,
-                            });
-                          }}
-                        >
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Badge variant="outline" className="gap-1">
-                                <MessageSquare className="h-3 w-3" />
-                                {messageCount} 条消息
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(new Date(conversation.updated_at), { 
-                                  addSuffix: true,
-                                  locale: zhCN 
-                                })}
-                              </span>
-                            </div>
-                            {firstMessage && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">
-                                {firstMessage.content}
-                              </p>
-                            )}
-                          </div>
-                        </Card>
-                      );
-                    })
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">暂无对话历史</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
         </div>
       </header>
 
@@ -1416,8 +1342,8 @@ const Generate = () => {
             </div>
           )}
 
-          {/* 模式选择器 */}
-          <div className="flex justify-start">
+          {/* 模式选择器和会话历史 */}
+          <div className="flex justify-between items-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
@@ -1448,6 +1374,81 @@ const Generate = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <HistoryIcon className="h-4 w-4" />
+                  会话历史
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-[400px] sm:w-[540px]">
+                <SheetHeader>
+                  <SheetTitle>对话历史</SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-100px)] mt-4">
+                  <div className="space-y-4">
+                    {conversationHistory && conversationHistory.length > 0 ? (
+                      conversationHistory.map((conversation: any) => {
+                        const firstMessage = conversation.chat_messages?.[0];
+                        const messageCount = conversation.chat_messages?.length || 0;
+                        
+                        return (
+                          <Card 
+                            key={conversation.id} 
+                            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                            onClick={() => {
+                              // 恢复对话
+                              const messages: ChatMessage[] = conversation.chat_messages.map((msg: any, idx: number) => ({
+                                id: `${msg.id}-${idx}`,
+                                type: msg.role as "user" | "assistant",
+                                content: msg.content,
+                                prompt: msg.content,
+                                images: msg.images?.images || [],
+                                timestamp: new Date(msg.created_at),
+                                mode: "agent" as GenerationMode,
+                              }));
+                              setChatMessages(messages);
+                              setCurrentConversationId(conversation.id);
+                              setIsHistoryOpen(false);
+                              toast({
+                                title: "已恢复对话",
+                                description: `共 ${messageCount} 条消息`,
+                              });
+                            }}
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Badge variant="outline" className="gap-1">
+                                  <MessageSquare className="h-3 w-3" />
+                                  {messageCount} 条消息
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(conversation.updated_at), { 
+                                    addSuffix: true,
+                                    locale: zhCN 
+                                  })}
+                                </span>
+                              </div>
+                              {firstMessage && (
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {firstMessage.content}
+                                </p>
+                              )}
+                            </div>
+                          </Card>
+                        );
+                      })
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">暂无对话历史</p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
