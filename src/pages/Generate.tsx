@@ -826,7 +826,7 @@ const Generate = () => {
         </div>
 
         {/* 智能生成标签页 */}
-        <TabsContent value="generate" className="flex-1 flex flex-col mt-0 overflow-hidden">
+        <TabsContent value="generate" className={`flex-1 flex flex-col mt-0 overflow-hidden ${activeTab !== "generate" ? "h-0" : ""}`}>
       {/* 对话列表区域 */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-4xl mx-auto space-y-6">
