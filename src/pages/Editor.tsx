@@ -68,6 +68,7 @@ const historyReducer = (state: HistoryState, action: HistoryAction): HistoryStat
 const Editor = () => {
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
   const [activeTool, setActiveTool] = useState<string>("select");
+  const [canvasSize, setCanvasSize] = useState({ width: 1024, height: 768 });
   const [{
     history,
     historyIndex
@@ -173,7 +174,22 @@ const Editor = () => {
             </SheetContent>
           </Sheet>}
         <div className="flex-1">
-          <EditorToolbar canvas={canvas} activeTool={activeTool} setActiveTool={setActiveTool} undo={undo} redo={redo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1} saveState={saveState} isTaskProcessing={isTaskProcessing} startTask={startTask} completeTask={completeTask} cancelTask={cancelTask} />
+          <EditorToolbar 
+            canvas={canvas} 
+            activeTool={activeTool} 
+            setActiveTool={setActiveTool} 
+            undo={undo} 
+            redo={redo} 
+            canUndo={historyIndex > 0} 
+            canRedo={historyIndex < history.length - 1} 
+            saveState={saveState} 
+            isTaskProcessing={isTaskProcessing} 
+            startTask={startTask} 
+            completeTask={completeTask} 
+            cancelTask={cancelTask}
+            canvasSize={canvasSize}
+            onCanvasSizeChange={setCanvasSize}
+          />
         </div>
       </div>
       
@@ -182,7 +198,13 @@ const Editor = () => {
             {leftToolbarContent}
           </div>}
         <div className="flex-1">
-          <EditorCanvas canvas={canvas} setCanvas={setCanvas} activeTool={activeTool} saveState={saveState} />
+          <EditorCanvas 
+            canvas={canvas} 
+            setCanvas={setCanvas} 
+            activeTool={activeTool} 
+            saveState={saveState}
+            canvasSize={canvasSize}
+          />
         </div>
       </div>
     </div>;

@@ -7,13 +7,15 @@ interface EditorCanvasProps {
   setCanvas: (canvas: FabricCanvas) => void;
   activeTool: string;
   saveState: () => void;
+  canvasSize: { width: number; height: number };
 }
 
 export const EditorCanvas = ({
   canvas,
   setCanvas,
   activeTool,
-  saveState
+  saveState,
+  canvasSize
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const saveStateRef = useRef(saveState);
@@ -27,8 +29,8 @@ export const EditorCanvas = ({
     if (!canvasRef.current) return;
 
     const fabricCanvas = new FabricCanvas(canvasRef.current, {
-      width: 1024,
-      height: 768,
+      width: canvasSize.width,
+      height: canvasSize.height,
       backgroundColor: "#ffffff",
       preserveObjectStacking: true,
     });
@@ -85,7 +87,15 @@ export const EditorCanvas = ({
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
-  }, []);
+  }, [canvasSize.width, canvasSize.height]);
+
+  // Update canvas size when canvasSize prop changes
+  useEffect(() => {
+    if (!canvas) return;
+    canvas.setWidth(canvasSize.width);
+    canvas.setHeight(canvasSize.height);
+    canvas.renderAll();
+  }, [canvas, canvasSize.width, canvasSize.height]);
 
   useEffect(() => {
     if (!canvas) return;

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera } from "lucide-react";
+import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera, Maximize2 } from "lucide-react";
+import { CanvasSizeSettings } from "./CanvasSizeSettings";
 import { Canvas as FabricCanvas, FabricImage } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,8 @@ interface EditorToolbarProps {
   startTask: (taskName: string) => string;
   completeTask: (taskId: string) => void;
   cancelTask: () => void;
+  canvasSize: { width: number; height: number };
+  onCanvasSizeChange: (size: { width: number; height: number }) => void;
 }
 export const EditorToolbar = ({
   canvas,
@@ -35,13 +38,16 @@ export const EditorToolbar = ({
   isTaskProcessing,
   startTask,
   completeTask,
-  cancelTask
+  cancelTask,
+  canvasSize,
+  onCanvasSizeChange
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"generate" | "edit">("generate");
   const [isComposing, setIsComposing] = useState(false);
   const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
+  const [showCanvasSizeDialog, setShowCanvasSizeDialog] = useState(false);
   const handleUndo = () => {
     undo();
   };
@@ -418,10 +424,24 @@ export const EditorToolbar = ({
 
       <Separator orientation="vertical" className="h-6" />
 
+      <Button variant="outline" size="sm" onClick={() => setShowCanvasSizeDialog(true)}>
+        <Maximize2 className="h-4 w-4 mr-1" />
+        画布尺寸
+      </Button>
+
       <Button variant="outline" size="sm" onClick={handleExport}>
         <Download className="h-4 w-4 mr-1" />
         导出
       </Button>
+
+      {/* Canvas Size Settings Dialog */}
+      <CanvasSizeSettings
+        open={showCanvasSizeDialog}
+        onOpenChange={setShowCanvasSizeDialog}
+        onApply={(width, height) => onCanvasSizeChange({ width, height })}
+        currentWidth={canvasSize.width}
+        currentHeight={canvasSize.height}
+      />
 
       {/* Smart Compose Dialog */}
       <Dialog open={showSmartComposeDialog} onOpenChange={setShowSmartComposeDialog}>
