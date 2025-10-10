@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Type, Bold, Italic, Underline, Square, Image, Upload, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ColorAdjustmentPanel } from "./ColorAdjustmentPanel";
 
 interface PropertiesPanelProps {
   canvas: FabricCanvas | null;
@@ -528,6 +529,12 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
             </SelectContent>
           </Select>
         </div>
+        
+        <ColorAdjustmentPanel 
+          canvas={canvas} 
+          selectedObject={selectedObject} 
+          saveState={saveState} 
+        />
       </div>
     </>
   );
