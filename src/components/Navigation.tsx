@@ -30,7 +30,7 @@ const Navigation = () => {
 
       {/* Main navigation bar */}
       <nav className={cn("fixed top-0 left-0 right-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur transition-all duration-300", isVisible ? "translate-y-0" : "-translate-y-full")} onMouseLeave={() => setIsVisible(false)}>
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 my-[20px]">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
             </div>
