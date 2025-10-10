@@ -16,6 +16,12 @@ export const EditorCanvas = ({
   saveState
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const saveStateRef = useRef(saveState);
+  
+  // Keep saveStateRef up to date
+  useEffect(() => {
+    saveStateRef.current = saveState;
+  }, [saveState]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -46,13 +52,13 @@ export const EditorCanvas = ({
           });
           fabricCanvas.discardActiveObject();
           fabricCanvas.renderAll();
-          saveState();
+          saveStateRef.current();
         }
       }
     };
 
     const handleObjectModified = () => {
-      saveState();
+      saveStateRef.current();
     };
 
     // Handle double click on text objects
@@ -79,7 +85,7 @@ export const EditorCanvas = ({
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
-  }, [saveState]);
+  }, []);
 
   useEffect(() => {
     if (!canvas) return;
@@ -154,7 +160,7 @@ export const EditorCanvas = ({
       canvas.bringObjectToFront(img);
       canvas.setActiveObject(img);
       canvas.renderAll();
-      saveState();
+      saveStateRef.current();
       toast.success("图片已添加");
     }).catch(error => {
       console.error('Error loading image:', error);
