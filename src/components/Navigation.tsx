@@ -11,7 +11,6 @@ const Navigation = () => {
     { to: "/", label: "首页", icon: Home },
     { to: "/generate", label: "智能生成", icon: Sparkles },
     { to: "/editor", label: "分镜编辑", icon: Pencil },
-    { to: "/inspiration", label: "灵感广场", icon: Star },
     { to: "/models", label: "模型管理", icon: Database },
     { to: "/history", label: "生成历史", icon: History },
   ];
