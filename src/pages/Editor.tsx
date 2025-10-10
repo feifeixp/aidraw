@@ -69,6 +69,7 @@ const Editor = () => {
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
   const [activeTool, setActiveTool] = useState<string>("select");
   const [canvasSize, setCanvasSize] = useState({ width: 1024, height: 768 });
+  const [zoom, setZoom] = useState<number>(100);
   const [{
     history,
     historyIndex
@@ -189,6 +190,8 @@ const Editor = () => {
             cancelTask={cancelTask}
             canvasSize={canvasSize}
             onCanvasSizeChange={setCanvasSize}
+            zoom={zoom}
+            onZoomChange={setZoom}
           />
         </div>
       </div>
@@ -200,6 +203,8 @@ const Editor = () => {
           activeTool={activeTool} 
           saveState={saveState}
           canvasSize={canvasSize}
+          zoom={zoom}
+          onZoomChange={setZoom}
         />
         {!isMobile && (
           <div className="absolute left-4 top-4 w-48 h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden">

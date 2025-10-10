@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera, Maximize2 } from "lucide-react";
 import { CanvasSizeSettings } from "./CanvasSizeSettings";
 import { Canvas as FabricCanvas, FabricImage } from "fabric";
@@ -25,6 +26,8 @@ interface EditorToolbarProps {
   cancelTask: () => void;
   canvasSize: { width: number; height: number };
   onCanvasSizeChange: (size: { width: number; height: number }) => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
 }
 export const EditorToolbar = ({
   canvas,
@@ -40,7 +43,9 @@ export const EditorToolbar = ({
   completeTask,
   cancelTask,
   canvasSize,
-  onCanvasSizeChange
+  onCanvasSizeChange,
+  zoom,
+  onZoomChange
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"generate" | "edit">("generate");
@@ -433,6 +438,21 @@ export const EditorToolbar = ({
         <Download className="h-4 w-4 mr-1" />
         导出
       </Button>
+
+      <Separator orientation="vertical" className="h-6 shrink-0" />
+
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-sm text-muted-foreground whitespace-nowrap">缩放</span>
+        <Slider
+          value={[zoom]}
+          onValueChange={(values) => onZoomChange(values[0])}
+          min={10}
+          max={200}
+          step={10}
+          className="w-32"
+        />
+        <span className="text-sm text-muted-foreground whitespace-nowrap min-w-[3rem] text-right">{zoom}%</span>
+      </div>
 
       {/* Canvas Size Settings Dialog */}
       <CanvasSizeSettings

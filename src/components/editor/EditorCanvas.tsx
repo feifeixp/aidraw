@@ -8,6 +8,8 @@ interface EditorCanvasProps {
   activeTool: string;
   saveState: () => void;
   canvasSize: { width: number; height: number };
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
 }
 
 export const EditorCanvas = ({
@@ -15,9 +17,12 @@ export const EditorCanvas = ({
   setCanvas,
   activeTool,
   saveState,
-  canvasSize
+  canvasSize,
+  zoom,
+  onZoomChange
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const saveStateRef = useRef(saveState);
   
   // Keep saveStateRef up to date
@@ -186,9 +191,40 @@ export const EditorCanvas = ({
     });
   };
 
+  // Handle mouse wheel zoom
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Prevent default scrolling
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        
+        const delta = e.deltaY;
+        const zoomChange = delta > 0 ? -10 : 10;
+        const newZoom = Math.max(10, Math.min(200, zoom + zoomChange));
+        
+        onZoomChange(newZoom);
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [zoom, onZoomChange]);
+
   return (
-    <div className="flex items-center justify-center h-full bg-muted/20 p-4 overflow-auto">
-      <div className="shadow-2xl">
+    <div 
+      ref={containerRef}
+      className="flex items-center justify-center h-full bg-muted/20 p-4 overflow-auto"
+    >
+      <div 
+        className="shadow-2xl transition-transform"
+        style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
+      >
         <canvas ref={canvasRef} className="border border-border" />
       </div>
     </div>
