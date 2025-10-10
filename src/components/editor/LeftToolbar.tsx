@@ -802,11 +802,16 @@ export const LeftToolbar = ({
               <Button onClick={() => handleAdjustCamera("a full shot showing the entire subject from head to toe", "全景镜头")} className="w-full">全景镜头 (Full Shot)</Button>
               <Button onClick={() => handleAdjustCamera("a medium shot from waist up", "中景镜头")} className="w-full">中景镜头 (Medium Shot)</Button>
               <Button onClick={() => handleAdjustCamera("a close shot showing head and shoulders", "近景镜头")} className="w-full">近景镜头 (Close Shot)</Button>
+              <Button onClick={() => handleAdjustCamera("a wide angle shot with ultra wide lens", "大广角")} className="w-full">大广角 (Wide Angle)</Button>
+              <Button onClick={() => handleAdjustCamera("pull back the camera to increase distance from subject", "拉远")} className="w-full">拉远 (Pull Back)</Button>
+              <Button onClick={() => handleAdjustCamera("push in the camera closer to the subject", "推进")} className="w-full">推进 (Push In)</Button>
             </TabsContent>
             <TabsContent value="angle" className="space-y-2">
               <Button onClick={() => handleAdjustCamera("an up shot from a low angle looking upward", "仰视镜头")} className="w-full">仰视镜头 (Up Shot)</Button>
               <Button onClick={() => handleAdjustCamera("a down shot from a high angle looking downward", "俯视镜头")} className="w-full">俯视镜头 (Down Shot)</Button>
               <Button onClick={() => handleAdjustCamera("an eye level shot at the subject's eye level", "平视镜头")} className="w-full">平视镜头 (Eye Level)</Button>
+              <Button onClick={() => handleAdjustCamera("rotate the camera view 30 degrees to the left", "左转30度")} className="w-full">左转30度 (Rotate Left 30°)</Button>
+              <Button onClick={() => handleAdjustCamera("rotate the camera view 30 degrees to the right", "右转30度")} className="w-full">右转30度 (Rotate Right 30°)</Button>
             </TabsContent>
           </Tabs>
         </DialogContent>
