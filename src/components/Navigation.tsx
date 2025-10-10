@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Database, History, Star, Pencil, ChevronDown } from "lucide-react";
+import { Sparkles, Database, History, Star, Pencil, ChevronDown, Home } from "lucide-react";
 import { useState } from "react";
 
 const Navigation = () => {
@@ -8,7 +8,8 @@ const Navigation = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   const links = [
-    { to: "/", label: "智能生成", icon: Sparkles },
+    { to: "/", label: "首页", icon: Home },
+    { to: "/generate", label: "智能生成", icon: Sparkles },
     { to: "/editor", label: "分镜编辑", icon: Pencil },
     { to: "/inspiration", label: "灵感广场", icon: Star },
     { to: "/models", label: "模型管理", icon: Database },

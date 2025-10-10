@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
 import Generate from "./pages/Generate";
 import Models from "./pages/Models";
 import History from "./pages/History";
@@ -29,7 +30,8 @@ const App = () => (
         
         <div>
           <Routes>
-            <Route path="/" element={<Generate />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/generate" element={<Generate />} />
             <Route path="/inspiration" element={<Inspiration />} />
             <Route path="/models" element={<Models />} />
             <Route path="/history" element={<History />} />
