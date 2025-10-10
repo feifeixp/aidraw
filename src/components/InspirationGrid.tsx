@@ -33,7 +33,7 @@ export const InspirationGrid = ({ onUseTemplate }: InspirationGridProps) => {
     onUseTemplate(template);
     
     toast({
-      title: "已复制模板参数",
+      title: "已复制参数",
       description: "参数已填充到生成页面，可以开始生成了",
     });
   };
@@ -50,9 +50,9 @@ export const InspirationGrid = ({ onUseTemplate }: InspirationGridProps) => {
     return (
       <Card className="p-12 text-center">
         <Star className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-        <p className="text-muted-foreground">还没有模板</p>
+        <p className="text-muted-foreground">还没有分享内容</p>
         <p className="text-sm text-muted-foreground mt-2">
-          在生成历史中将喜欢的作品设为模板，它们就会出现在这里
+          在图片记录中将喜欢的作品分享出来，它们就会出现在这里
         </p>
       </Card>
     );
@@ -110,7 +110,7 @@ export const InspirationGrid = ({ onUseTemplate }: InspirationGridProps) => {
               <div className="mb-2 flex items-center gap-2">
                 <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
                   <Star className="h-3 w-3 mr-1 fill-current" />
-                  精选模板
+                  精选
                 </Badge>
               </div>
 

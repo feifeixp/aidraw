@@ -41,7 +41,7 @@ export const HistoryGrid = () => {
       queryClient.invalidateQueries({ queryKey: ["inspiration-templates"] });
       toast({
         title: "成功",
-        description: "模板状态已更新",
+        description: "分享状态已更新",
       });
     },
     onError: () => {
@@ -152,7 +152,7 @@ export const HistoryGrid = () => {
                   {item.is_template && (
                     <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
                       <Star className="h-3 w-3 mr-1" />
-                      模板
+                      已分享
                     </Badge>
                   )}
                 </div>
@@ -216,7 +216,7 @@ export const HistoryGrid = () => {
                       })}
                     >
                       <Star className={`h-4 w-4 mr-2 ${item.is_template ? 'fill-current' : ''}`} />
-                      {item.is_template ? "取消模板" : "设为模板"}
+                      {item.is_template ? "取消分享" : "分享"}
                     </Button>
                     <Button
                       variant="outline"
