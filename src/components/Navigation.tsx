@@ -9,7 +9,7 @@ const Navigation = () => {
 
   const links = [
     { to: "/", label: "智能生成", icon: Sparkles },
-    { to: "/editor", label: "画面编辑", icon: Pencil },
+    { to: "/editor", label: "分镜编辑", icon: Pencil },
     { to: "/inspiration", label: "灵感广场", icon: Star },
     { to: "/models", label: "模型管理", icon: Database },
     { to: "/history", label: "生成历史", icon: History },
@@ -39,8 +39,7 @@ const Navigation = () => {
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--gradient-primary)]">
-              <Sparkles className="h-6 w-6 text-white" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
             </div>
             <span className="text-xl font-bold bg-[var(--gradient-primary)] bg-clip-text text-transparent">
               Neo-Domain
