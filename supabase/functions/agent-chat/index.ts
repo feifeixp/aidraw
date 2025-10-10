@@ -24,6 +24,10 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Missing Supabase configuration");
+    }
+    
     // Create Supabase client with user's auth header
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } }
@@ -38,15 +42,30 @@ serve(async (req) => {
       );
     }
 
-    const { messages } = await req.json();
+    const requestBody = await req.json();
+    const { messages } = requestBody;
+    
+    // Input validation
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid messages format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (messages.length > 50) {
+      return new Response(
+        JSON.stringify({ error: 'Too many messages in conversation' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
-
-    console.log("Agent chat request with messages:", messages.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -191,7 +210,6 @@ serve(async (req) => {
           if (toolCallBuffer && toolCallBuffer.arguments) {
             try {
               const args = JSON.parse(toolCallBuffer.arguments);
-              console.log('Executing generate_image with args:', args);
 
               // Initialize Supabase client
               const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -207,7 +225,6 @@ serve(async (req) => {
               });
 
               const enhanceData = await enhanceResponse.json();
-              console.log('Enhanced prompt data:', enhanceData);
 
               // Get model info from Supabase
               const { data: checkpointModel } = await supabase
@@ -226,9 +243,6 @@ serve(async (req) => {
               
               // Only use LoRA IDs that actually exist in the database
               const validLoraIds = validLoraModels.map(m => m.lora_version_id);
-              
-              console.log('AI suggested LoRA IDs:', enhanceData.lora_ids);
-              console.log('Valid LoRA IDs from database:', validLoraIds);
 
               // Build model name
               const loraNames = validLoraModels.map(l => l.name).join(' + ');
@@ -268,7 +282,6 @@ serve(async (req) => {
               });
 
               const generateData = await generateResponse.json();
-              console.log('Generation result:', generateData);
 
               if (!generateData.success || !generateData.historyId) {
                 throw new Error(generateData.error || 'Generation failed');
@@ -292,7 +305,6 @@ serve(async (req) => {
                   .single();
 
                 if (historyError) {
-                  console.error('Polling error:', historyError);
                   continue;
                 }
 
