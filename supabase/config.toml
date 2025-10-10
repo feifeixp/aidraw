@@ -1,25 +1,28 @@
 project_id = "fosvwmuvanqdwlqtlhlx"
 
 [functions.agent-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-edit-image]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-enhance-prompt]
-verify_jwt = false
+verify_jwt = true
+
+[functions.ai-generate-image]
+verify_jwt = true
 
 [functions.ai-remove-background]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-select-model]
-verify_jwt = false
+verify_jwt = true
 
 [functions.image-proxy]
 verify_jwt = false
 
 [functions.liblib-generate]
-verify_jwt = false
+verify_jwt = true
 
 [functions.liblib-model-info]
-verify_jwt = false
+verify_jwt = true

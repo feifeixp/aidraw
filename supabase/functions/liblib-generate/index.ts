@@ -31,6 +31,35 @@ serve(async (req) => {
       );
     }
     
+    // Input validation
+    if (typeof prompt !== 'string' || prompt.length === 0 || prompt.length > 5000) {
+      return new Response(
+        JSON.stringify({ error: "Prompt must be between 1 and 5000 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (typeof width !== 'number' || width < 256 || width > 2048) {
+      return new Response(
+        JSON.stringify({ error: "Width must be between 256 and 2048" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (typeof height !== 'number' || height < 256 || height > 2048) {
+      return new Response(
+        JSON.stringify({ error: "Height must be between 256 and 2048" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (typeof imgCount !== 'number' || imgCount < 1 || imgCount > 4) {
+      return new Response(
+        JSON.stringify({ error: "Image count must be between 1 and 4" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     if (!userId) {
       return new Response(
         JSON.stringify({ error: "User not authenticated" }),
@@ -75,11 +104,7 @@ serve(async (req) => {
     const content = `${uri}&${timestamp}&${signatureNonce}`;
     
     console.log("=== Signature Generation ===");
-    console.log("URI:", uri);
     console.log("Timestamp:", timestamp);
-    console.log("SignatureNonce:", signatureNonce);
-    console.log("Content to sign:", content);
-    console.log("SecretKey length:", LIBLIB_SECRET_KEY.length);
 
     // Create HMAC-SHA1 signature
     const encoder = new TextEncoder();
@@ -101,7 +126,7 @@ serve(async (req) => {
       .replace(/\//g, '_')
       .replace(/=/g, '');
     
-    console.log("Generated signature:", signature);
+    
 
     // 初始化Supabase客户端
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -179,14 +204,8 @@ serve(async (req) => {
       );
     }
 
-    console.log("Calling LibLib API with config:", {
-      baseAlgo: primaryModel.base_algo,
-      checkpointId: checkpointData?.checkpoint_id,
-      loraCount: loraDataList.length,
-      loraVersionIds: loraDataList.map(l => l.lora_version_id),
-      sampler: primaryModel.sampler,
-      cfgScale: primaryModel.cfg_scale,
-    });
+    console.log("Calling LibLib API");
+    console.log("Using LoRA models count:", loraDataList.length);
 
     // Build URL with signature parameters
     const apiUrl = `https://openapi.liblibai.cloud${uri}?AccessKey=${LIBLIB_ACCESS_KEY}&Signature=${signature}&Timestamp=${timestamp}&SignatureNonce=${signatureNonce}`;
@@ -228,7 +247,6 @@ serve(async (req) => {
     // 如果有底模，添加checkPointId
     if (checkpointData?.checkpoint_id) {
       requestBody.checkPointId = checkpointData.checkpoint_id;
-      console.log("Using checkpoint model:", checkpointData.checkpoint_id);
     }
 
     // 如果有LoRA，添加additionalNetwork（支持多个LoRA）
@@ -237,12 +255,7 @@ serve(async (req) => {
         modelId: lora.lora_version_id,
         weight: lora.lora_weight || 0.8,
       }));
-      console.log("Using LoRA models:", loraDataList.map(l => `${l.lora_version_id} (weight: ${l.lora_weight})`).join(", "));
     }
-
-    console.log("LibLib API request body:", JSON.stringify(requestBody, null, 2));
-    console.log("Calling LibLib API at URL:", apiUrl);
-    console.log("Using Access Key:", LIBLIB_ACCESS_KEY);
 
     // 定义后台处理函数
     const processGeneration = async () => {
@@ -274,7 +287,6 @@ serve(async (req) => {
           const endTime = Date.now();
           console.log(`Background: LibLib API responded in ${endTime - startTime}ms`);
           console.log("Background: Response status:", liblibResponse.status);
-          console.log("Background: Response headers:", JSON.stringify(Object.fromEntries(liblibResponse.headers.entries())));
         } catch (fetchError) {
           clearTimeout(timeoutId);
           console.error("Background: === LibLib API FETCH ERROR ===");
@@ -328,12 +340,10 @@ serve(async (req) => {
 
         const responseText = await liblibResponse.text();
         console.log("Background: === LibLib API SUCCESS RESPONSE ===");
-        console.log("Background: Raw response text:", responseText);
         
         let result;
         try {
           result = JSON.parse(responseText);
-          console.log("Background: Parsed response:", JSON.stringify(result, null, 2));
         } catch (parseError) {
           console.error("Background: Failed to parse JSON response:", parseError);
           await supabase

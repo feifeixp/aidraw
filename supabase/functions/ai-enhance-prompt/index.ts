@@ -21,6 +21,13 @@ serve(async (req) => {
       );
     }
 
+    if (typeof userInput !== 'string' || userInput.length === 0 || userInput.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: "User input must be between 1 and 2000 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY not configured");
@@ -140,7 +147,7 @@ ${JSON.stringify(lorasInfo, null, 2)}
     }
 
     const aiResult = await aiResponse.json();
-    console.log("AI response:", aiResult);
+    console.log("AI response received");
 
     const aiMessage = aiResult.choices?.[0]?.message?.content;
     if (!aiMessage) {

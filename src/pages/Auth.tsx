@@ -125,9 +125,16 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
+                pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                title="密码必须至少8个字符，包含大小写字母、数字和特殊字符"
                 disabled={loading}
               />
+              {!isLogin && (
+                <p className="text-xs text-muted-foreground">
+                  密码需包含至少8个字符、大小写字母、数字和特殊字符
+                </p>
+              )}
             </div>
 
             <Button 

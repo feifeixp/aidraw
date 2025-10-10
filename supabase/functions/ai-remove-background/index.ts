@@ -14,6 +14,13 @@ Deno.serve(async (req) => {
       throw new Error('Image URL is required');
     }
 
+    // Validate URL format
+    try {
+      new URL(imageUrl);
+    } catch {
+      throw new Error('Invalid URL format');
+    }
+
     console.log('Removing background from image...');
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

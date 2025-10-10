@@ -17,6 +17,18 @@ serve(async (req) => {
       throw new Error('Missing required fields: imageUrl and instruction');
     }
 
+    if (typeof instruction !== 'string' || instruction.length === 0 || instruction.length > 1000) {
+      throw new Error('Instruction must be between 1 and 1000 characters');
+    }
+
+    // Validate URL format
+    try {
+      new URL(imageUrl);
+      if (referenceImageUrl) new URL(referenceImageUrl);
+    } catch {
+      throw new Error('Invalid URL format');
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
