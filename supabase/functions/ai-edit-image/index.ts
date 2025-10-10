@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { imageUrl, instruction } = await req.json();
+    const { imageUrl, instruction, referenceImageUrl } = await req.json();
     
     if (!imageUrl || !instruction) {
       throw new Error('Missing required fields: imageUrl and instruction');
@@ -23,6 +23,33 @@ serve(async (req) => {
     }
 
     console.log('Editing image with instruction:', instruction);
+    if (referenceImageUrl) {
+      console.log('Using reference image for pose');
+    }
+
+    // Build content array with images
+    const content: any[] = [
+      {
+        type: 'text',
+        text: instruction
+      },
+      {
+        type: 'image_url',
+        image_url: {
+          url: imageUrl
+        }
+      }
+    ];
+
+    // Add reference image if provided
+    if (referenceImageUrl) {
+      content.push({
+        type: 'image_url',
+        image_url: {
+          url: referenceImageUrl
+        }
+      });
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -35,18 +62,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: instruction
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageUrl
-                }
-              }
-            ]
+            content: content
           }
         ],
         modalities: ['image', 'text']

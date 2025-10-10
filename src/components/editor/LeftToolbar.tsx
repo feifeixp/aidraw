@@ -56,6 +56,8 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"generate" | "edit">("generate");
   const [isComposing, setIsComposing] = useState(false);
+  const [customPose, setCustomPose] = useState("");
+  const [poseReferenceImage, setPoseReferenceImage] = useState<string | null>(null);
 
   // Add Image
   const handleUploadImage = () => {
@@ -316,7 +318,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     }
   };
 
-  const handleAdjustPose = async (pose: string) => {
+  const handleAdjustPose = async (pose: string, referenceImage?: string) => {
     const activeObject = canvas?.getActiveObject();
     if (!canvas || !activeObject || activeObject.type !== 'image') {
       toast.error("请先选择画布上的图片");
@@ -332,12 +334,25 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         quality: 1,
       });
 
-      const instruction = `Change this character's pose to: ${pose}. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position.`;
+      let instruction = `Change this character's pose to: ${pose}. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position.`;
+      
+      if (referenceImage) {
+        instruction = `Change this character's pose to match the pose shown in the reference image. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position to match the reference pose.`;
+      }
+
+      const requestBody: any = { 
+        imageUrl: imageDataURL, 
+        instruction 
+      };
+      
+      if (referenceImage) {
+        requestBody.referenceImageUrl = referenceImage;
+      }
 
       const { data: aiData, error: aiError } = await supabase.functions.invoke(
         'ai-edit-image',
         {
-          body: { imageUrl: imageDataURL, instruction }
+          body: requestBody
         }
       );
 
@@ -361,6 +376,8 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         
         saveState();
         toast.success("姿势调整完成");
+        setPoseReferenceImage(null);
+        setCustomPose("");
       } else {
         throw new Error('No image returned from AI');
       }
@@ -368,6 +385,33 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
       console.error("Adjust pose error:", error);
       toast.error("姿势调整失败");
     }
+  };
+
+  const handleUploadPoseReference = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const imageUrl = event.target?.result as string;
+          setPoseReferenceImage(imageUrl);
+          toast.success("姿势参考线稿已上传");
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
+
+  const handleCustomPoseSubmit = () => {
+    if (!customPose.trim()) {
+      toast.error("请输入自定义动作描述");
+      return;
+    }
+    handleAdjustPose(customPose, poseReferenceImage || undefined);
   };
 
   const handleAdjustSubjectAngle = async (angle: string, description: string) => {
@@ -712,17 +756,127 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
 
       {/* Pose Dialog */}
       <Dialog open={showPoseDialog} onOpenChange={setShowPoseDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>调整动作姿势</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <Button onClick={() => handleAdjustPose("standing")} className="w-full">站立</Button>
-            <Button onClick={() => handleAdjustPose("sitting")} className="w-full">坐着</Button>
-            <Button onClick={() => handleAdjustPose("walking")} className="w-full">行走</Button>
-            <Button onClick={() => handleAdjustPose("running")} className="w-full">跑步</Button>
-            <Button onClick={() => handleAdjustPose("jumping")} className="w-full">跳跃</Button>
-          </div>
+          <Tabs defaultValue="preset" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="preset">预设动作</TabsTrigger>
+              <TabsTrigger value="custom">自定义</TabsTrigger>
+              <TabsTrigger value="reference">线稿参考</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="preset" className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={() => handleAdjustPose("standing")} className="w-full">站立</Button>
+                <Button onClick={() => handleAdjustPose("sitting")} className="w-full">坐着</Button>
+                <Button onClick={() => handleAdjustPose("walking")} className="w-full">行走</Button>
+                <Button onClick={() => handleAdjustPose("running")} className="w-full">跑步</Button>
+                <Button onClick={() => handleAdjustPose("jumping")} className="w-full">跳跃</Button>
+                <Button onClick={() => handleAdjustPose("lying down")} className="w-full">躺下</Button>
+                <Button onClick={() => handleAdjustPose("kneeling")} className="w-full">跪下</Button>
+                <Button onClick={() => handleAdjustPose("crouching")} className="w-full">蹲下</Button>
+                <Button onClick={() => handleAdjustPose("raising arms")} className="w-full">举手</Button>
+                <Button onClick={() => handleAdjustPose("waving")} className="w-full">挥手</Button>
+                <Button onClick={() => handleAdjustPose("pointing")} className="w-full">指向</Button>
+                <Button onClick={() => handleAdjustPose("dancing")} className="w-full">跳舞</Button>
+                <Button onClick={() => handleAdjustPose("fighting stance")} className="w-full">战斗姿态</Button>
+                <Button onClick={() => handleAdjustPose("meditation pose")} className="w-full">冥想姿势</Button>
+                <Button onClick={() => handleAdjustPose("yoga pose")} className="w-full">瑜伽姿势</Button>
+                <Button onClick={() => handleAdjustPose("thinking pose with hand on chin")} className="w-full">思考姿势</Button>
+                <Button onClick={() => handleAdjustPose("superhero pose")} className="w-full">超级英雄姿势</Button>
+                <Button onClick={() => handleAdjustPose("praying")} className="w-full">祈祷</Button>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="custom" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="custom-pose">输入自定义动作描述</Label>
+                <Input
+                  id="custom-pose"
+                  placeholder="例如：双手抱胸站立、单膝跪地、伸展双臂..."
+                  value={customPose}
+                  onChange={(e) => setCustomPose(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCustomPoseSubmit();
+                    }
+                  }}
+                />
+                <p className="text-sm text-muted-foreground">
+                  用自然语言描述你想要的动作姿势，AI将尝试理解并调整角色姿势
+                </p>
+              </div>
+              <Button onClick={handleCustomPoseSubmit} className="w-full">
+                应用自定义动作
+              </Button>
+            </TabsContent>
+            
+            <TabsContent value="reference" className="space-y-4">
+              <div className="space-y-2">
+                <Label>上传姿势参考线稿</Label>
+                {poseReferenceImage ? (
+                  <div className="space-y-2">
+                    <div className="relative w-full aspect-square border rounded-lg overflow-hidden bg-muted">
+                      <img 
+                        src={poseReferenceImage} 
+                        alt="姿势参考" 
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={handleUploadPoseReference}
+                        className="flex-1"
+                      >
+                        重新上传
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setPoseReferenceImage(null)}
+                        className="flex-1"
+                      >
+                        清除
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    onClick={handleUploadPoseReference}
+                    className="w-full h-32 border-dashed"
+                  >
+                    <Upload className="h-8 w-8 mr-2" />
+                    点击上传姿势线稿
+                  </Button>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  上传一张姿势线稿或参考图片，AI将让选中的角色模仿该姿势
+                </p>
+              </div>
+              {poseReferenceImage && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="reference-pose-desc">补充描述（可选）</Label>
+                    <Input
+                      id="reference-pose-desc"
+                      placeholder="例如：注意手部细节、保持平衡感..."
+                      value={customPose}
+                      onChange={(e) => setCustomPose(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    onClick={() => handleAdjustPose(customPose || "match the reference pose", poseReferenceImage)} 
+                    className="w-full"
+                  >
+                    应用参考姿势
+                  </Button>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
