@@ -732,18 +732,7 @@ const Generate = () => {
   };
   return <div className="flex flex-col h-screen bg-gradient-to-br from-background via-background to-accent/5">
       {/* 顶部标题 */}
-      <header className="flex-shrink-0 border-b bg-card/50 backdrop-blur-sm px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold bg-[var(--gradient-primary)] bg-clip-text text-transparent">
-              AI智能绘图
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              描述您的创意，AI会自动选择最合适的模型为您生成图片
-            </p>
-          </div>
-        </div>
-      </header>
+      
 
       {/* Tabs组件 */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
