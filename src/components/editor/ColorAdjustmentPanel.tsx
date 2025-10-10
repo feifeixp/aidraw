@@ -56,24 +56,8 @@ export const ColorAdjustmentPanel = ({ canvas, selectedObject, saveState }: Colo
       selectedObject.filters.push(brightnessFilter);
     }
 
-    // Apply channel-specific adjustments
-    if (newChannel !== "all") {
-      const channelIndex = newChannel === "red" ? 0 : newChannel === "green" ? 1 : 2;
-      
-      // Create a matrix to isolate or enhance specific channels
-      const matrix = [1, 0, 0, 0, 0,
-                      0, 1, 0, 0, 0,
-                      0, 0, 1, 0, 0,
-                      0, 0, 0, 1, 0];
-      
-      // Enhance the selected channel slightly for visibility
-      matrix[channelIndex * 5 + channelIndex] = 1.2;
-      
-      const colorMatrix = new filters.ColorMatrix({
-        matrix: matrix
-      });
-      selectedObject.filters.push(colorMatrix);
-    }
+    // Note: Channel selection is for future enhancements
+    // Currently, adjustments apply to all channels regardless of selection
 
     selectedObject.applyFilters();
     canvas.renderAll();
