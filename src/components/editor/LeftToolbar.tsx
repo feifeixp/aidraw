@@ -42,10 +42,22 @@ import { Slider } from "@/components/ui/slider";
 interface LeftToolbarProps {
   canvas: FabricCanvas | null;
   saveState: () => void;
+  isTaskProcessing: boolean;
+  startTask: (taskName: string) => string;
+  completeTask: (taskId: string) => void;
+  cancelTask: () => void;
   onActionComplete?: () => void;
 }
 
-export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbarProps) => {
+export const LeftToolbar = ({ 
+  canvas, 
+  saveState, 
+  isTaskProcessing,
+  startTask,
+  completeTask,
+  cancelTask,
+  onActionComplete 
+}: LeftToolbarProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
   const [featherStrength, setFeatherStrength] = useState(50);
@@ -195,8 +207,13 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
       return;
     }
 
+    if (isTaskProcessing) {
+      toast.error("当前有任务正在处理，请等待完成");
+      return;
+    }
+
     setShowRemoveBgDialog(false);
-    toast.info("正在使用 AI 去除背景，请稍候...");
+    const taskId = startTask("正在移除背景");
     try {
       const imageDataURL = (activeObject as any).toDataURL({
         format: 'png',
@@ -234,6 +251,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         canvas.renderAll();
         
         saveState();
+        completeTask(taskId);
         toast.success("背景已去除");
       } else {
         throw new Error('No image returned from AI');
@@ -241,6 +259,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     } catch (error) {
       console.error("Remove background error:", error);
       toast.error("去除背景失败");
+      cancelTask();
     }
   };
 
@@ -268,8 +287,13 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
       return;
     }
 
+    if (isTaskProcessing) {
+      toast.error("当前有任务正在处理，请等待完成");
+      return;
+    }
+
     setShowCameraDialog(false);
-    toast.info(`正在调整镜头：${description}，请稍候...`);
+    const taskId = startTask(`正在调整镜头：${description}`);
 
     try {
       const imageDataURL = (activeObject as any).toDataURL({
@@ -305,6 +329,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         canvas.renderAll();
         
         saveState();
+        completeTask(taskId);
         toast.success("镜头调整完成");
       } else {
         throw new Error('No image returned from AI');
@@ -312,6 +337,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     } catch (error) {
       console.error("Adjust camera error:", error);
       toast.error("镜头调整失败");
+      cancelTask();
     }
   };
 
@@ -322,8 +348,13 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
       return;
     }
 
+    if (isTaskProcessing) {
+      toast.error("当前有任务正在处理，请等待完成");
+      return;
+    }
+
     setShowPoseDialog(false);
-    toast.info(`正在调整为${pose}姿势，请稍候...`);
+    const taskId = startTask("正在调整姿势");
 
     try {
       const imageDataURL = (activeObject as any).toDataURL({
@@ -372,6 +403,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         canvas.renderAll();
         
         saveState();
+        completeTask(taskId);
         toast.success("姿势调整完成");
         setPoseReferenceImage(null);
         setCustomPose("");
@@ -381,6 +413,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     } catch (error) {
       console.error("Adjust pose error:", error);
       toast.error("姿势调整失败");
+      cancelTask();
     }
   };
 
@@ -418,8 +451,13 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
       return;
     }
 
+    if (isTaskProcessing) {
+      toast.error("当前有任务正在处理，请等待完成");
+      return;
+    }
+
     setShowSubjectAngleDialog(false);
-    toast.info(`正在调整为${description}，请稍候...`);
+    const taskId = startTask(`正在调整为${description}`);
 
     try {
       const imageDataURL = (activeObject as any).toDataURL({
@@ -455,6 +493,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         canvas.renderAll();
         
         saveState();
+        completeTask(taskId);
         toast.success("主体角度调整完成");
       } else {
         throw new Error('No image returned from AI');
@@ -462,6 +501,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
     } catch (error) {
       console.error("Adjust subject angle error:", error);
       toast.error("主体角度调整失败");
+      cancelTask();
     }
   };
 
@@ -471,7 +511,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         {/* Add Element */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full justify-start" disabled={isGenerating}>
+            <Button variant="outline" size="sm" className="w-full justify-start" disabled={isGenerating || isTaskProcessing}>
               <Plus className="h-4 w-4 mr-2" />
               添加元素
             </Button>
@@ -481,7 +521,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
               <Upload className="h-4 w-4 mr-2" />
               上传图片
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleGenerateImage} disabled={isGenerating}>
+            <DropdownMenuItem onClick={handleGenerateImage} disabled={isGenerating || isTaskProcessing}>
               <Sparkles className="h-4 w-4 mr-2" />
               {isGenerating ? "生成中..." : "AI生成图片"}
             </DropdownMenuItem>
@@ -509,7 +549,7 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         <Separator />
 
         {/* Image Editing */}
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowRemoveBgDialog(true)}>
+        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowRemoveBgDialog(true)} disabled={isTaskProcessing}>
           <ImageOff className="h-4 w-4 mr-2" />
           去背景
         </Button>
@@ -527,17 +567,17 @@ export const LeftToolbar = ({ canvas, saveState, onActionComplete }: LeftToolbar
         <Separator />
 
         {/* AI Adjustments */}
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowCameraDialog(true)}>
+        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowCameraDialog(true)} disabled={isTaskProcessing}>
           <RotateCw className="h-4 w-4 mr-2" />
           调整相机
         </Button>
 
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowSubjectAngleDialog(true)}>
+        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowSubjectAngleDialog(true)} disabled={isTaskProcessing}>
           <Users className="h-4 w-4 mr-2" />
           主体角度
         </Button>
 
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowPoseDialog(true)}>
+        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowPoseDialog(true)} disabled={isTaskProcessing}>
           <PersonStanding className="h-4 w-4 mr-2" />
           调整动作
         </Button>

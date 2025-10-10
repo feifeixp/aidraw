@@ -35,6 +35,10 @@ interface EditorToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   saveState: () => void;
+  isTaskProcessing: boolean;
+  startTask: (taskName: string) => string;
+  completeTask: (taskId: string) => void;
+  cancelTask: () => void;
 }
 
 export const EditorToolbar = ({
@@ -46,6 +50,10 @@ export const EditorToolbar = ({
   canUndo,
   canRedo,
   saveState,
+  isTaskProcessing,
+  startTask,
+  completeTask,
+  cancelTask,
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"generate" | "edit">("generate");
@@ -199,8 +207,15 @@ export const EditorToolbar = ({
       return;
     }
 
+    if (isTaskProcessing) {
+      toast.error("当前有任务正在处理，请等待完成");
+      return;
+    }
+
     setShowSmartComposeDialog(false);
     setIsComposing(true);
+    
+    const taskId = startTask(composeMode === "generate" ? "正在生成图像" : "正在编辑图像");
 
     const objects = canvas.getObjects();
     const textAnnotations: string[] = [];
@@ -274,6 +289,7 @@ export const EditorToolbar = ({
           canvas.setActiveObject(img);
           canvas.renderAll();
           saveState();
+          completeTask(taskId);
           toast.success("图片已生成");
         }
       } else {
@@ -320,12 +336,14 @@ export const EditorToolbar = ({
           canvas.renderAll();
           
           saveState();
+          completeTask(taskId);
           toast.success("图片已编辑");
         }
       }
     } catch (error) {
       console.error("Smart compose error:", error);
       toast.error("智能合成失败");
+      cancelTask();
     } finally {
       setIsComposing(false);
     }
@@ -360,7 +378,12 @@ export const EditorToolbar = ({
         <Scissors className="h-4 w-4 mr-1" />
         绘制裁剪
       </Button>
-      <Button variant="outline" size="sm" onClick={handleRedraw}>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleRedraw}
+        disabled={isTaskProcessing}
+      >
         <Sparkles className="h-4 w-4 mr-1" />
         重绘
       </Button>
@@ -368,7 +391,7 @@ export const EditorToolbar = ({
         variant="outline" 
         size="sm" 
         onClick={() => setShowSmartComposeDialog(true)}
-        disabled={isComposing}
+        disabled={isTaskProcessing || isComposing}
       >
         <Wand2 className="h-4 w-4 mr-1" />
         {isComposing ? "处理中..." : "智能合成"}

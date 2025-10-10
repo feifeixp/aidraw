@@ -5,9 +5,16 @@ import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
+import { TaskQueueDisplay } from "@/components/editor/TaskQueueDisplay";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+interface Task {
+  id: string;
+  name: string;
+  status: "processing" | "completed";
+}
 
 type HistoryState = {
   history: string[];
@@ -68,6 +75,8 @@ const Editor = () => {
     historyIndex: -1,
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentTask, setCurrentTask] = useState<Task | null>(null);
+  const [isTaskProcessing, setIsTaskProcessing] = useState(false);
   const isMobile = useIsMobile();
 
   // Save canvas state to history
@@ -97,6 +106,28 @@ const Editor = () => {
     });
   }, [canvas, historyIndex, history]);
 
+  const startTask = useCallback((taskName: string) => {
+    const taskId = Date.now().toString();
+    setCurrentTask({ id: taskId, name: taskName, status: "processing" });
+    setIsTaskProcessing(true);
+    return taskId;
+  }, []);
+
+  const completeTask = useCallback((taskId: string) => {
+    setCurrentTask((prev) => 
+      prev?.id === taskId ? { ...prev, status: "completed" } : prev
+    );
+    setTimeout(() => {
+      setCurrentTask(null);
+      setIsTaskProcessing(false);
+    }, 1500);
+  }, []);
+
+  const cancelTask = useCallback(() => {
+    setCurrentTask(null);
+    setIsTaskProcessing(false);
+  }, []);
+
   // Save initial state when canvas is created
   useEffect(() => {
     if (canvas && history.length === 0) {
@@ -119,6 +150,10 @@ const Editor = () => {
         <LeftToolbar 
           canvas={canvas}
           saveState={saveState}
+          isTaskProcessing={isTaskProcessing}
+          startTask={startTask}
+          completeTask={completeTask}
+          cancelTask={cancelTask}
           onActionComplete={isMobile ? handleCloseMobileMenu : undefined}
         />
       </div>
@@ -133,6 +168,7 @@ const Editor = () => {
 
   return (
     <div className="h-screen w-full bg-background flex flex-col">
+      <TaskQueueDisplay currentTask={currentTask} />
       <div className="border-b border-border p-2 flex items-center gap-2">
         {isMobile && (
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -156,6 +192,10 @@ const Editor = () => {
             canUndo={historyIndex > 0}
             canRedo={historyIndex < history.length - 1}
             saveState={saveState}
+            isTaskProcessing={isTaskProcessing}
+            startTask={startTask}
+            completeTask={completeTask}
+            cancelTask={cancelTask}
           />
         </div>
       </div>
