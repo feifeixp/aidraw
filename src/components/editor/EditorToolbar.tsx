@@ -324,17 +324,19 @@ export const EditorToolbar = ({
         }
       }
     });
-    if (textAnnotations.length === 0 && shapes.length === 0) {
-      toast.error("画布中没有文本标注或图形，无法生成提示");
-      setIsComposing(false);
-      return;
-    }
     let instruction = "";
-    if (textAnnotations.length > 0) {
-      instruction += textAnnotations.join(". ") + ".";
-    }
-    if (shapes.length > 0) {
-      instruction += ` Visual markers: ${shapes.join(", ")}.`;
+    
+    // If no annotations or shapes, use default redraw mode
+    if (textAnnotations.length === 0 && shapes.length === 0) {
+      instruction = "Enhance this image with professional lighting and shading. Fix any defects or missing areas in the image. Adjust the camera angle to make the composition more reasonable and visually appealing. Add proper shadows and highlights based on the environment.";
+    } else {
+      // Use annotations and shapes to build instruction
+      if (textAnnotations.length > 0) {
+        instruction += textAnnotations.join(". ") + ".";
+      }
+      if (shapes.length > 0) {
+        instruction += ` Visual markers: ${shapes.join(", ")}.`;
+      }
     }
     toast.info(`正在使用AI ${composeMode === "generate" ? "生成" : "编辑"}图片，请稍候...`);
     try {
