@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MousePointer2, Crop, Scissors, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Check, X } from "lucide-react";
-import { Canvas as FabricCanvas, FabricImage, Rect } from "fabric";
+import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2 } from "lucide-react";
+import { Canvas as FabricCanvas, FabricImage } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -38,138 +38,6 @@ export const EditorToolbar = ({
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"generate" | "edit">("generate");
   const [isComposing, setIsComposing] = useState(false);
-  const [isCropMode, setIsCropMode] = useState(false);
-  const handleCrop = () => {
-    if (!canvas) return;
-    const activeObject = canvas.getActiveObject();
-    if (!activeObject || activeObject.type !== 'image') {
-      toast.error("请先选择一张图片");
-      return;
-    }
-
-    // Enter crop mode
-    setIsCropMode(true);
-
-    // Create a semi-transparent overlay to show crop area
-    const image = activeObject as any;
-    const cropRect = new Rect({
-      left: image.left || 0,
-      top: image.top || 0,
-      width: (image.width || 100) * (image.scaleX || 1),
-      height: (image.height || 100) * (image.scaleY || 1),
-      fill: 'transparent',
-      stroke: '#3b82f6',
-      strokeWidth: 2,
-      strokeDashArray: [5, 5],
-      cornerColor: '#3b82f6',
-      cornerSize: 10,
-      transparentCorners: false,
-      lockRotation: true,
-      hasControls: true,
-      hasBorders: true,
-      selectable: true,
-      evented: true,
-      data: {
-        isCropRect: true,
-        targetImage: image
-      }
-    });
-
-    // Disable the image while cropping
-    image.selectable = false;
-    image.evented = false;
-    canvas.add(cropRect);
-    canvas.setActiveObject(cropRect);
-    canvas.renderAll();
-    toast.success("调整裁剪框，然后点击「应用裁剪」或「取消」", {
-      duration: 3000
-    });
-  };
-  const handleApplyCrop = () => {
-    if (!canvas) return;
-    const cropRect = canvas.getActiveObject() as any;
-    if (!cropRect || !cropRect.data?.isCropRect) {
-      toast.error("请先进入裁剪模式");
-      return;
-    }
-    const image = cropRect.data.targetImage;
-    if (!image) {
-      toast.error("找不到目标图片");
-      return;
-    }
-
-    // Calculate crop dimensions relative to the image
-    const imgLeft = image.left || 0;
-    const imgTop = image.top || 0;
-    const imgScaleX = image.scaleX || 1;
-    const imgScaleY = image.scaleY || 1;
-    const cropLeft = (cropRect.left || 0) - imgLeft;
-    const cropTop = (cropRect.top || 0) - imgTop;
-    const cropWidth = (cropRect.width || 0) * (cropRect.scaleX || 1);
-    const cropHeight = (cropRect.height || 0) * (cropRect.scaleY || 1);
-
-    // Create a new canvas to crop the image
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = cropWidth;
-    tempCanvas.height = cropHeight;
-    const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) {
-      toast.error("裁剪失败");
-      return;
-    }
-
-    // Get the image element
-    const imgElement = (image as any).getElement();
-
-    // Draw the cropped portion
-    tempCtx.drawImage(imgElement, cropLeft / imgScaleX, cropTop / imgScaleY, cropWidth / imgScaleX, cropHeight / imgScaleY, 0, 0, cropWidth, cropHeight);
-
-    // Convert to data URL and create new image
-    const croppedDataUrl = tempCanvas.toDataURL('image/png');
-    FabricImage.fromURL(croppedDataUrl, {
-      crossOrigin: 'anonymous'
-    }).then(newImg => {
-      if (!newImg) return;
-      newImg.set({
-        left: cropRect.left,
-        top: cropRect.top
-      });
-
-      // Remove the crop rect and old image
-      canvas.remove(cropRect);
-      canvas.remove(image);
-
-      // Add the new cropped image
-      canvas.add(newImg);
-      canvas.setActiveObject(newImg);
-      canvas.renderAll();
-      saveState();
-      setIsCropMode(false);
-      toast.success("裁剪成功");
-    }).catch(error => {
-      console.error('Error creating cropped image:', error);
-      toast.error("裁剪失败");
-    });
-  };
-  const handleCancelCrop = () => {
-    if (!canvas) return;
-    const cropRect = canvas.getActiveObject() as any;
-    if (!cropRect || !cropRect.data?.isCropRect) {
-      return;
-    }
-    const image = cropRect.data.targetImage;
-    if (image) {
-      image.selectable = true;
-      image.evented = true;
-    }
-    canvas.remove(cropRect);
-    if (image) {
-      canvas.setActiveObject(image);
-    }
-    canvas.renderAll();
-    setIsCropMode(false);
-    toast.info("已取消裁剪");
-  };
   const handleUndo = () => {
     undo();
   };
@@ -451,20 +319,6 @@ export const EditorToolbar = ({
 
       <Separator orientation="vertical" className="h-6" />
 
-      {isCropMode ? <>
-          <Button variant="outline" size="sm" onClick={handleApplyCrop} className="text-green-600 hover:text-green-700">
-            <Check className="h-4 w-4 mr-1" />
-            应用裁剪
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleCancelCrop} className="text-red-600 hover:text-red-700">
-            <X className="h-4 w-4 mr-1" />
-            取消
-          </Button>
-        </> : <Button variant="outline" size="sm" onClick={handleCrop} disabled={isTaskProcessing}>
-          <Crop className="h-4 w-4 mr-1" />
-          裁剪
-        </Button>}
-      
       <Button variant="outline" size="sm" onClick={handleRedraw} disabled={isTaskProcessing}>
         <Sparkles className="h-4 w-4 mr-1" />
         重绘
