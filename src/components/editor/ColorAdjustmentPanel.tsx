@@ -32,32 +32,58 @@ export const ColorAdjustmentPanel = ({ canvas, selectedObject, saveState }: Colo
     // Clear existing filters
     selectedObject.filters = [];
 
-    // Apply hue rotation (color shift)
-    if (newHue !== 0) {
-      const hueRotation = new filters.HueRotation({
-        rotation: newHue / 180 // Convert to radians-like value
-      });
-      selectedObject.filters.push(hueRotation);
-    }
+    if (newChannel === "all") {
+      // Apply to all channels using standard filters
+      if (newHue !== 0) {
+        const hueRotation = new filters.HueRotation({
+          rotation: newHue / 180
+        });
+        selectedObject.filters.push(hueRotation);
+      }
 
-    // Apply saturation
-    if (newSaturation !== 0) {
-      const saturationFilter = new filters.Saturation({
-        saturation: newSaturation / 100 // -1 to 1 range
-      });
-      selectedObject.filters.push(saturationFilter);
-    }
+      if (newSaturation !== 0) {
+        const saturationFilter = new filters.Saturation({
+          saturation: newSaturation / 100
+        });
+        selectedObject.filters.push(saturationFilter);
+      }
 
-    // Apply brightness
-    if (newBrightness !== 0) {
-      const brightnessFilter = new filters.Brightness({
-        brightness: newBrightness / 100 // -1 to 1 range
+      if (newBrightness !== 0) {
+        const brightnessFilter = new filters.Brightness({
+          brightness: newBrightness / 100
+        });
+        selectedObject.filters.push(brightnessFilter);
+      }
+    } else {
+      // Apply to specific channel using ColorMatrix
+      const matrix = [1, 0, 0, 0, 0,
+                      0, 1, 0, 0, 0,
+                      0, 0, 1, 0, 0,
+                      0, 0, 0, 1, 0];
+      
+      const channelIndex = newChannel === "red" ? 0 : newChannel === "green" ? 1 : 2;
+      
+      // Apply brightness adjustment to specific channel
+      if (newBrightness !== 0) {
+        matrix[channelIndex * 5 + 4] = newBrightness / 100;
+      }
+      
+      // Apply saturation-like adjustment (multiply channel)
+      if (newSaturation !== 0) {
+        matrix[channelIndex * 5 + channelIndex] = 1 + (newSaturation / 100);
+      }
+      
+      // Apply hue rotation to specific channel
+      if (newHue !== 0) {
+        const hueAdjust = newHue / 360;
+        matrix[channelIndex * 5 + channelIndex] += hueAdjust;
+      }
+      
+      const colorMatrix = new filters.ColorMatrix({
+        matrix: matrix
       });
-      selectedObject.filters.push(brightnessFilter);
+      selectedObject.filters.push(colorMatrix);
     }
-
-    // Note: Channel selection is for future enhancements
-    // Currently, adjustments apply to all channels regardless of selection
 
     selectedObject.applyFilters();
     canvas.renderAll();
