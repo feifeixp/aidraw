@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Database, Pencil, ChevronDown, Home } from "lucide-react";
+import { Sparkles, Database, Pencil, ChevronDown, Home, ExternalLink } from "lucide-react";
 import { useState } from "react";
 const Navigation = () => {
   const location = useLocation();
@@ -48,6 +48,16 @@ const Navigation = () => {
                 <Icon className="h-4 w-4" />
                 {label}
               </Link>)}
+            
+            <a 
+              href="https://story.neodomain.ai" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            >
+              <ExternalLink className="h-4 w-4" />
+              正式产品
+            </a>
           </div>
         </div>
       </nav>
