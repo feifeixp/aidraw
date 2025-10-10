@@ -15,8 +15,11 @@ import {
   Circle,
   Triangle,
   Wand2,
+  MessageCircle,
+  MessageSquare,
+  Cloud,
 } from "lucide-react";
-import { Canvas as FabricCanvas, FabricText, Rect, Circle as FabricCircle, Triangle as FabricTriangle } from "fabric";
+import { Canvas as FabricCanvas, FabricText, Rect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
@@ -196,6 +199,116 @@ export const LeftToolbar = ({
     canvas.renderAll();
     saveState();
     toast.success("三角形已添加");
+    onActionComplete?.();
+  };
+
+  // Add Speech Bubbles
+  const handleAddRoundBubble = () => {
+    if (!canvas) return;
+    
+    // Create round speech bubble using SVG path
+    const bubblePath = "M 10 40 Q 10 10, 40 10 L 160 10 Q 190 10, 190 40 L 190 90 Q 190 120, 160 120 L 80 120 L 60 145 L 65 120 L 40 120 Q 10 120, 10 90 Z";
+    
+    const bubble = new Path(bubblePath, {
+      left: 100,
+      top: 100,
+      fill: "#ffffff",
+      stroke: "#000000",
+      strokeWidth: 2,
+    });
+    
+    canvas.add(bubble);
+    canvas.bringObjectToFront(bubble);
+    canvas.setActiveObject(bubble);
+    canvas.renderAll();
+    saveState();
+    toast.success("圆形对话泡泡已添加");
+    onActionComplete?.();
+  };
+
+  const handleAddSquareBubble = () => {
+    if (!canvas) return;
+    
+    // Create square speech bubble using SVG path
+    const bubblePath = "M 10 10 L 190 10 L 190 120 L 80 120 L 60 145 L 65 120 L 10 120 Z";
+    
+    const bubble = new Path(bubblePath, {
+      left: 100,
+      top: 100,
+      fill: "#ffffff",
+      stroke: "#000000",
+      strokeWidth: 2,
+    });
+    
+    canvas.add(bubble);
+    canvas.bringObjectToFront(bubble);
+    canvas.setActiveObject(bubble);
+    canvas.renderAll();
+    saveState();
+    toast.success("方形对话泡泡已添加");
+    onActionComplete?.();
+  };
+
+  const handleAddThoughtBubble = () => {
+    if (!canvas) return;
+    
+    // Create thought bubble using SVG path (cloud shape)
+    const cloudPath = "M 50 60 Q 30 60, 30 40 Q 30 25, 45 20 Q 50 5, 70 5 Q 85 5, 95 15 Q 110 10, 120 15 Q 135 15, 140 30 Q 155 35, 155 50 Q 155 65, 140 70 L 60 70 Q 45 70, 50 60 Z";
+    const smallCircle = "M 35 95 Q 35 85, 45 85 Q 55 85, 55 95 Q 55 105, 45 105 Q 35 105, 35 95 Z";
+    const tinyCircle = "M 20 115 Q 20 110, 25 110 Q 30 110, 30 115 Q 30 120, 25 120 Q 20 120, 20 115 Z";
+    
+    const mainCloud = new Path(cloudPath, {
+      fill: "#ffffff",
+      stroke: "#000000",
+      strokeWidth: 2,
+    });
+    
+    const small = new Path(smallCircle, {
+      fill: "#ffffff",
+      stroke: "#000000",
+      strokeWidth: 2,
+    });
+    
+    const tiny = new Path(tinyCircle, {
+      fill: "#ffffff",
+      stroke: "#000000",
+      strokeWidth: 2,
+    });
+    
+    const thoughtBubble = new Group([mainCloud, small, tiny], {
+      left: 100,
+      top: 100,
+    });
+    
+    canvas.add(thoughtBubble);
+    canvas.bringObjectToFront(thoughtBubble);
+    canvas.setActiveObject(thoughtBubble);
+    canvas.renderAll();
+    saveState();
+    toast.success("思考泡泡已添加");
+    onActionComplete?.();
+  };
+
+  const handleAddSharpBubble = () => {
+    if (!canvas) return;
+    
+    // Create sharp/spiky speech bubble using SVG path
+    const bubblePath = "M 15 15 L 185 15 L 185 115 L 75 115 L 55 145 L 60 115 L 15 115 Z";
+    
+    const bubble = new Path(bubblePath, {
+      left: 100,
+      top: 100,
+      fill: "#ffeb3b",
+      stroke: "#000000",
+      strokeWidth: 3,
+    });
+    
+    canvas.add(bubble);
+    canvas.bringObjectToFront(bubble);
+    canvas.setActiveObject(bubble);
+    canvas.renderAll();
+    saveState();
+    toast.success("尖角对话泡泡已添加");
     onActionComplete?.();
   };
 
@@ -542,6 +655,23 @@ export const LeftToolbar = ({
             <DropdownMenuItem onClick={handleAddTriangle}>
               <Triangle className="h-4 w-4 mr-2" />
               三角形
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleAddRoundBubble}>
+              <MessageCircle className="h-4 w-4 mr-2" />
+              圆形对话泡泡
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleAddSquareBubble}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              方形对话泡泡
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleAddThoughtBubble}>
+              <Cloud className="h-4 w-4 mr-2" />
+              思考泡泡
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleAddSharpBubble}>
+              <Wand2 className="h-4 w-4 mr-2" />
+              尖角对话泡泡
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
