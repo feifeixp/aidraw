@@ -811,7 +811,7 @@ const Generate = () => {
           <TabsList className="h-12">
             <TabsTrigger value="generate" className="gap-2">
               <Sparkles className="h-4 w-4" />
-              智能生成
+              图片生成
             </TabsTrigger>
             <TabsTrigger value="inspiration" className="gap-2">
               <Star className="h-4 w-4" />

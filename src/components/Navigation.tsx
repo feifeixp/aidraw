@@ -9,7 +9,7 @@ const Navigation = () => {
 
   const links = [
     { to: "/", label: "首页", icon: Home },
-    { to: "/generate", label: "智能生成", icon: Sparkles },
+    { to: "/generate", label: "图片生成", icon: Sparkles },
     { to: "/editor", label: "分镜编辑", icon: Pencil },
     { to: "/models", label: "模型管理", icon: Database },
     { to: "/history", label: "生成历史", icon: History },
