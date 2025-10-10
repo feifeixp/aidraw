@@ -162,10 +162,10 @@ const Editor = () => {
     </>;
   return <div className="h-screen w-full bg-background flex flex-col">
       <TaskQueueDisplay currentTask={currentTask} />
-      <div className="border-b border-border p-2 flex items-center gap-2 my-[20px]">
+      <div className="border-b border-border p-2 flex items-center gap-2 my-[20px] overflow-x-auto">
         {isMobile && <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="shrink-0">
                 <Menu className="h-4 w-4" />
               </Button>
             </SheetTrigger>
@@ -173,8 +173,8 @@ const Editor = () => {
               {leftToolbarContent}
             </SheetContent>
           </Sheet>}
-        <div className="flex-1">
-          <EditorToolbar 
+        <div className="flex-1 min-w-0 overflow-x-auto">
+          <EditorToolbar
             canvas={canvas} 
             activeTool={activeTool} 
             setActiveTool={setActiveTool} 

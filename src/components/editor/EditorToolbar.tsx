@@ -378,58 +378,58 @@ export const EditorToolbar = ({
     }
   };
 
-  return <div className="flex items-center gap-2">
-      <Button variant={activeTool === "select" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("select")} className="bg-white hover:bg-white/90">
+  return <div className="flex items-center gap-2 flex-nowrap">
+      <Button variant={activeTool === "select" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("select")} className="bg-white hover:bg-white/90 shrink-0">
         <MousePointer2 className="h-4 w-4" />
       </Button>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo}>
+      <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo} className="shrink-0">
         <Undo className="h-4 w-4" />
       </Button>
-      <Button variant="outline" size="sm" onClick={handleRedo} disabled={!canRedo}>
+      <Button variant="outline" size="sm" onClick={handleRedo} disabled={!canRedo} className="shrink-0">
         <Redo className="h-4 w-4" />
       </Button>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleRedraw} disabled={isTaskProcessing}>
+      <Button variant="outline" size="sm" onClick={handleRedraw} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap">
         <Sparkles className="h-4 w-4 mr-1" />
         重绘
       </Button>
-      <Button variant="outline" size="sm" onClick={() => setShowSmartComposeDialog(true)} disabled={isTaskProcessing || isComposing}>
+      <Button variant="outline" size="sm" onClick={() => setShowSmartComposeDialog(true)} disabled={isTaskProcessing || isComposing} className="shrink-0 whitespace-nowrap">
         <Wand2 className="h-4 w-4 mr-1" />
         {isComposing ? "处理中..." : "智能合成"}
       </Button>
-      <Button variant="outline" size="sm" onClick={() => setShowRecomposeDialog(true)} disabled={isTaskProcessing}>
+      <Button variant="outline" size="sm" onClick={() => setShowRecomposeDialog(true)} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap">
         <Camera className="h-4 w-4 mr-1" />
         重新构图
       </Button>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleBringToFront} title="移到最前">
+      <Button variant="outline" size="sm" onClick={handleBringToFront} title="移到最前" className="shrink-0">
         <ChevronsUp className="h-4 w-4" />
       </Button>
-      <Button variant="outline" size="sm" onClick={handleBringForward} title="向前一层">
+      <Button variant="outline" size="sm" onClick={handleBringForward} title="向前一层" className="shrink-0">
         <ArrowUp className="h-4 w-4" />
       </Button>
-      <Button variant="outline" size="sm" onClick={handleSendBackwards} title="向后一层">
+      <Button variant="outline" size="sm" onClick={handleSendBackwards} title="向后一层" className="shrink-0">
         <ArrowDown className="h-4 w-4" />
       </Button>
-      <Button variant="outline" size="sm" onClick={handleSendToBack} title="移到最后">
+      <Button variant="outline" size="sm" onClick={handleSendToBack} title="移到最后" className="shrink-0">
         <ChevronsDown className="h-4 w-4" />
       </Button>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={() => setShowCanvasSizeDialog(true)}>
+      <Button variant="outline" size="sm" onClick={() => setShowCanvasSizeDialog(true)} className="shrink-0 whitespace-nowrap">
         <Maximize2 className="h-4 w-4 mr-1" />
         画布尺寸
       </Button>
 
-      <Button variant="outline" size="sm" onClick={handleExport}>
+      <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 whitespace-nowrap">
         <Download className="h-4 w-4 mr-1" />
         导出
       </Button>
