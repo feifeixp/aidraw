@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Clock, Image as ImageIcon, Star } from "lucide-react";
+import { Clock, Image as ImageIcon, Star, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useState } from "react";
@@ -203,20 +203,46 @@ export const HistoryGrid = () => {
                 </p>
               )}
 
-              {item.status === "completed" && (
-                <Button
-                  variant={item.is_template ? "secondary" : "outline"}
-                  size="sm"
-                  className="mt-3 w-full"
-                  onClick={() => toggleTemplateMutation.mutate({ 
-                    id: item.id, 
-                    isTemplate: !item.is_template 
-                  })}
-                >
-                  <Star className={`h-4 w-4 mr-2 ${item.is_template ? 'fill-current' : ''}`} />
-                  {item.is_template ? "取消模板" : "设为模板"}
-                </Button>
-              )}
+              <div className="mt-3 flex gap-2">
+                {item.status === "completed" && (
+                  <>
+                    <Button
+                      variant={item.is_template ? "secondary" : "outline"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => toggleTemplateMutation.mutate({ 
+                        id: item.id, 
+                        isTemplate: !item.is_template 
+                      })}
+                    >
+                      <Star className={`h-4 w-4 mr-2 ${item.is_template ? 'fill-current' : ''}`} />
+                      {item.is_template ? "取消模板" : "设为模板"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const images = (item as any).images || (item.image_url ? [item.image_url] : []);
+                        if (images.length > 0) {
+                          // 下载第一张图片
+                          const link = document.createElement('a');
+                          link.href = images[0];
+                          link.download = `image-${item.id}-${Date.now()}.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          toast({
+                            title: "下载已开始",
+                            description: images.length > 1 ? "已下载第一张图片" : "图片正在下载中...",
+                          });
+                        }
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </Card>
         );
