@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Database, History, Star, Pencil, ChevronDown, Home } from "lucide-react";
+import { Sparkles, Database, Pencil, ChevronDown, Home } from "lucide-react";
 import { useState } from "react";
 
 const Navigation = () => {
@@ -12,7 +12,6 @@ const Navigation = () => {
     { to: "/generate", label: "图片生成", icon: Sparkles },
     { to: "/editor", label: "分镜编辑", icon: Pencil },
     { to: "/models", label: "模型管理", icon: Database },
-    { to: "/history", label: "生成历史", icon: History },
   ];
 
   return (

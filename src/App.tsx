@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Generate from "./pages/Generate";
 import Models from "./pages/Models";
-import History from "./pages/History";
 import Editor from "./pages/Editor";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
@@ -32,7 +31,6 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/generate" element={<Generate />} />
             <Route path="/models" element={<Models />} />
-            <Route path="/history" element={<History />} />
             <Route path="/editor" element={<Editor />} />
             {/* IMPORTANT: All routes must be above this line */}
             <Route path="*" element={<NotFound />} />

@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X, Download, ZoomIn, RotateCcw, Edit, ChevronDown, Check, History as HistoryIcon, MessageSquare, Star } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Send, Image as ImageIcon, X, Download, ZoomIn, RotateCcw, Edit, ChevronDown, Check, History as HistoryIcon, MessageSquare, Star, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -19,6 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InspirationGrid } from "@/components/InspirationGrid";
+import { HistoryGrid } from "@/components/HistoryGrid";
 
 type GenerationMode = "agent" | "imageGeneration";
 
@@ -817,6 +818,10 @@ const Generate = () => {
               <Star className="h-4 w-4" />
               灵感广场
             </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <Clock className="h-4 w-4" />
+              图片记录
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -1468,6 +1473,11 @@ const Generate = () => {
               setMode("imageGeneration");
             }}
           />
+        </TabsContent>
+
+        {/* 图片记录标签页 */}
+        <TabsContent value="history" className="flex-1 overflow-y-auto px-6 py-6 mt-0">
+          <HistoryGrid />
         </TabsContent>
       </Tabs>
 
