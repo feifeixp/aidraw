@@ -218,24 +218,22 @@ export const EditorCanvas = ({
     };
   }, [zoom, onZoomChange]);
 
-  // Handle right-click pan
+  // Handle pan on empty area with left click
   useEffect(() => {
+    if (!canvas) return;
     const container = containerRef.current;
     if (!container) return;
 
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
-    const handleMouseDown = (e: MouseEvent) => {
-      if (e.button === 2) { // Right click
-        e.preventDefault();
+    const handleCanvasMouseDown = (e: any) => {
+      // Check if clicked on empty area (no target object)
+      if (!e.target && e.e.button === 0) {
         isPanningRef.current = true;
         panStartRef.current = {
-          x: e.clientX + container.scrollLeft,
-          y: e.clientY + container.scrollTop
+          x: e.e.clientX + container.scrollLeft,
+          y: e.e.clientY + container.scrollTop
         };
         container.style.cursor = 'grabbing';
+        canvas.selection = false; // Disable selection while panning
       }
     };
 
@@ -249,10 +247,11 @@ export const EditorCanvas = ({
       }
     };
 
-    const handleMouseUp = (e: MouseEvent) => {
-      if (e.button === 2 && isPanningRef.current) {
+    const handleMouseUp = () => {
+      if (isPanningRef.current) {
         isPanningRef.current = false;
         container.style.cursor = '';
+        canvas.selection = activeTool === "select"; // Re-enable selection if in select mode
       }
     };
 
@@ -260,23 +259,22 @@ export const EditorCanvas = ({
       if (isPanningRef.current) {
         isPanningRef.current = false;
         container.style.cursor = '';
+        canvas.selection = activeTool === "select";
       }
     };
 
-    container.addEventListener('contextmenu', handleContextMenu);
-    container.addEventListener('mousedown', handleMouseDown);
+    canvas.on('mouse:down', handleCanvasMouseDown);
     container.addEventListener('mousemove', handleMouseMove);
     container.addEventListener('mouseup', handleMouseUp);
     container.addEventListener('mouseleave', handleMouseLeave);
 
     return () => {
-      container.removeEventListener('contextmenu', handleContextMenu);
-      container.removeEventListener('mousedown', handleMouseDown);
+      canvas.off('mouse:down', handleCanvasMouseDown);
       container.removeEventListener('mousemove', handleMouseMove);
       container.removeEventListener('mouseup', handleMouseUp);
       container.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, []);
+  }, [canvas, activeTool]);
 
   return (
     <div 
