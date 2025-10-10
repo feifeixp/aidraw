@@ -10,6 +10,7 @@ import Inspiration from "./pages/Inspiration";
 import Editor from "./pages/Editor";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
+import logo from "@/assets/logo.png";
 
 const queryClient = new QueryClient();
 
@@ -20,14 +21,20 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Navigation />
-        <div className="pt-16">
+        
+        {/* Logo in top-left corner - visible on all pages */}
+        <div className="fixed top-4 left-4 z-50">
+          <img src={logo} alt="Neo-Domain Logo" className="h-12 w-12 object-contain" />
+        </div>
+        
+        <div>
           <Routes>
             <Route path="/" element={<Generate />} />
             <Route path="/inspiration" element={<Inspiration />} />
             <Route path="/models" element={<Models />} />
             <Route path="/history" element={<History />} />
             <Route path="/editor" element={<Editor />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* IMPORTANT: All routes must be above this line */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
