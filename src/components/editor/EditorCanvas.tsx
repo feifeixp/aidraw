@@ -24,6 +24,8 @@ export const EditorCanvas = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveStateRef = useRef(saveState);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
   
   // Keep saveStateRef up to date
   useEffect(() => {
@@ -215,6 +217,66 @@ export const EditorCanvas = ({
       container.removeEventListener('wheel', handleWheel);
     };
   }, [zoom, onZoomChange]);
+
+  // Handle right-click pan
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 2) { // Right click
+        e.preventDefault();
+        isPanningRef.current = true;
+        panStartRef.current = {
+          x: e.clientX + container.scrollLeft,
+          y: e.clientY + container.scrollTop
+        };
+        container.style.cursor = 'grabbing';
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isPanningRef.current) {
+        e.preventDefault();
+        const dx = panStartRef.current.x - e.clientX;
+        const dy = panStartRef.current.y - e.clientY;
+        container.scrollLeft = dx;
+        container.scrollTop = dy;
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button === 2 && isPanningRef.current) {
+        isPanningRef.current = false;
+        container.style.cursor = '';
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
+        container.style.cursor = '';
+      }
+    };
+
+    container.addEventListener('contextmenu', handleContextMenu);
+    container.addEventListener('mousedown', handleMouseDown);
+    container.addEventListener('mousemove', handleMouseMove);
+    container.addEventListener('mouseup', handleMouseUp);
+    container.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      container.removeEventListener('contextmenu', handleContextMenu);
+      container.removeEventListener('mousedown', handleMouseDown);
+      container.removeEventListener('mousemove', handleMouseMove);
+      container.removeEventListener('mouseup', handleMouseUp);
+      container.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
 
   return (
     <div 
