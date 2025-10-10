@@ -23,7 +23,8 @@ const App = () => (
         <Navigation />
         
         {/* Logo in top-left corner - visible on all pages */}
-        <div className="fixed top-4 left-4 z-50 h-6 w-6 rounded-lg bg-white">
+        <div className="fixed top-4 left-4 z-50">
+          <img src={logo} alt="Neo-Domain Logo" className="h-6 w-6 object-contain" />
         </div>
         
         <div>
