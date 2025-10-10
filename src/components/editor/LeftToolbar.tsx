@@ -1,47 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  Plus,
-  ImageOff,
-  Palette,
-  FlipHorizontal,
-  RotateCw,
-  Users,
-  PersonStanding,
-  Upload,
-  Sparkles,
-  Type,
-  Square,
-  Circle,
-  Triangle,
-  Wand2,
-  MessageCircle,
-  MessageSquare,
-  Cloud,
-} from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
 import { useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-
 interface LeftToolbarProps {
   canvas: FabricCanvas | null;
   saveState: () => void;
@@ -51,15 +21,14 @@ interface LeftToolbarProps {
   cancelTask: () => void;
   onActionComplete?: () => void;
 }
-
-export const LeftToolbar = ({ 
-  canvas, 
-  saveState, 
+export const LeftToolbar = ({
+  canvas,
+  saveState,
   isTaskProcessing,
   startTask,
   completeTask,
   cancelTask,
-  onActionComplete 
+  onActionComplete
 }: LeftToolbarProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
@@ -76,14 +45,17 @@ export const LeftToolbar = ({
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    input.onchange = (e) => {
+    input.onchange = e => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = event => {
           const imageUrl = event.target?.result as string;
-          window.dispatchEvent(new CustomEvent('addImageToCanvas', { 
-            detail: { imageUrl, name: file.name }
+          window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+            detail: {
+              imageUrl,
+              name: file.name
+            }
           }));
           onActionComplete?.();
         };
@@ -92,25 +64,27 @@ export const LeftToolbar = ({
     };
     input.click();
   };
-
   const handleGenerateImage = async () => {
     const prompt = window.prompt("请输入图片生成提示词：");
     if (!prompt) return;
-
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("liblib-generate", {
-        body: { 
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("liblib-generate", {
+        body: {
           prompt,
           model_id: "flux-dev"
         }
       });
-
       if (error) throw error;
-      
       if (data?.images?.[0]?.url) {
-        window.dispatchEvent(new CustomEvent('addImageToCanvas', { 
-          detail: { imageUrl: data.images[0].url, name: "生成的图片" }
+        window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+          detail: {
+            imageUrl: data.images[0].url,
+            name: "生成的图片"
+          }
         }));
         toast.success("图片生成成功");
       }
@@ -125,14 +99,12 @@ export const LeftToolbar = ({
   // Add Text
   const handleAddText = () => {
     if (!canvas) return;
-    
     const text = new FabricText("双击编辑文字", {
       left: 100,
       top: 100,
       fontSize: 40,
-      fill: "#000000",
+      fill: "#000000"
     });
-    
     canvas.add(text);
     canvas.bringObjectToFront(text);
     canvas.setActiveObject(text);
@@ -145,15 +117,13 @@ export const LeftToolbar = ({
   // Add Shapes
   const handleAddRectangle = () => {
     if (!canvas) return;
-    
     const rect = new Rect({
       left: 100,
       top: 100,
       fill: "#3b82f6",
       width: 200,
-      height: 150,
+      height: 150
     });
-    
     canvas.add(rect);
     canvas.bringObjectToFront(rect);
     canvas.setActiveObject(rect);
@@ -162,17 +132,14 @@ export const LeftToolbar = ({
     toast.success("矩形已添加");
     onActionComplete?.();
   };
-
   const handleAddCircle = () => {
     if (!canvas) return;
-    
     const circle = new FabricCircle({
       left: 100,
       top: 100,
       fill: "#10b981",
-      radius: 75,
+      radius: 75
     });
-    
     canvas.add(circle);
     canvas.bringObjectToFront(circle);
     canvas.setActiveObject(circle);
@@ -181,18 +148,15 @@ export const LeftToolbar = ({
     toast.success("圆形已添加");
     onActionComplete?.();
   };
-
   const handleAddTriangle = () => {
     if (!canvas) return;
-    
     const triangle = new FabricTriangle({
       left: 100,
       top: 100,
       fill: "#f59e0b",
       width: 150,
-      height: 130,
+      height: 130
     });
-    
     canvas.add(triangle);
     canvas.bringObjectToFront(triangle);
     canvas.setActiveObject(triangle);
@@ -205,18 +169,16 @@ export const LeftToolbar = ({
   // Add Speech Bubbles
   const handleAddRoundBubble = () => {
     if (!canvas) return;
-    
+
     // Create round speech bubble using SVG path
     const bubblePath = "M 10 40 Q 10 10, 40 10 L 160 10 Q 190 10, 190 40 L 190 90 Q 190 120, 160 120 L 80 120 L 60 145 L 65 120 L 40 120 Q 10 120, 10 90 Z";
-    
     const bubble = new Path(bubblePath, {
       left: 100,
       top: 100,
       fill: "#ffffff",
       stroke: "#000000",
-      strokeWidth: 2,
+      strokeWidth: 2
     });
-    
     canvas.add(bubble);
     canvas.bringObjectToFront(bubble);
     canvas.setActiveObject(bubble);
@@ -225,21 +187,18 @@ export const LeftToolbar = ({
     toast.success("圆形对话泡泡已添加");
     onActionComplete?.();
   };
-
   const handleAddSquareBubble = () => {
     if (!canvas) return;
-    
+
     // Create square speech bubble using SVG path
     const bubblePath = "M 10 10 L 190 10 L 190 120 L 80 120 L 60 145 L 65 120 L 10 120 Z";
-    
     const bubble = new Path(bubblePath, {
       left: 100,
       top: 100,
       fill: "#ffffff",
       stroke: "#000000",
-      strokeWidth: 2,
+      strokeWidth: 2
     });
-    
     canvas.add(bubble);
     canvas.bringObjectToFront(bubble);
     canvas.setActiveObject(bubble);
@@ -248,38 +207,32 @@ export const LeftToolbar = ({
     toast.success("方形对话泡泡已添加");
     onActionComplete?.();
   };
-
   const handleAddThoughtBubble = () => {
     if (!canvas) return;
-    
+
     // Create thought bubble using SVG path (cloud shape)
     const cloudPath = "M 50 60 Q 30 60, 30 40 Q 30 25, 45 20 Q 50 5, 70 5 Q 85 5, 95 15 Q 110 10, 120 15 Q 135 15, 140 30 Q 155 35, 155 50 Q 155 65, 140 70 L 60 70 Q 45 70, 50 60 Z";
     const smallCircle = "M 35 95 Q 35 85, 45 85 Q 55 85, 55 95 Q 55 105, 45 105 Q 35 105, 35 95 Z";
     const tinyCircle = "M 20 115 Q 20 110, 25 110 Q 30 110, 30 115 Q 30 120, 25 120 Q 20 120, 20 115 Z";
-    
     const mainCloud = new Path(cloudPath, {
       fill: "#ffffff",
       stroke: "#000000",
-      strokeWidth: 2,
+      strokeWidth: 2
     });
-    
     const small = new Path(smallCircle, {
       fill: "#ffffff",
       stroke: "#000000",
-      strokeWidth: 2,
+      strokeWidth: 2
     });
-    
     const tiny = new Path(tinyCircle, {
       fill: "#ffffff",
       stroke: "#000000",
-      strokeWidth: 2,
+      strokeWidth: 2
     });
-    
     const thoughtBubble = new Group([mainCloud, small, tiny], {
       left: 100,
-      top: 100,
+      top: 100
     });
-    
     canvas.add(thoughtBubble);
     canvas.bringObjectToFront(thoughtBubble);
     canvas.setActiveObject(thoughtBubble);
@@ -288,21 +241,18 @@ export const LeftToolbar = ({
     toast.success("思考泡泡已添加");
     onActionComplete?.();
   };
-
   const handleAddSharpBubble = () => {
     if (!canvas) return;
-    
+
     // Create sharp/spiky speech bubble using SVG path
     const bubblePath = "M 15 15 L 185 15 L 185 115 L 75 115 L 55 145 L 60 115 L 15 115 Z";
-    
     const bubble = new Path(bubblePath, {
       left: 100,
       top: 100,
       fill: "#ffeb3b",
       stroke: "#000000",
-      strokeWidth: 3,
+      strokeWidth: 3
     });
-    
     canvas.add(bubble);
     canvas.bringObjectToFront(bubble);
     canvas.setActiveObject(bubble);
@@ -319,50 +269,46 @@ export const LeftToolbar = ({
       toast.error("请先选择画布上的图片");
       return;
     }
-
     if (isTaskProcessing) {
       toast.error("当前有任务正在处理，请等待完成");
       return;
     }
-
     setShowRemoveBgDialog(false);
     const taskId = startTask("正在移除背景");
     try {
       const imageDataURL = (activeObject as any).toDataURL({
         format: 'png',
-        quality: 1,
+        quality: 1
       });
-
-      const { data: aiData, error: aiError } = await supabase.functions.invoke(
-        'ai-remove-background',
-        {
-          body: { imageUrl: imageDataURL }
+      const {
+        data: aiData,
+        error: aiError
+      } = await supabase.functions.invoke('ai-remove-background', {
+        body: {
+          imageUrl: imageDataURL
         }
-      );
-
+      });
       if (aiError) throw aiError;
-
       if (aiData?.imageUrl) {
         setOriginalAiImage(aiData.imageUrl);
-        
         toast.info("正在处理透明通道...");
         const transparentUrl = await convertMagentaToTransparent(aiData.imageUrl, featherStrength);
-        
-        const { FabricImage } = await import("fabric");
-        const img = await FabricImage.fromURL(transparentUrl, { crossOrigin: 'anonymous' });
-        
+        const {
+          FabricImage
+        } = await import("fabric");
+        const img = await FabricImage.fromURL(transparentUrl, {
+          crossOrigin: 'anonymous'
+        });
         img.set({
           left: activeObject.left,
           top: activeObject.top,
           scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY,
+          scaleY: activeObject.scaleY
         });
-        
         canvas.remove(activeObject);
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
-        
         saveState();
         completeTask(taskId);
         toast.success("背景已去除");
@@ -375,7 +321,6 @@ export const LeftToolbar = ({
       cancelTask();
     }
   };
-
   const handleFlip = () => {
     if (!canvas) return;
     const activeObject = canvas.getActiveObject();
@@ -388,59 +333,54 @@ export const LeftToolbar = ({
       toast.error("请先选择一个对象");
     }
   };
-
   const handleColorAdjust = () => {
     toast.info("颜色调整功能开发中");
   };
-
   const handleAdjustCamera = async (setting: string, description: string) => {
     const activeObject = canvas?.getActiveObject();
     if (!canvas || !activeObject || activeObject.type !== 'image') {
       toast.error("请先选择画布上的图片");
       return;
     }
-
     if (isTaskProcessing) {
       toast.error("当前有任务正在处理，请等待完成");
       return;
     }
-
     setShowCameraDialog(false);
     const taskId = startTask(`正在调整镜头：${description}`);
-
     try {
       const imageDataURL = (activeObject as any).toDataURL({
         format: 'png',
-        quality: 1,
+        quality: 1
       });
-
       const instruction = `Transform this image to use ${setting}. Keep the subject's appearance, clothing, and style exactly the same, only change the camera framing or angle as specified.`;
-
-      const { data: aiData, error: aiError } = await supabase.functions.invoke(
-        'ai-edit-image',
-        {
-          body: { imageUrl: imageDataURL, instruction }
+      const {
+        data: aiData,
+        error: aiError
+      } = await supabase.functions.invoke('ai-edit-image', {
+        body: {
+          imageUrl: imageDataURL,
+          instruction
         }
-      );
-
+      });
       if (aiError) throw aiError;
-
       if (aiData?.imageUrl) {
-        const { FabricImage } = await import("fabric");
-        const img = await FabricImage.fromURL(aiData.imageUrl, { crossOrigin: 'anonymous' });
-        
+        const {
+          FabricImage
+        } = await import("fabric");
+        const img = await FabricImage.fromURL(aiData.imageUrl, {
+          crossOrigin: 'anonymous'
+        });
         img.set({
           left: activeObject.left,
           top: activeObject.top,
           scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY,
+          scaleY: activeObject.scaleY
         });
-        
         canvas.remove(activeObject);
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
-        
         saveState();
         completeTask(taskId);
         toast.success("镜头调整完成");
@@ -453,68 +393,58 @@ export const LeftToolbar = ({
       cancelTask();
     }
   };
-
   const handleAdjustPose = async (pose: string, referenceImage?: string) => {
     const activeObject = canvas?.getActiveObject();
     if (!canvas || !activeObject || activeObject.type !== 'image') {
       toast.error("请先选择画布上的图片");
       return;
     }
-
     if (isTaskProcessing) {
       toast.error("当前有任务正在处理，请等待完成");
       return;
     }
-
     setShowPoseDialog(false);
     const taskId = startTask("正在调整姿势");
-
     try {
       const imageDataURL = (activeObject as any).toDataURL({
         format: 'png',
-        quality: 1,
+        quality: 1
       });
-
       let instruction = `Change this character's pose to: ${pose}. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position.`;
-      
       if (referenceImage) {
         instruction = `Change this character's pose to match the pose shown in the reference image. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position to match the reference pose.`;
       }
-
-      const requestBody: any = { 
-        imageUrl: imageDataURL, 
-        instruction 
+      const requestBody: any = {
+        imageUrl: imageDataURL,
+        instruction
       };
-      
       if (referenceImage) {
         requestBody.referenceImageUrl = referenceImage;
       }
-
-      const { data: aiData, error: aiError } = await supabase.functions.invoke(
-        'ai-edit-image',
-        {
-          body: requestBody
-        }
-      );
-
+      const {
+        data: aiData,
+        error: aiError
+      } = await supabase.functions.invoke('ai-edit-image', {
+        body: requestBody
+      });
       if (aiError) throw aiError;
-
       if (aiData?.imageUrl) {
-        const { FabricImage } = await import("fabric");
-        const img = await FabricImage.fromURL(aiData.imageUrl, { crossOrigin: 'anonymous' });
-        
+        const {
+          FabricImage
+        } = await import("fabric");
+        const img = await FabricImage.fromURL(aiData.imageUrl, {
+          crossOrigin: 'anonymous'
+        });
         img.set({
           left: activeObject.left,
           top: activeObject.top,
           scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY,
+          scaleY: activeObject.scaleY
         });
-        
         canvas.remove(activeObject);
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
-        
         saveState();
         completeTask(taskId);
         toast.success("姿势调整完成");
@@ -529,16 +459,15 @@ export const LeftToolbar = ({
       cancelTask();
     }
   };
-
   const handleUploadPoseReference = () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    input.onchange = (e) => {
+    input.onchange = e => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = event => {
           const imageUrl = event.target?.result as string;
           setPoseReferenceImage(imageUrl);
           toast.success("姿势参考线稿已上传");
@@ -548,7 +477,6 @@ export const LeftToolbar = ({
     };
     input.click();
   };
-
   const handleCustomPoseSubmit = () => {
     if (!customPose.trim()) {
       toast.error("请输入自定义动作描述");
@@ -556,55 +484,51 @@ export const LeftToolbar = ({
     }
     handleAdjustPose(customPose, poseReferenceImage || undefined);
   };
-
   const handleAdjustSubjectAngle = async (angle: string, description: string) => {
     const activeObject = canvas?.getActiveObject();
     if (!canvas || !activeObject || activeObject.type !== 'image') {
       toast.error("请先选择画布上的图片");
       return;
     }
-
     if (isTaskProcessing) {
       toast.error("当前有任务正在处理，请等待完成");
       return;
     }
-
     setShowSubjectAngleDialog(false);
     const taskId = startTask(`正在调整为${description}`);
-
     try {
       const imageDataURL = (activeObject as any).toDataURL({
         format: 'png',
-        quality: 1,
+        quality: 1
       });
-
       const instruction = `Rotate this subject to show them from ${angle}. Keep the subject's appearance, clothing, style, pose, and background exactly the same, only rotate the subject's body orientation to face ${angle}.`;
-
-      const { data: aiData, error: aiError } = await supabase.functions.invoke(
-        'ai-edit-image',
-        {
-          body: { imageUrl: imageDataURL, instruction }
+      const {
+        data: aiData,
+        error: aiError
+      } = await supabase.functions.invoke('ai-edit-image', {
+        body: {
+          imageUrl: imageDataURL,
+          instruction
         }
-      );
-
+      });
       if (aiError) throw aiError;
-
       if (aiData?.imageUrl) {
-        const { FabricImage } = await import("fabric");
-        const img = await FabricImage.fromURL(aiData.imageUrl, { crossOrigin: 'anonymous' });
-        
+        const {
+          FabricImage
+        } = await import("fabric");
+        const img = await FabricImage.fromURL(aiData.imageUrl, {
+          crossOrigin: 'anonymous'
+        });
         img.set({
           left: activeObject.left,
           top: activeObject.top,
           scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY,
+          scaleY: activeObject.scaleY
         });
-        
         canvas.remove(activeObject);
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.renderAll();
-        
         saveState();
         completeTask(taskId);
         toast.success("主体角度调整完成");
@@ -617,9 +541,7 @@ export const LeftToolbar = ({
       cancelTask();
     }
   };
-
-  return (
-    <>
+  return <>
       <div className="flex flex-col gap-2 p-2 border-r border-border bg-background h-full">
         {/* Add Element */}
         <DropdownMenu>
@@ -684,10 +606,7 @@ export const LeftToolbar = ({
           去背景
         </Button>
 
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleColorAdjust}>
-          <Palette className="h-4 w-4 mr-2" />
-          颜色
-        </Button>
+        
 
         <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleFlip}>
           <FlipHorizontal className="h-4 w-4 mr-2" />
@@ -800,17 +719,11 @@ export const LeftToolbar = ({
             <TabsContent value="custom" className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="custom-pose">输入自定义动作描述</Label>
-                <Input
-                  id="custom-pose"
-                  placeholder="例如：双手抱胸站立、单膝跪地、伸展双臂..."
-                  value={customPose}
-                  onChange={(e) => setCustomPose(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleCustomPoseSubmit();
-                    }
-                  }}
-                />
+                <Input id="custom-pose" placeholder="例如：双手抱胸站立、单膝跪地、伸展双臂..." value={customPose} onChange={e => setCustomPose(e.target.value)} onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  handleCustomPoseSubmit();
+                }
+              }} />
                 <p className="text-sm text-muted-foreground">
                   用自然语言描述你想要的动作姿势，AI将尝试理解并调整角色姿势
                 </p>
@@ -823,65 +736,35 @@ export const LeftToolbar = ({
             <TabsContent value="reference" className="space-y-4">
               <div className="space-y-2">
                 <Label>上传姿势参考线稿</Label>
-                {poseReferenceImage ? (
-                  <div className="space-y-2">
+                {poseReferenceImage ? <div className="space-y-2">
                     <div className="relative w-full aspect-square border rounded-lg overflow-hidden bg-muted">
-                      <img 
-                        src={poseReferenceImage} 
-                        alt="姿势参考" 
-                        className="w-full h-full object-contain"
-                      />
+                      <img src={poseReferenceImage} alt="姿势参考" className="w-full h-full object-contain" />
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={handleUploadPoseReference}
-                        className="flex-1"
-                      >
+                      <Button variant="outline" onClick={handleUploadPoseReference} className="flex-1">
                         重新上传
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setPoseReferenceImage(null)}
-                        className="flex-1"
-                      >
+                      <Button variant="outline" onClick={() => setPoseReferenceImage(null)} className="flex-1">
                         清除
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleUploadPoseReference}
-                    className="w-full h-32 border-dashed"
-                  >
+                  </div> : <Button variant="outline" onClick={handleUploadPoseReference} className="w-full h-32 border-dashed">
                     <Upload className="h-8 w-8 mr-2" />
                     点击上传姿势线稿
-                  </Button>
-                )}
+                  </Button>}
                 <p className="text-sm text-muted-foreground">
                   上传一张姿势线稿或参考图片，AI将让选中的角色模仿该姿势
                 </p>
               </div>
-              {poseReferenceImage && (
-                <>
+              {poseReferenceImage && <>
                   <div className="space-y-2">
                     <Label htmlFor="reference-pose-desc">补充描述（可选）</Label>
-                    <Input
-                      id="reference-pose-desc"
-                      placeholder="例如：注意手部细节、保持平衡感..."
-                      value={customPose}
-                      onChange={(e) => setCustomPose(e.target.value)}
-                    />
+                    <Input id="reference-pose-desc" placeholder="例如：注意手部细节、保持平衡感..." value={customPose} onChange={e => setCustomPose(e.target.value)} />
                   </div>
-                  <Button 
-                    onClick={() => handleAdjustPose(customPose || "match the reference pose", poseReferenceImage)} 
-                    className="w-full"
-                  >
+                  <Button onClick={() => handleAdjustPose(customPose || "match the reference pose", poseReferenceImage)} className="w-full">
                     应用参考姿势
                   </Button>
-                </>
-              )}
+                </>}
             </TabsContent>
           </Tabs>
         </DialogContent>
@@ -896,15 +779,7 @@ export const LeftToolbar = ({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="feather-strength">透明通道羽化强度: {featherStrength}</Label>
-              <Slider
-                id="feather-strength"
-                min={0}
-                max={100}
-                step={1}
-                value={[featherStrength]}
-                onValueChange={(value) => setFeatherStrength(value[0])}
-                className="w-full"
-              />
+              <Slider id="feather-strength" min={0} max={100} step={1} value={[featherStrength]} onValueChange={value => setFeatherStrength(value[0])} className="w-full" />
               <p className="text-sm text-muted-foreground">
                 较低的值会产生更锐利的边缘，较高的值会产生更柔和的过渡
               </p>
@@ -915,6 +790,5 @@ export const LeftToolbar = ({
           </div>
         </DialogContent>
       </Dialog>
-    </>
-  );
+    </>;
 };
