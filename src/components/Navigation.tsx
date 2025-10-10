@@ -37,6 +37,16 @@ const Navigation = () => {
             <span className="text-xl font-bold bg-[var(--gradient-primary)] bg-clip-text text-transparent">
               Neo-Domain
             </span>
+            
+            <a 
+              href="https://story.neodomain.ai" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground ml-[300px]"
+            >
+              <ExternalLink className="h-4 w-4" />
+              正式产品
+            </a>
           </div>
 
           <div className="flex gap-1">
@@ -48,16 +58,6 @@ const Navigation = () => {
                 <Icon className="h-4 w-4" />
                 {label}
               </Link>)}
-            
-            <a 
-              href="https://story.neodomain.ai" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <ExternalLink className="h-4 w-4" />
-              正式产品
-            </a>
           </div>
         </div>
       </nav>
