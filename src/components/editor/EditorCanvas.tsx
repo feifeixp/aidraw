@@ -29,8 +29,8 @@ export const EditorCanvas = ({
     if (!canvasRef.current) return;
 
     const fabricCanvas = new FabricCanvas(canvasRef.current, {
-      width: canvasSize.width,
-      height: canvasSize.height,
+      width: canvasSize?.width || 1024,
+      height: canvasSize?.height || 768,
       backgroundColor: "#ffffff",
       preserveObjectStacking: true,
     });
@@ -87,15 +87,15 @@ export const EditorCanvas = ({
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
-  }, [canvasSize.width, canvasSize.height]);
+  }, [canvasSize]);
 
   // Update canvas size when canvasSize prop changes
   useEffect(() => {
-    if (!canvas) return;
+    if (!canvas || !canvasSize) return;
     canvas.setWidth(canvasSize.width);
     canvas.setHeight(canvasSize.height);
     canvas.renderAll();
-  }, [canvas, canvasSize.width, canvasSize.height]);
+  }, [canvas, canvasSize]);
 
   useEffect(() => {
     if (!canvas) return;

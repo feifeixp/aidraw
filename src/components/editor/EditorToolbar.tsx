@@ -439,8 +439,8 @@ export const EditorToolbar = ({
         open={showCanvasSizeDialog}
         onOpenChange={setShowCanvasSizeDialog}
         onApply={(width, height) => onCanvasSizeChange({ width, height })}
-        currentWidth={canvasSize.width}
-        currentHeight={canvasSize.height}
+        currentWidth={canvasSize?.width || 1024}
+        currentHeight={canvasSize?.height || 768}
       />
 
       {/* Smart Compose Dialog */}
