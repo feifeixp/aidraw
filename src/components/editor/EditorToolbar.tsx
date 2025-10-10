@@ -12,10 +12,19 @@ import {
   ArrowDown,
   ChevronsUp,
   ChevronsDown,
+  Wand2,
 } from "lucide-react";
 import { Canvas as FabricCanvas } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
@@ -38,6 +47,9 @@ export const EditorToolbar = ({
   canRedo,
   saveState,
 }: EditorToolbarProps) => {
+  const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
+  const [composeMode, setComposeMode] = useState<"generate" | "edit">("generate");
+  const [isComposing, setIsComposing] = useState(false);
   const handleCrop = () => {
     if (!canvas) return;
     toast.info("请在画布上框选要裁剪的区域");
@@ -181,6 +193,144 @@ export const EditorToolbar = ({
     toast.success("已导出画布");
   };
 
+  const handleSmartCompose = async () => {
+    if (!canvas) {
+      toast.error("画布未初始化");
+      return;
+    }
+
+    setShowSmartComposeDialog(false);
+    setIsComposing(true);
+
+    const objects = canvas.getObjects();
+    const textAnnotations: string[] = [];
+    const shapes: string[] = [];
+    let baseImage: any = null;
+
+    objects.forEach((obj) => {
+      if (obj.type === 'text') {
+        const text = (obj as any).text;
+        if (text && text !== '双击编辑文字') {
+          textAnnotations.push(text);
+        }
+      } else if (['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
+        const shapeDesc = `${obj.type} at position (${Math.round(obj.left || 0)}, ${Math.round(obj.top || 0)})`;
+        shapes.push(shapeDesc);
+      } else if (obj.type === 'image') {
+        if (!baseImage) {
+          baseImage = obj;
+        }
+      }
+    });
+
+    if (textAnnotations.length === 0 && shapes.length === 0) {
+      toast.error("画布中没有文本标注或图形，无法生成提示");
+      setIsComposing(false);
+      return;
+    }
+
+    let instruction = "";
+    if (textAnnotations.length > 0) {
+      instruction += textAnnotations.join(". ") + ".";
+    }
+    if (shapes.length > 0) {
+      instruction += ` Visual markers: ${shapes.join(", ")}.`;
+    }
+
+    toast.info(`正在使用AI ${composeMode === "generate" ? "生成" : "编辑"}图片，请稍候...`);
+
+    try {
+      if (composeMode === "generate") {
+        const { data, error } = await supabase.functions.invoke('ai-generate-image', {
+          body: { prompt: instruction }
+        });
+
+        if (error) throw error;
+
+        if (data?.imageUrl) {
+          const { FabricImage } = await import("fabric");
+          const img = await FabricImage.fromURL(data.imageUrl, { crossOrigin: 'anonymous' });
+          
+          const canvasWidth = canvas.width || 1024;
+          const canvasHeight = canvas.height || 768;
+          const imgWidth = img.width || 1;
+          const imgHeight = img.height || 1;
+          const scale = Math.min(canvasWidth / imgWidth, canvasHeight / imgHeight, 1);
+          
+          img.scale(scale);
+          img.set({
+            left: (canvasWidth - imgWidth * scale) / 2,
+            top: (canvasHeight - imgHeight * scale) / 2,
+          });
+          
+          objects.forEach((obj) => {
+            if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
+              canvas.remove(obj);
+            }
+          });
+          
+          canvas.add(img);
+          canvas.sendObjectToBack(img);
+          canvas.setActiveObject(img);
+          canvas.renderAll();
+          saveState();
+          toast.success("图片已生成");
+        }
+      } else {
+        if (!baseImage) {
+          toast.error("画布中没有图片可以编辑");
+          setIsComposing(false);
+          return;
+        }
+
+        const imageDataURL = baseImage.toDataURL({
+          format: 'png',
+          quality: 1,
+        });
+
+        const { data: aiData, error: aiError } = await supabase.functions.invoke(
+          'ai-edit-image',
+          {
+            body: { imageUrl: imageDataURL, instruction }
+          }
+        );
+
+        if (aiError) throw aiError;
+
+        if (aiData?.imageUrl) {
+          const { FabricImage } = await import("fabric");
+          const img = await FabricImage.fromURL(aiData.imageUrl, { crossOrigin: 'anonymous' });
+          
+          img.set({
+            left: baseImage.left,
+            top: baseImage.top,
+            scaleX: baseImage.scaleX,
+            scaleY: baseImage.scaleY,
+          });
+          
+          objects.forEach((obj) => {
+            if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
+              canvas.remove(obj);
+            }
+          });
+          
+          canvas.remove(baseImage);
+          canvas.add(img);
+          canvas.setActiveObject(img);
+          canvas.renderAll();
+          
+          saveState();
+          toast.success("图片已编辑");
+        }
+      }
+    } catch (error) {
+      console.error("Smart compose error:", error);
+      toast.error("智能合成失败");
+    } finally {
+      setIsComposing(false);
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
       <Button
@@ -214,6 +364,15 @@ export const EditorToolbar = ({
         <Sparkles className="h-4 w-4 mr-1" />
         重绘
       </Button>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => setShowSmartComposeDialog(true)}
+        disabled={isComposing}
+      >
+        <Wand2 className="h-4 w-4 mr-1" />
+        {isComposing ? "处理中..." : "智能合成"}
+      </Button>
 
       <Separator orientation="vertical" className="h-6" />
 
@@ -236,6 +395,58 @@ export const EditorToolbar = ({
         <Download className="h-4 w-4 mr-1" />
         导出
       </Button>
+
+      {/* Smart Compose Dialog */}
+      <Dialog open={showSmartComposeDialog} onOpenChange={setShowSmartComposeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>智能合成</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>合成模式</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={composeMode === "generate" ? "default" : "outline"}
+                  onClick={() => setComposeMode("generate")}
+                  className="w-full"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  生成新图
+                </Button>
+                <Button
+                  variant={composeMode === "edit" ? "default" : "outline"}
+                  onClick={() => setComposeMode("edit")}
+                  className="w-full"
+                >
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  编辑现有图
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>功能说明</Label>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  <strong>智能合成</strong>会分析画布中的所有文本标注和图形元素：
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li><strong>生成新图</strong>：根据文本和图形标注生成全新的图片</li>
+                  <li><strong>编辑现有图</strong>：基于画布中的图片，按照标注进行智能修改</li>
+                </ul>
+                <p className="mt-2">
+                  提示：在画布中添加文本描述你想要的效果，添加图形标记重点区域，然后点击开始合成。
+                </p>
+              </div>
+            </div>
+
+            <Button onClick={handleSmartCompose} className="w-full" disabled={isComposing}>
+              {isComposing ? "处理中..." : "开始合成"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
