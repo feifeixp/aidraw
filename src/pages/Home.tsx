@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Wand2, Layers, Zap, ArrowRight } from "lucide-react";
+import { Sparkles, Wand2, Layers, Zap, ArrowRight, ExternalLink, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Home = () => {
@@ -29,6 +29,28 @@ const Home = () => {
 
   return (
     <div className="min-h-screen">
+      {/* Test Notice Banner */}
+      <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-primary/30 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
+            <div className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-primary" />
+              <span className="font-medium text-foreground">测试页面 - 限时免费使用</span>
+            </div>
+            <span className="hidden sm:inline text-muted-foreground">|</span>
+            <a 
+              href="https://story.neodomain.ai" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-medium"
+            >
+              访问官方正式产品
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Hero Section - 紫色渐变 */}
       <section className="relative overflow-hidden py-32 px-6 bg-gradient-to-br from-primary/10 via-accent/5 to-background">
         {/* Background decorative elements */}
