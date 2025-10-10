@@ -10,11 +10,8 @@ import Editor from "./pages/Editor";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
 import logo from "@/assets/logo.png";
-
 const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -22,7 +19,7 @@ const App = () => (
         <Navigation />
         
         {/* Logo in top-left corner - visible on all pages */}
-        <div className="fixed top-4 left-4 z-50">
+        <div className="fixed top-4 left-4 z-50 my-[20px]">
           <img src={logo} alt="Neo-Domain Logo" className="h-6 w-6 object-contain" />
         </div>
         
@@ -38,7 +35,5 @@ const App = () => (
         </div>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
-);
-
+  </QueryClientProvider>;
 export default App;
