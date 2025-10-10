@@ -436,7 +436,7 @@ export const EditorToolbar = ({
     }
   };
   return <div className="flex items-center gap-2">
-      <Button variant={activeTool === "select" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("select")}>
+      <Button variant={activeTool === "select" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("select")} className="bg-white hover:bg-white/90">
         <MousePointer2 className="h-4 w-4" />
       </Button>
 
