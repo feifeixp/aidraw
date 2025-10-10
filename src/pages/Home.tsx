@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Wand2, Layers, Zap, ArrowRight, Star, Users, TrendingUp } from "lucide-react";
+import { Sparkles, Wand2, Layers, Zap, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Home = () => {
@@ -28,37 +28,37 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-32 px-6">
+    <div className="min-h-screen">
+      {/* Hero Section - 紫色渐变 */}
+      <section className="relative overflow-hidden py-32 px-6 bg-gradient-to-br from-primary/10 via-accent/5 to-background">
         {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-accent/5 rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/20 rounded-full blur-3xl" />
         </div>
         
         <div className="relative mx-auto max-w-7xl text-center">
-          <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+          <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 animate-fade-in">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium text-primary">AI智能创作平台</span>
           </div>
           
-          <h1 className="mb-6 text-6xl font-bold tracking-tight md:text-7xl lg:text-8xl animate-fade-in">
+          <h1 className="mb-6 text-6xl font-bold tracking-tight md:text-7xl lg:text-8xl animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <span className="bg-[var(--gradient-primary)] bg-clip-text text-transparent">
               Neo-Domain
             </span>
           </h1>
           
-          <p className="mb-4 text-2xl font-semibold text-foreground md:text-3xl animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <p className="mb-4 text-2xl font-semibold text-foreground md:text-3xl animate-fade-in" style={{ animationDelay: '0.2s' }}>
             AI驱动的智能图像创作平台
           </p>
           
-          <p className="mx-auto mb-12 max-w-3xl text-lg text-muted-foreground leading-relaxed animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <p className="mx-auto mb-12 max-w-3xl text-lg text-muted-foreground leading-relaxed animate-fade-in" style={{ animationDelay: '0.3s' }}>
             结合前沿人工智能技术与专业编辑工具，为创作者提供从灵感到成品的完整解决方案。
             让创意无限延伸，让每个想法都能成为现实。
           </p>
           
-          <div className="flex flex-wrap items-center justify-center gap-4 mb-16 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <div className="flex flex-wrap items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
             <Link to="/generate">
               <Button size="lg" className="gap-2 text-lg px-8 py-6 hover-scale shadow-lg shadow-primary/20">
                 开始创作
@@ -72,26 +72,11 @@ const Home = () => {
               </Button>
             </Link>
           </div>
-
-          {/* Stats Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
-            {[
-              { icon: Users, label: "活跃用户", value: "10K+" },
-              { icon: Star, label: "生成图片", value: "1M+" },
-              { icon: TrendingUp, label: "满意度", value: "99%" }
-            ].map((stat, idx) => (
-              <div key={idx} className="p-6 rounded-2xl bg-card/50 backdrop-blur border border-border/40">
-                <stat.icon className="h-8 w-8 text-primary mx-auto mb-2" />
-                <div className="text-3xl font-bold mb-1">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-24 px-6 relative">
+      {/* Features Section - 浅色背景 */}
+      <section className="py-24 px-6 bg-gradient-to-br from-background via-muted/20 to-background">
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
             <h2 className="mb-4 text-4xl font-bold md:text-5xl">
@@ -108,7 +93,7 @@ const Home = () => {
             {features.map((feature, index) => (
               <Card 
                 key={index} 
-                className="group border-border/40 bg-card/50 backdrop-blur transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-2 animate-fade-in"
+                className="group border-border/40 bg-card backdrop-blur transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-2 animate-fade-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="p-8">
@@ -128,9 +113,11 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Product Introduction Section */}
-      <section className="py-24 px-6 bg-gradient-to-br from-muted/30 to-muted/10 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[var(--gradient-card)] opacity-30" />
+      {/* Product Introduction Section - 蓝色渐变 */}
+      <section className="py-24 px-6 bg-gradient-to-br from-accent/10 via-accent/5 to-background relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-accent/5 rounded-full blur-3xl" />
+        </div>
         
         <div className="relative mx-auto max-w-6xl">
           <div className="text-center mb-16">
@@ -143,20 +130,23 @@ const Home = () => {
             {[
               {
                 title: "创新技术",
-                content: "Neo-Domain 采用最前沿的人工智能技术，让您通过自然语言即可生成高质量图像，无需专业绘画技能。"
+                content: "Neo-Domain 采用最前沿的人工智能技术，让您通过自然语言即可生成高质量图像，无需专业绘画技能。",
+                gradient: "from-primary/5 to-primary/10"
               },
               {
                 title: "专业工具",
-                content: "强大的分镜编辑器支持多图层管理、智能合成、精确裁剪等专业功能，让创作过程更加流畅高效。"
+                content: "强大的分镜编辑器支持多图层管理、智能合成、精确裁剪等专业功能，让创作过程更加流畅高效。",
+                gradient: "from-accent/5 to-accent/10"
               },
               {
                 title: "全面支持",
-                content: "丰富的灵感广场和模型管理功能，帮助您发现新的创作思路，并管理自己的作品历史。"
+                content: "丰富的灵感广场和模型管理功能，帮助您发现新的创作思路，并管理自己的作品历史。",
+                gradient: "from-primary/10 to-accent/5"
               }
             ].map((item, idx) => (
               <Card 
                 key={idx} 
-                className="border-border/40 bg-card/80 backdrop-blur hover:shadow-lg transition-all duration-300 animate-fade-in"
+                className={`border-border/40 bg-gradient-to-br ${item.gradient} backdrop-blur hover:shadow-xl hover:-translate-y-1 transition-all duration-300 animate-fade-in`}
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
                 <CardContent className="p-8">
@@ -173,9 +163,12 @@ const Home = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-32 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[var(--gradient-primary)] opacity-5" />
+      {/* CTA Section - 渐变背景 */}
+      <section className="py-32 px-6 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/5">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
+        </div>
         
         <div className="relative mx-auto max-w-4xl text-center">
           <h2 className="mb-6 text-4xl font-bold md:text-5xl animate-fade-in">
