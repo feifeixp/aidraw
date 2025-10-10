@@ -86,7 +86,7 @@ export type Database = {
           status: string | null
           task_uuid: string | null
           template_uuid: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           checkpoint_id?: string | null
@@ -103,7 +103,7 @@ export type Database = {
           status?: string | null
           task_uuid?: string | null
           template_uuid?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           checkpoint_id?: string | null
@@ -120,7 +120,7 @@ export type Database = {
           status?: string | null
           task_uuid?: string | null
           template_uuid?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -231,7 +231,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
