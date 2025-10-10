@@ -10,15 +10,16 @@ import { Type, Bold, Italic, Underline, Square, Image, Upload, Sparkles } from "
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ColorAdjustmentPanel } from "./ColorAdjustmentPanel";
-
 interface PropertiesPanelProps {
   canvas: FabricCanvas | null;
   saveState: () => void;
 }
-
-export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({
+  canvas,
+  saveState
+}: PropertiesPanelProps) => {
   const [selectedObject, setSelectedObject] = useState<any>(null);
-  
+
   // Text properties
   const [textValue, setTextValue] = useState("");
   const [fontSize, setFontSize] = useState("20");
@@ -27,21 +28,19 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
-  
+
   // Shape properties
   const [fillColor, setFillColor] = useState("#000000");
   const [strokeColor, setStrokeColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(0);
-  
+
   // Image properties
   const [opacity, setOpacity] = useState(1);
   const [blendMode, setBlendMode] = useState("source-over");
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-
   useEffect(() => {
     if (!canvas) return;
-
     const handleSelectionCreated = (e: any) => {
       const obj = e.selected?.[0];
       if (obj) {
@@ -49,7 +48,6 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
         updateProperties(obj);
       }
     };
-
     const handleSelectionUpdated = (e: any) => {
       const obj = e.selected?.[0];
       if (obj) {
@@ -57,26 +55,22 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
         updateProperties(obj);
       }
     };
-
     const handleSelectionCleared = () => {
       setSelectedObject(null);
     };
-
     canvas.on('selection:created', handleSelectionCreated);
     canvas.on('selection:updated', handleSelectionUpdated);
     canvas.on('selection:cleared', handleSelectionCleared);
-
     return () => {
       canvas.off('selection:created', handleSelectionCreated);
       canvas.off('selection:updated', handleSelectionUpdated);
       canvas.off('selection:cleared', handleSelectionCleared);
     };
   }, [canvas]);
-
   const updateProperties = (obj: any) => {
     // Common properties
     setOpacity(obj.opacity || 1);
-    
+
     // Text properties
     if (obj.type === 'text') {
       setTextValue(obj.text || "");
@@ -87,112 +81,122 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
       setIsItalic(obj.fontStyle === 'italic');
       setIsUnderline(obj.underline || false);
     }
-    
+
     // Shape properties
     if (['rect', 'circle', 'polygon', 'path'].includes(obj.type)) {
       setFillColor(obj.fill || "#000000");
       setStrokeColor(obj.stroke || "#000000");
       setStrokeWidth(obj.strokeWidth || 0);
     }
-    
+
     // Image properties
     if (obj.type === 'image') {
       setBlendMode((obj as any).globalCompositeOperation || "source-over");
     }
   };
-
   const updateText = () => {
     if (!selectedObject || !canvas) return;
-    selectedObject.set({ text: textValue });
+    selectedObject.set({
+      text: textValue
+    });
     canvas.renderAll();
     saveState();
   };
-
   const updateFontSize = (value: string) => {
     if (!selectedObject || !canvas) return;
     setFontSize(value);
-    selectedObject.set({ fontSize: parseInt(value) });
+    selectedObject.set({
+      fontSize: parseInt(value)
+    });
     canvas.renderAll();
     saveState();
   };
-
   const updateFontFamily = (value: string) => {
     if (!selectedObject || !canvas) return;
     setFontFamily(value);
-    selectedObject.set({ fontFamily: value });
+    selectedObject.set({
+      fontFamily: value
+    });
     canvas.renderAll();
     saveState();
   };
-
   const updateTextColor = (value: string) => {
     if (!selectedObject || !canvas) return;
     setTextColor(value);
-    selectedObject.set({ fill: value });
+    selectedObject.set({
+      fill: value
+    });
     canvas.renderAll();
     saveState();
   };
-
   const toggleBold = () => {
     if (!selectedObject || !canvas) return;
     const newBold = !isBold;
     setIsBold(newBold);
-    selectedObject.set({ fontWeight: newBold ? 'bold' : 'normal' });
+    selectedObject.set({
+      fontWeight: newBold ? 'bold' : 'normal'
+    });
     canvas.renderAll();
     saveState();
   };
-
   const toggleItalic = () => {
     if (!selectedObject || !canvas) return;
     const newItalic = !isItalic;
     setIsItalic(newItalic);
-    selectedObject.set({ fontStyle: newItalic ? 'italic' : 'normal' });
+    selectedObject.set({
+      fontStyle: newItalic ? 'italic' : 'normal'
+    });
     canvas.renderAll();
     saveState();
   };
-
   const toggleUnderline = () => {
     if (!selectedObject || !canvas) return;
     const newUnderline = !isUnderline;
     setIsUnderline(newUnderline);
-    selectedObject.set({ underline: newUnderline });
+    selectedObject.set({
+      underline: newUnderline
+    });
     canvas.renderAll();
     saveState();
   };
-
   const updateOpacity = (value: number[]) => {
     if (!selectedObject || !canvas) return;
     const newOpacity = value[0];
     setOpacity(newOpacity);
-    selectedObject.set({ opacity: newOpacity });
+    selectedObject.set({
+      opacity: newOpacity
+    });
     canvas.renderAll();
     saveState();
   };
-
   const updateFillColor = (value: string) => {
     if (!selectedObject || !canvas) return;
     setFillColor(value);
-    selectedObject.set({ fill: value });
+    selectedObject.set({
+      fill: value
+    });
     canvas.renderAll();
     saveState();
   };
-
   const updateStrokeColor = (value: string) => {
     if (!selectedObject || !canvas) return;
     setStrokeColor(value);
-    selectedObject.set({ stroke: value });
+    selectedObject.set({
+      stroke: value
+    });
     canvas.renderAll();
     saveState();
   };
-
   const updateStrokeWidth = (value: string) => {
     if (!selectedObject || !canvas) return;
     const width = parseInt(value);
     setStrokeWidth(width);
-    selectedObject.set({ strokeWidth: width });
+    selectedObject.set({
+      strokeWidth: width
+    });
     canvas.renderAll();
     saveState();
   };
-
   const updateBlendMode = (value: string) => {
     if (!selectedObject || !canvas) return;
     setBlendMode(value);
@@ -200,17 +204,17 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
     canvas.renderAll();
     saveState();
   };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !canvas || !selectedObject) return;
-
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = event => {
       const imageUrl = event.target?.result as string;
-      FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then(img => {
+      FabricImage.fromURL(imageUrl, {
+        crossOrigin: 'anonymous'
+      }).then(img => {
         if (!img) return;
-        
+
         // Copy properties from old image
         img.set({
           left: selectedObject.left,
@@ -218,9 +222,8 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
           scaleX: selectedObject.scaleX,
           scaleY: selectedObject.scaleY,
           angle: selectedObject.angle,
-          opacity: selectedObject.opacity,
+          opacity: selectedObject.opacity
         });
-        
         canvas.remove(selectedObject);
         canvas.add(img);
         canvas.setActiveObject(img);
@@ -231,25 +234,27 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
     };
     reader.readAsDataURL(file);
   };
-
   const handleAIGenerate = async () => {
     if (!aiPrompt.trim()) {
       toast.error("请输入提示词");
       return;
     }
-
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('ai-generate-image', {
-        body: { prompt: aiPrompt }
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('ai-generate-image', {
+        body: {
+          prompt: aiPrompt
+        }
       });
-
       if (error) throw error;
-
       if (data?.imageUrl) {
-        FabricImage.fromURL(data.imageUrl, { crossOrigin: 'anonymous' }).then(img => {
+        FabricImage.fromURL(data.imageUrl, {
+          crossOrigin: 'anonymous'
+        }).then(img => {
           if (!img || !canvas) return;
-          
           if (selectedObject && selectedObject.type === 'image') {
             // Replace existing image
             img.set({
@@ -258,7 +263,7 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
               scaleX: selectedObject.scaleX,
               scaleY: selectedObject.scaleY,
               angle: selectedObject.angle,
-              opacity: selectedObject.opacity,
+              opacity: selectedObject.opacity
             });
             canvas.remove(selectedObject);
           } else {
@@ -268,14 +273,12 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
             const imgWidth = img.width || 1;
             const imgHeight = img.height || 1;
             const scale = Math.min(canvasWidth / imgWidth, canvasHeight / imgHeight, 0.5);
-            
             img.scale(scale);
             img.set({
               left: (canvasWidth - imgWidth * scale) / 2,
-              top: (canvasHeight - imgHeight * scale) / 2,
+              top: (canvasHeight - imgHeight * scale) / 2
             });
           }
-          
           canvas.add(img);
           canvas.setActiveObject(img);
           canvas.renderAll();
@@ -290,20 +293,15 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
       setIsGenerating(false);
     }
   };
-
   if (!selectedObject) {
-    return (
-      <div className="h-full flex items-center justify-center p-4 text-muted-foreground text-sm">
+    return <div className="h-full flex items-center justify-center p-4 text-muted-foreground text-sm my-[15px] rounded-sm bg-slate-100">
         <div className="text-center">
           <Square className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p>选择对象以编辑属性</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  const renderTextProperties = () => (
-    <>
+  const renderTextProperties = () => <>
       <div className="flex items-center gap-2 mb-4">
         <Type className="w-5 h-5" />
         <h3 className="font-medium">文本属性</h3>
@@ -312,14 +310,7 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
       <div className="space-y-3">
         <div>
           <Label htmlFor="text-content">文本内容</Label>
-          <Input
-            id="text-content"
-            value={textValue}
-            onChange={(e) => setTextValue(e.target.value)}
-            onBlur={updateText}
-            onKeyDown={(e) => e.key === 'Enter' && updateText()}
-            className="mt-1"
-          />
+          <Input id="text-content" value={textValue} onChange={e => setTextValue(e.target.value)} onBlur={updateText} onKeyDown={e => e.key === 'Enter' && updateText()} className="mt-1" />
         </div>
 
         <div>
@@ -341,71 +332,34 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
 
         <div>
           <Label htmlFor="font-size">字体大小</Label>
-          <Input
-            id="font-size"
-            type="number"
-            value={fontSize}
-            onChange={(e) => updateFontSize(e.target.value)}
-            min="8"
-            max="200"
-            className="mt-1"
-          />
+          <Input id="font-size" type="number" value={fontSize} onChange={e => updateFontSize(e.target.value)} min="8" max="200" className="mt-1" />
         </div>
 
         <div>
           <Label htmlFor="text-color">文本颜色</Label>
           <div className="flex gap-2 mt-1">
-            <Input
-              id="text-color"
-              type="color"
-              value={textColor}
-              onChange={(e) => updateTextColor(e.target.value)}
-              className="w-16 h-10 p-1"
-            />
-            <Input
-              type="text"
-              value={textColor}
-              onChange={(e) => updateTextColor(e.target.value)}
-              className="flex-1"
-            />
+            <Input id="text-color" type="color" value={textColor} onChange={e => updateTextColor(e.target.value)} className="w-16 h-10 p-1" />
+            <Input type="text" value={textColor} onChange={e => updateTextColor(e.target.value)} className="flex-1" />
           </div>
         </div>
 
         <div>
           <Label>文本样式</Label>
           <div className="flex gap-2 mt-1">
-            <Button
-              variant={isBold ? "default" : "outline"}
-              size="icon"
-              onClick={toggleBold}
-              title="粗体"
-            >
+            <Button variant={isBold ? "default" : "outline"} size="icon" onClick={toggleBold} title="粗体">
               <Bold className="w-4 h-4" />
             </Button>
-            <Button
-              variant={isItalic ? "default" : "outline"}
-              size="icon"
-              onClick={toggleItalic}
-              title="斜体"
-            >
+            <Button variant={isItalic ? "default" : "outline"} size="icon" onClick={toggleItalic} title="斜体">
               <Italic className="w-4 h-4" />
             </Button>
-            <Button
-              variant={isUnderline ? "default" : "outline"}
-              size="icon"
-              onClick={toggleUnderline}
-              title="下划线"
-            >
+            <Button variant={isUnderline ? "default" : "outline"} size="icon" onClick={toggleUnderline} title="下划线">
               <Underline className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </div>
-    </>
-  );
-
-  const renderShapeProperties = () => (
-    <>
+    </>;
+  const renderShapeProperties = () => <>
       <div className="flex items-center gap-2 mb-4">
         <Square className="w-5 h-5" />
         <h3 className="font-medium">图形属性</h3>
@@ -415,59 +369,26 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
         <div>
           <Label htmlFor="fill-color">填充颜色</Label>
           <div className="flex gap-2 mt-1">
-            <Input
-              id="fill-color"
-              type="color"
-              value={fillColor}
-              onChange={(e) => updateFillColor(e.target.value)}
-              className="w-16 h-10 p-1"
-            />
-            <Input
-              type="text"
-              value={fillColor}
-              onChange={(e) => updateFillColor(e.target.value)}
-              className="flex-1"
-            />
+            <Input id="fill-color" type="color" value={fillColor} onChange={e => updateFillColor(e.target.value)} className="w-16 h-10 p-1" />
+            <Input type="text" value={fillColor} onChange={e => updateFillColor(e.target.value)} className="flex-1" />
           </div>
         </div>
 
         <div>
           <Label htmlFor="stroke-color">描边颜色</Label>
           <div className="flex gap-2 mt-1">
-            <Input
-              id="stroke-color"
-              type="color"
-              value={strokeColor}
-              onChange={(e) => updateStrokeColor(e.target.value)}
-              className="w-16 h-10 p-1"
-            />
-            <Input
-              type="text"
-              value={strokeColor}
-              onChange={(e) => updateStrokeColor(e.target.value)}
-              className="flex-1"
-            />
+            <Input id="stroke-color" type="color" value={strokeColor} onChange={e => updateStrokeColor(e.target.value)} className="w-16 h-10 p-1" />
+            <Input type="text" value={strokeColor} onChange={e => updateStrokeColor(e.target.value)} className="flex-1" />
           </div>
         </div>
 
         <div>
           <Label htmlFor="stroke-width">描边宽度</Label>
-          <Input
-            id="stroke-width"
-            type="number"
-            value={strokeWidth}
-            onChange={(e) => updateStrokeWidth(e.target.value)}
-            min="0"
-            max="50"
-            className="mt-1"
-          />
+          <Input id="stroke-width" type="number" value={strokeWidth} onChange={e => updateStrokeWidth(e.target.value)} min="0" max="50" className="mt-1" />
         </div>
       </div>
-    </>
-  );
-
-  const renderImageProperties = () => (
-    <>
+    </>;
+  const renderImageProperties = () => <>
       <div className="flex items-center gap-2 mb-4">
         <Image className="w-5 h-5" />
         <h3 className="font-medium">图片属性</h3>
@@ -477,31 +398,14 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
         <div>
           <Label htmlFor="image-upload">重新导入图片</Label>
           <div className="mt-1">
-            <Input
-              id="image-upload"
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="cursor-pointer"
-            />
+            <Input id="image-upload" type="file" accept="image/*" onChange={handleImageUpload} className="cursor-pointer" />
           </div>
         </div>
 
         <div className="border-t pt-3">
           <Label htmlFor="ai-prompt">AI 生成图片</Label>
-          <Textarea
-            id="ai-prompt"
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            placeholder="描述你想要生成的图片..."
-            className="mt-1"
-            rows={3}
-          />
-          <Button
-            onClick={handleAIGenerate}
-            disabled={isGenerating}
-            className="w-full mt-2"
-          >
+          <Textarea id="ai-prompt" value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="描述你想要生成的图片..." className="mt-1" rows={3} />
+          <Button onClick={handleAIGenerate} disabled={isGenerating} className="w-full mt-2">
             <Sparkles className="w-4 h-4 mr-2" />
             {isGenerating ? "生成中..." : "生成图片"}
           </Button>
@@ -530,17 +434,10 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
           </Select>
         </div>
         
-        <ColorAdjustmentPanel 
-          canvas={canvas} 
-          selectedObject={selectedObject} 
-          saveState={saveState} 
-        />
+        <ColorAdjustmentPanel canvas={canvas} selectedObject={selectedObject} saveState={saveState} />
       </div>
-    </>
-  );
-
-  return (
-    <div className="h-full overflow-auto p-4 space-y-4">
+    </>;
+  return <div className="h-full overflow-auto p-4 space-y-4">
       {selectedObject.type === 'text' && renderTextProperties()}
       {['rect', 'circle', 'polygon', 'path'].includes(selectedObject.type) && renderShapeProperties()}
       {selectedObject.type === 'image' && renderImageProperties()}
@@ -549,17 +446,8 @@ export const PropertiesPanel = ({ canvas, saveState }: PropertiesPanelProps) => 
       <div className="border-t pt-3 space-y-3">
         <div>
           <Label htmlFor="opacity">透明度: {Math.round(opacity * 100)}%</Label>
-          <Slider
-            id="opacity"
-            value={[opacity]}
-            onValueChange={updateOpacity}
-            min={0}
-            max={1}
-            step={0.01}
-            className="mt-2"
-          />
+          <Slider id="opacity" value={[opacity]} onValueChange={updateOpacity} min={0} max={1} step={0.01} className="mt-2" />
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
