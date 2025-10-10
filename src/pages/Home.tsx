@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Wand2, Layers, Zap, ArrowRight } from "lucide-react";
+import { Sparkles, Wand2, Layers, Zap, ArrowRight, Star, Users, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Home = () => {
@@ -28,57 +28,99 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 px-6">
-        <div className="absolute inset-0 bg-[var(--gradient-card)] opacity-50" />
+      <section className="relative overflow-hidden py-32 px-6">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-accent/5 rounded-full blur-3xl" />
+        </div>
+        
         <div className="relative mx-auto max-w-7xl text-center">
-          <h1 className="mb-6 text-5xl font-bold tracking-tight md:text-6xl lg:text-7xl">
+          <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">AI智能创作平台</span>
+          </div>
+          
+          <h1 className="mb-6 text-6xl font-bold tracking-tight md:text-7xl lg:text-8xl animate-fade-in">
             <span className="bg-[var(--gradient-primary)] bg-clip-text text-transparent">
               Neo-Domain
             </span>
           </h1>
-          <p className="mb-8 text-xl text-muted-foreground md:text-2xl">
+          
+          <p className="mb-4 text-2xl font-semibold text-foreground md:text-3xl animate-fade-in" style={{ animationDelay: '0.1s' }}>
             AI驱动的智能图像创作平台
           </p>
-          <p className="mx-auto mb-12 max-w-2xl text-lg text-muted-foreground">
-            结合前沿人工智能技术与专业编辑工具，为创作者提供从灵感到成品的完整解决方案
+          
+          <p className="mx-auto mb-12 max-w-3xl text-lg text-muted-foreground leading-relaxed animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            结合前沿人工智能技术与专业编辑工具，为创作者提供从灵感到成品的完整解决方案。
+            让创意无限延伸，让每个想法都能成为现实。
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          
+          <div className="flex flex-wrap items-center justify-center gap-4 mb-16 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <Link to="/generate">
-              <Button size="lg" className="gap-2">
+              <Button size="lg" className="gap-2 text-lg px-8 py-6 hover-scale shadow-lg shadow-primary/20">
                 开始创作
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
             <Link to="/editor">
-              <Button size="lg" variant="outline" className="gap-2">
+              <Button size="lg" variant="outline" className="gap-2 text-lg px-8 py-6 hover-scale">
                 打开编辑器
                 <Layers className="h-5 w-5" />
               </Button>
             </Link>
           </div>
+
+          {/* Stats Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
+            {[
+              { icon: Users, label: "活跃用户", value: "10K+" },
+              { icon: Star, label: "生成图片", value: "1M+" },
+              { icon: TrendingUp, label: "满意度", value: "99%" }
+            ].map((stat, idx) => (
+              <div key={idx} className="p-6 rounded-2xl bg-card/50 backdrop-blur border border-border/40">
+                <stat.icon className="h-8 w-8 text-primary mx-auto mb-2" />
+                <div className="text-3xl font-bold mb-1">{stat.value}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-6">
+      <section className="py-24 px-6 relative">
         <div className="mx-auto max-w-7xl">
-          <h2 className="mb-4 text-center text-3xl font-bold md:text-4xl">
-            强大的功能特性
-          </h2>
-          <p className="mb-12 text-center text-lg text-muted-foreground">
-            一站式图像创作与编辑解决方案
-          </p>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="text-center mb-16">
+            <h2 className="mb-4 text-4xl font-bold md:text-5xl">
+              <span className="bg-[var(--gradient-primary)] bg-clip-text text-transparent">
+                强大的功能特性
+              </span>
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              一站式图像创作与编辑解决方案，满足您的所有创作需求
+            </p>
+          </div>
+          
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             {features.map((feature, index) => (
-              <Card key={index} className="border-border/40 bg-card/50 backdrop-blur transition-all hover:shadow-lg hover:shadow-primary/10">
-                <CardContent className="p-6">
-                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <feature.icon className="h-6 w-6 text-primary" />
+              <Card 
+                key={index} 
+                className="group border-border/40 bg-card/50 backdrop-blur transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-2 animate-fade-in"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <CardContent className="p-8">
+                  <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <feature.icon className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
+                  <h3 className="mb-3 text-xl font-bold group-hover:text-primary transition-colors">
+                    {feature.title}
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {feature.description}
+                  </p>
                 </CardContent>
               </Card>
             ))}
@@ -87,40 +129,69 @@ const Home = () => {
       </section>
 
       {/* Product Introduction Section */}
-      <section className="py-20 px-6 bg-muted/30">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-8 text-center text-3xl font-bold md:text-4xl">
-            关于产品
-          </h2>
-          <div className="space-y-6 text-lg leading-relaxed text-muted-foreground">
-            <p>
-              Neo-Domain 是一款专为创意工作者打造的AI图像创作平台。我们致力于将最前沿的人工智能技术与直观的用户体验相结合，让每个人都能轻松实现自己的创意想法。
-            </p>
-            <p>
-              通过我们的平台，您可以使用自然语言描述来生成高质量的图像，无需专业的绘画技能。强大的分镜编辑器支持多图层管理、智能合成、精确裁剪等专业功能，让您的创作过程更加流畅高效。
-            </p>
-            <p>
-              我们还提供丰富的灵感广场和模型管理功能，帮助您发现新的创作思路，并管理自己的作品历史。无论您是专业设计师、内容创作者，还是对图像创作感兴趣的爱好者，Neo-Domain 都能为您提供所需的工具和支持。
-            </p>
+      <section className="py-24 px-6 bg-gradient-to-br from-muted/30 to-muted/10 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[var(--gradient-card)] opacity-30" />
+        
+        <div className="relative mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <h2 className="mb-4 text-4xl font-bold md:text-5xl">
+              关于 <span className="bg-[var(--gradient-primary)] bg-clip-text text-transparent">Neo-Domain</span>
+            </h2>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                title: "创新技术",
+                content: "Neo-Domain 采用最前沿的人工智能技术，让您通过自然语言即可生成高质量图像，无需专业绘画技能。"
+              },
+              {
+                title: "专业工具",
+                content: "强大的分镜编辑器支持多图层管理、智能合成、精确裁剪等专业功能，让创作过程更加流畅高效。"
+              },
+              {
+                title: "全面支持",
+                content: "丰富的灵感广场和模型管理功能，帮助您发现新的创作思路，并管理自己的作品历史。"
+              }
+            ].map((item, idx) => (
+              <Card 
+                key={idx} 
+                className="border-border/40 bg-card/80 backdrop-blur hover:shadow-lg transition-all duration-300 animate-fade-in"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <CardContent className="p-8">
+                  <h3 className="text-2xl font-bold mb-4 bg-[var(--gradient-primary)] bg-clip-text text-transparent">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {item.content}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6">
-        <div className="mx-auto max-w-4xl text-center">
-          <h2 className="mb-6 text-3xl font-bold md:text-4xl">
+      <section className="py-32 px-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[var(--gradient-primary)] opacity-5" />
+        
+        <div className="relative mx-auto max-w-4xl text-center">
+          <h2 className="mb-6 text-4xl font-bold md:text-5xl animate-fade-in">
             准备好开始创作了吗？
           </h2>
-          <p className="mb-8 text-lg text-muted-foreground">
-            立即体验AI驱动的智能图像创作
+          <p className="mb-12 text-xl text-muted-foreground animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            立即体验AI驱动的智能图像创作，让您的创意成为现实
           </p>
-          <Link to="/generate">
-            <Button size="lg" className="gap-2">
-              免费开始
-              <Sparkles className="h-5 w-5" />
-            </Button>
-          </Link>
+          <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <Link to="/generate">
+              <Button size="lg" className="gap-2 text-lg px-10 py-7 hover-scale shadow-2xl shadow-primary/30">
+                免费开始创作
+                <Sparkles className="h-6 w-6" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
     </div>
