@@ -30,7 +30,7 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       {/* Test Notice Banner */}
-      <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-primary/30 backdrop-blur-sm">
+      <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-primary/30 backdrop-blur-sm pt-5">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
             <div className="flex items-center gap-2">
