@@ -87,14 +87,22 @@ export const EditorCanvas = ({
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
     };
-  }, [canvasSize]);
+  }, [setCanvas]); // Only run once on mount
 
   // Update canvas size when canvasSize prop changes
   useEffect(() => {
     if (!canvas || !canvasSize) return;
-    canvas.setWidth(canvasSize.width);
-    canvas.setHeight(canvasSize.height);
-    canvas.renderAll();
+    
+    // Use requestAnimationFrame to ensure canvas is fully mounted
+    requestAnimationFrame(() => {
+      try {
+        canvas.setWidth(canvasSize.width);
+        canvas.setHeight(canvasSize.height);
+        canvas.renderAll();
+      } catch (error) {
+        console.error('Error setting canvas size:', error);
+      }
+    });
   }, [canvas, canvasSize]);
 
   useEffect(() => {
