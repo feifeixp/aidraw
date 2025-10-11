@@ -236,7 +236,7 @@ export const EditorCanvas = ({
     }
   }, [activeTool, canvas]);
 
-  // Center view to frame on initial load and zoom changes
+  // Center view to frame on initial load only
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !canvas) return;
@@ -265,10 +265,10 @@ export const EditorCanvas = ({
       });
     };
 
-    // Small delay to ensure DOM is ready
+    // Small delay to ensure DOM is ready - only on initial canvas load
     const timer = setTimeout(centerView, 100);
     return () => clearTimeout(timer);
-  }, [canvas, zoom]);
+  }, [canvas]); // Remove zoom dependency to prevent re-centering on zoom
 
   // Handle image upload via drag & drop or paste
   useEffect(() => {
@@ -357,7 +357,7 @@ export const EditorCanvas = ({
         e.preventDefault();
         
         const delta = e.deltaY;
-        const zoomChange = delta > 0 ? -10 : 10;
+        const zoomChange = delta > 0 ? -5 : 5; // Reduced from 10 to 5 for smoother control
         const newZoom = Math.max(10, Math.min(200, zoom + zoomChange));
         
         onZoomChange(newZoom);
