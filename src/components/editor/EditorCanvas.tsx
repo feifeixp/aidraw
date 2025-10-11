@@ -397,6 +397,11 @@ export const EditorCanvas = ({
           requestAnimationFrame(() => {
             container.scrollLeft = targetScrollLeft;
             container.scrollTop = targetScrollTop;
+            
+            // 确保selection状态正确
+            if (canvas) {
+              canvas.selection = activeTool === "select";
+            }
           });
           
           rafId = null;
@@ -440,6 +445,11 @@ export const EditorCanvas = ({
     // Update scroll position
     container.scrollLeft = targetScrollLeft;
     container.scrollTop = targetScrollTop;
+    
+    // 确保selection状态正确
+    if (canvas) {
+      canvas.selection = activeTool === "select";
+    }
     
     // Update previous zoom
     prevZoomRef.current = zoom;
