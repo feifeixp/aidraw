@@ -148,6 +148,15 @@ export const EditorToolbar = ({
         const {
           FabricImage
         } = await import("fabric");
+        
+        // 先移除画布上所有非frame的对象
+        const objects = canvas.getObjects();
+        objects.forEach(obj => {
+          if ((obj as any).name !== 'workframe') {
+            canvas.remove(obj);
+          }
+        });
+        
         const img = new Image();
         await new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -389,6 +398,15 @@ export const EditorToolbar = ({
 
       if (aiData?.imageUrl) {
         const { FabricImage } = await import("fabric");
+        
+        // 先移除画布上所有非frame的对象
+        const objects = canvas.getObjects();
+        objects.forEach(obj => {
+          if ((obj as any).name !== 'workframe') {
+            canvas.remove(obj);
+          }
+        });
+        
         const img = await FabricImage.fromURL(aiData.imageUrl, {
           crossOrigin: 'anonymous'
         });
