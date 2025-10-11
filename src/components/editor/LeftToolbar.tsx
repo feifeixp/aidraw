@@ -1182,7 +1182,7 @@ const ProfessionalGenerateGrid = ({
               <img
                 src={imageUrl}
                 alt={item.prompt}
-                className="w-full h-full object-cover"
+                className="w-100 h-100 object-cover"
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
