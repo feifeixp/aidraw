@@ -16,7 +16,7 @@ export const useAuth = () => {
       setSession(session);
       setUser(session?.user ?? null);
       
-      // 异步检查管理员权限
+      // 使用setTimeout避免死锁
       if (session?.user) {
         setTimeout(() => {
           checkAdminStatus(session.user.id);
@@ -26,18 +26,20 @@ export const useAuth = () => {
       }
     });
 
-    // 检查现有会话
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // 检查现有会话 - 确保admin状态检查完成后再设置loading为false
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
       
       if (session?.user) {
-        setTimeout(() => {
-          checkAdminStatus(session.user.id);
-        }, 0);
+        await checkAdminStatus(session.user.id);
       }
-    });
+      
+      setLoading(false);
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -51,11 +53,10 @@ export const useAuth = () => {
         .eq("role", "admin")
         .single();
 
-      if (!error && data) {
-        setIsAdmin(true);
-      }
+      setIsAdmin(!error && !!data);
     } catch (error) {
       console.error("Error checking admin status:", error);
+      setIsAdmin(false);
     }
   };
 
