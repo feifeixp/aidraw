@@ -370,22 +370,22 @@ export const EditorCanvas = ({
     const container = containerRef.current;
     if (!container || !frameRef.current) return;
 
-    let wheelTimeout: NodeJS.Timeout | null = null;
+    let rafId: number | null = null;
 
     const handleWheel = (e: WheelEvent) => {
       // Prevent default scrolling
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         
-        // 清除之前的延迟执行
-        if (wheelTimeout) {
-          clearTimeout(wheelTimeout);
+        // 取消之前的动画帧
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
         }
 
-        // 使用节流来减少更新频率
-        wheelTimeout = setTimeout(() => {
+        // 使用 requestAnimationFrame 保证流畅更新
+        rafId = requestAnimationFrame(() => {
           const delta = e.deltaY;
-          const zoomChange = delta > 0 ? -2 : 2; // 使用较小步长保持顺滑
+          const zoomChange = delta > 0 ? -2 : 2;
           const newZoom = Math.max(10, Math.min(200, zoom + zoomChange));
           
           if (newZoom === zoom) return;
@@ -415,7 +415,8 @@ export const EditorCanvas = ({
           
           // 触发缩放状态更新
           onZoomChange(newZoom);
-        }, 16); // 16ms 节流（一帧时间）
+          rafId = null;
+        });
       }
     };
 
@@ -423,8 +424,8 @@ export const EditorCanvas = ({
 
     return () => {
       container.removeEventListener('wheel', handleWheel);
-      if (wheelTimeout) {
-        clearTimeout(wheelTimeout);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
       }
     };
   }, [zoom, onZoomChange]);
