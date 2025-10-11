@@ -218,22 +218,32 @@ export const EditorCanvas = ({
     };
   }, [zoom, onZoomChange]);
 
-  // Handle pan on empty area with left click
+  // Handle pan with left click when pan tool is active
   useEffect(() => {
     if (!canvas) return;
     const container = containerRef.current;
     if (!container) return;
 
     const handleCanvasMouseDown = (e: any) => {
-      // Check if clicked on empty area (no target object)
-      if (!e.target && e.e.button === 0) {
+      // Pan mode: pan on any click
+      if (activeTool === "pan" && e.e.button === 0) {
         isPanningRef.current = true;
         panStartRef.current = {
           x: e.e.clientX + container.scrollLeft,
           y: e.e.clientY + container.scrollTop
         };
         container.style.cursor = 'grabbing';
-        canvas.selection = false; // Disable selection while panning
+        canvas.selection = false;
+      }
+      // Select mode: pan only on empty area
+      else if (activeTool === "select" && !e.target && e.e.button === 0) {
+        isPanningRef.current = true;
+        panStartRef.current = {
+          x: e.e.clientX + container.scrollLeft,
+          y: e.e.clientY + container.scrollTop
+        };
+        container.style.cursor = 'grabbing';
+        canvas.selection = false;
       }
     };
 
@@ -250,18 +260,25 @@ export const EditorCanvas = ({
     const handleMouseUp = () => {
       if (isPanningRef.current) {
         isPanningRef.current = false;
-        container.style.cursor = '';
-        canvas.selection = activeTool === "select"; // Re-enable selection if in select mode
+        container.style.cursor = activeTool === "pan" ? 'grab' : '';
+        canvas.selection = activeTool === "select";
       }
     };
 
     const handleMouseLeave = () => {
       if (isPanningRef.current) {
         isPanningRef.current = false;
-        container.style.cursor = '';
+        container.style.cursor = activeTool === "pan" ? 'grab' : '';
         canvas.selection = activeTool === "select";
       }
     };
+
+    // Set cursor based on active tool
+    if (activeTool === "pan") {
+      container.style.cursor = 'grab';
+    } else {
+      container.style.cursor = '';
+    }
 
     canvas.on('mouse:down', handleCanvasMouseDown);
     container.addEventListener('mousemove', handleMouseMove);
@@ -273,6 +290,7 @@ export const EditorCanvas = ({
       container.removeEventListener('mousemove', handleMouseMove);
       container.removeEventListener('mouseup', handleMouseUp);
       container.removeEventListener('mouseleave', handleMouseLeave);
+      container.style.cursor = '';
     };
   }, [canvas, activeTool]);
 

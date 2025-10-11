@@ -150,6 +150,26 @@ const Editor = () => {
       return () => clearTimeout(timer);
     }
   }, [canvas, history.length]);
+
+  // Keyboard shortcut for pan tool (H key)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if user is typing in an input field
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || 
+                          target.tagName === 'TEXTAREA' || 
+                          target.isContentEditable;
+      
+      if (isInputField) return;
+      
+      if (e.key === 'h' || e.key === 'H') {
+        setActiveTool(prev => prev === "pan" ? "select" : "pan");
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const handleCloseMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
   }, []);
