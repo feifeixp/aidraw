@@ -117,19 +117,6 @@ export const EditorCanvas = ({
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
-    // 初始视图居中到frame
-    setTimeout(() => {
-      if (containerRef.current) {
-        const container = containerRef.current;
-        // Center the viewport to show the frame at current zoom level
-        const scaledCanvasSize = INFINITE_CANVAS_SIZE * (zoom / 100);
-        const centerX = scaledCanvasSize / 2;
-        const centerY = scaledCanvasSize / 2;
-        container.scrollLeft = centerX - container.clientWidth / 2;
-        container.scrollTop = centerY - container.clientHeight / 2;
-      }
-    }, 100);
-
     return () => {
       fabricCanvas.off('object:modified', handleObjectModified);
       if (canvasElement) {
@@ -177,6 +164,24 @@ export const EditorCanvas = ({
       canvas.freeDrawingBrush.width = 2;
     }
   }, [activeTool, canvas]);
+
+  // Center view to frame on initial load and zoom changes
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !canvas) return;
+
+    const centerView = () => {
+      const scaledSize = INFINITE_CANVAS_SIZE * (zoom / 100);
+      const centerX = scaledSize / 2;
+      const centerY = scaledSize / 2;
+      container.scrollLeft = centerX - container.clientWidth / 2;
+      container.scrollTop = centerY - container.clientHeight / 2;
+    };
+
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(centerView, 50);
+    return () => clearTimeout(timer);
+  }, [canvas, zoom]);
 
   // Handle image upload via drag & drop or paste
   useEffect(() => {
