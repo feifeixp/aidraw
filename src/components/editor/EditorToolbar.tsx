@@ -173,6 +173,10 @@ export const EditorToolbar = ({
         const scale = Math.min(scaleX, scaleY);
         fabricImg.scale(scale);
         canvas.add(fabricImg);
+        
+        // 确保frame保持在底层
+        canvas.sendObjectToBack(frame as any);
+        
         canvas.setActiveObject(fabricImg);
         canvas.renderAll();
         saveState();
@@ -424,6 +428,10 @@ export const EditorToolbar = ({
         });
 
         canvas.add(img);
+        
+        // 确保frame保持在底层
+        canvas.sendObjectToBack(frame as any);
+        
         canvas.setActiveObject(img);
         canvas.renderAll();
         saveState();
