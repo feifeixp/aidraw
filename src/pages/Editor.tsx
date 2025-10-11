@@ -83,6 +83,7 @@ const Editor = () => {
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [isTaskProcessing, setIsTaskProcessing] = useState(false);
   const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
   const isMobile = useIsMobile();
 
   // Save canvas state to history
@@ -256,7 +257,12 @@ const Editor = () => {
               {leftToolbarContent}
             </SheetContent>
           </Sheet>}
-        <DraftsList canvas={canvas} onLoadDraft={handleLoadDraft} />
+        <DraftsList 
+          canvas={canvas} 
+          onLoadDraft={handleLoadDraft}
+          currentDraftId={currentDraftId}
+          onDraftIdChange={setCurrentDraftId}
+        />
         <div className="flex-1 min-w-0 overflow-x-auto">
           <EditorToolbar
             canvas={canvas} 
