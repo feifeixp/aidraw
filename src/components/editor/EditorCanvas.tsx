@@ -37,7 +37,10 @@ export const EditorCanvas = ({
   }, [saveState]);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current) {
+      console.log('Canvas ref is null, skipping initialization');
+      return;
+    }
 
     console.log('=== Initializing Canvas ===');
     console.log('Canvas element:', canvasRef.current);
@@ -47,7 +50,7 @@ export const EditorCanvas = ({
     const fabricCanvas = new FabricCanvas(canvasRef.current, {
       width: INFINITE_CANVAS_SIZE,
       height: INFINITE_CANVAS_SIZE,
-      backgroundColor: "#f5f5f5",
+      backgroundColor: "#e5e5e5",
       preserveObjectStacking: true,
     });
 
@@ -69,8 +72,8 @@ export const EditorCanvas = ({
       width: frameWidth,
       height: frameHeight,
       fill: "#ffffff",
-      stroke: "#3b82f6",
-      strokeWidth: 4,
+      stroke: "#ff0000",
+      strokeWidth: 8,
       selectable: false,
       evented: false,
       name: 'workframe',
@@ -84,6 +87,14 @@ export const EditorCanvas = ({
     console.log('Frame added to canvas');
     console.log('Canvas objects count:', fabricCanvas.getObjects().length);
     console.log('Canvas objects:', fabricCanvas.getObjects());
+    console.log('Frame visibility check:', {
+      frameLeft,
+      frameTop,
+      frameWidth,
+      frameHeight,
+      canvasWidth: fabricCanvas.width,
+      canvasHeight: fabricCanvas.height
+    });
 
     // Add keyboard event listener for Delete key
     const handleKeyDown = (e: KeyboardEvent) => {
