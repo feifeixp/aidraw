@@ -109,18 +109,15 @@ export const LeftToolbar = ({
         const { data, error } = await supabase.functions.invoke("liblib-generate", {
           body: {
             prompt: aiPrompt,
-            model_id: "flux-dev"
+            modelId: "412b427ddb674b4dbab9e5abd5ae6057",
+            modelName: "Flux Dev",
+            aspectRatio: "1:1",
+            imageCount: 1
           }
         });
         if (error) throw error;
-        if (data?.images?.[0]?.url) {
-          window.dispatchEvent(new CustomEvent('addImageToCanvas', {
-            detail: {
-              imageUrl: data.images[0].url,
-              name: "生成的图片"
-            }
-          }));
-          toast.success("图片生成成功");
+        if (data?.taskId) {
+          toast.success("图片生成任务已提交，请稍后查看历史记录");
           setShowAiGenerateDialog(false);
           setAiPrompt("");
         }
