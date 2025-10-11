@@ -49,7 +49,6 @@ export const LeftToolbar = ({
   const [isCropMode, setIsCropMode] = useState(false);
   const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
-  const [selectedAiModel, setSelectedAiModel] = useState<"imagen" | "seedream">("imagen");
 
   // Add Image
   const handleUploadImage = () => {
@@ -84,47 +83,92 @@ export const LeftToolbar = ({
       toast.error("请输入提示词");
       return;
     }
-    
+
     setIsGenerating(true);
     try {
-      if (selectedAiModel === "imagen") {
-        // 使用 Google Imagen (gemini-2.5-flash-image-preview)
-        const { data, error } = await supabase.functions.invoke("ai-generate-image", {
-          body: { prompt: aiPrompt }
-        });
-        if (error) throw error;
-        if (data?.imageUrl) {
-          window.dispatchEvent(new CustomEvent('addImageToCanvas', {
-            detail: {
-              imageUrl: data.imageUrl,
-              name: "AI生成的图片"
-            }
-          }));
-          toast.success("图片生成成功");
-          setShowAiGenerateDialog(false);
-          setAiPrompt("");
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-chat`;
+      
+      const response = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+        },
+        body: JSON.stringify({
+          messages: [{
+            role: "user",
+            content: aiPrompt
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error("请求过于频繁，请稍后再试");
         }
-      } else {
-        // 使用 Seedream (liblib flux-dev)
-        const { data, error } = await supabase.functions.invoke("liblib-generate", {
-          body: {
-            prompt: aiPrompt,
-            modelId: "412b427ddb674b4dbab9e5abd5ae6057",
-            modelName: "Flux Dev",
-            aspectRatio: "1:1",
-            imageCount: 1
+        if (response.status === 402) {
+          throw new Error("需要充值，请前往设置添加余额");
+        }
+        throw new Error("AI 服务暂时不可用");
+      }
+
+      if (!response.body) throw new Error("无法获取响应流");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let generatedImages: string[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta;
+
+            // Handle tool result (image generation)
+            if (delta?.tool_result?.images) {
+              generatedImages = delta.tool_result.images;
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
           }
-        });
-        if (error) throw error;
-        if (data?.taskId) {
-          toast.success("图片生成任务已提交，请稍后查看历史记录");
-          setShowAiGenerateDialog(false);
-          setAiPrompt("");
         }
       }
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast.error("图片生成失败");
+
+      // Add the first generated image to canvas
+      if (generatedImages.length > 0) {
+        window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+          detail: {
+            imageUrl: generatedImages[0],
+            name: "AI生成的图片"
+          }
+        }));
+        toast.success("图片已添加到画布");
+        setShowAiGenerateDialog(false);
+        setAiPrompt("");
+      } else {
+        toast.error("未生成图片，请检查提示词或稍后重试");
+      }
+    } catch (error: any) {
+      console.error("AI generation error:", error);
+      toast.error(error.message || "图片生成失败");
     } finally {
       setIsGenerating(false);
     }
@@ -1029,7 +1073,7 @@ export const LeftToolbar = ({
                     placeholder="描述你想生成的图片..."
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    className="min-h-[100px]"
+                    className="min-h-[120px]"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && e.ctrlKey) {
                         handleAiGenerate();
@@ -1037,32 +1081,7 @@ export const LeftToolbar = ({
                     }}
                   />
                   <p className="text-sm text-muted-foreground">
-                    按 Ctrl+Enter 快速生成
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>选择模型</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={selectedAiModel === "imagen" ? "default" : "outline"}
-                      onClick={() => setSelectedAiModel("imagen")}
-                      className="w-full"
-                    >
-                      Google Imagen 4
-                    </Button>
-                    <Button
-                      variant={selectedAiModel === "seedream" ? "default" : "outline"}
-                      onClick={() => setSelectedAiModel("seedream")}
-                      className="w-full"
-                    >
-                      Seedream 4.0
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedAiModel === "imagen" 
-                      ? "Google Imagen 4: 快速生成，适合各种风格" 
-                      : "Seedream 4.0: 高质量，更多细节"}
+                    使用 Agent 模式智能生成 · 按 Ctrl+Enter 快速生成
                   </p>
                 </div>
 
@@ -1079,7 +1098,7 @@ export const LeftToolbar = ({
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-2" />
-                      生成图片
+                      Agent 模式生成
                     </>
                   )}
                 </Button>
