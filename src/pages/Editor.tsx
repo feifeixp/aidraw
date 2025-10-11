@@ -80,6 +80,7 @@ const Editor = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [isTaskProcessing, setIsTaskProcessing] = useState(false);
+  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
   const isMobile = useIsMobile();
 
   // Save canvas state to history
@@ -177,9 +178,11 @@ const Editor = () => {
       <div className="overflow-auto">
         <LeftToolbar canvas={canvas} saveState={saveState} isTaskProcessing={isTaskProcessing} startTask={startTask} completeTask={completeTask} cancelTask={cancelTask} onActionComplete={isMobile ? handleCloseMobileMenu : undefined} />
       </div>
-      <div className="flex-1 border-t border-border overflow-hidden">
-        <PropertiesPanel canvas={canvas} saveState={saveState} />
-      </div>
+      {!isToolbarCollapsed && (
+        <div className="flex-1 border-t border-border overflow-hidden">
+          <PropertiesPanel canvas={canvas} saveState={saveState} />
+        </div>
+      )}
     </>;
   return <div className="h-screen w-full bg-background flex flex-col">
       <TaskQueueDisplay currentTask={currentTask} />
@@ -212,6 +215,8 @@ const Editor = () => {
             onCanvasSizeChange={setCanvasSize}
             zoom={zoom}
             onZoomChange={setZoom}
+            isCollapsed={isToolbarCollapsed}
+            onToggleCollapse={() => setIsToolbarCollapsed(!isToolbarCollapsed)}
           />
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera, Maximize2, Hand } from "lucide-react";
+import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera, Maximize2, Hand, ChevronRight, ChevronLeft } from "lucide-react";
 import { CanvasSizeSettings } from "./CanvasSizeSettings";
 import { Canvas as FabricCanvas, FabricImage } from "fabric";
 import { toast } from "sonner";
@@ -28,6 +28,8 @@ interface EditorToolbarProps {
   onCanvasSizeChange: (size: { width: number; height: number }) => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 export const EditorToolbar = ({
   canvas,
@@ -45,7 +47,9 @@ export const EditorToolbar = ({
   canvasSize,
   onCanvasSizeChange,
   zoom,
-  onZoomChange
+  onZoomChange,
+  isCollapsed,
+  onToggleCollapse
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"generate" | "edit">("generate");
@@ -386,33 +390,35 @@ export const EditorToolbar = ({
   return <div className="flex items-center gap-2 flex-nowrap">
       <Button variant={activeTool === "select" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("select")} className="bg-white hover:bg-white/90 shrink-0" title="选择工具">
         <MousePointer2 className="h-4 w-4" />
+        {!isCollapsed && <span className="ml-1">选择</span>}
       </Button>
       <Button variant={activeTool === "pan" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("pan")} className="shrink-0" title="平移画布 (H)">
         <Hand className="h-4 w-4" />
+        {!isCollapsed && <span className="ml-1">平移</span>}
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo} className="shrink-0">
+      <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo} className="shrink-0" title="撤销">
         <Undo className="h-4 w-4" />
       </Button>
-      <Button variant="outline" size="sm" onClick={handleRedo} disabled={!canRedo} className="shrink-0">
+      <Button variant="outline" size="sm" onClick={handleRedo} disabled={!canRedo} className="shrink-0" title="重做">
         <Redo className="h-4 w-4" />
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleRedraw} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap">
-        <Sparkles className="h-4 w-4 mr-1" />
-        重绘
+      <Button variant="outline" size="sm" onClick={handleRedraw} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap" title="重绘">
+        <Sparkles className="h-4 w-4" />
+        {!isCollapsed && <span className="ml-1">重绘</span>}
       </Button>
-      <Button variant="outline" size="sm" onClick={() => setShowSmartComposeDialog(true)} disabled={isTaskProcessing || isComposing} className="shrink-0 whitespace-nowrap">
-        <Wand2 className="h-4 w-4 mr-1" />
-        {isComposing ? "处理中..." : "智能合成"}
+      <Button variant="outline" size="sm" onClick={() => setShowSmartComposeDialog(true)} disabled={isTaskProcessing || isComposing} className="shrink-0 whitespace-nowrap" title="智能合成">
+        <Wand2 className="h-4 w-4" />
+        {!isCollapsed && <span className="ml-1">{isComposing ? "处理中..." : "智能合成"}</span>}
       </Button>
-      <Button variant="outline" size="sm" onClick={() => setShowRecomposeDialog(true)} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap">
-        <Camera className="h-4 w-4 mr-1" />
-        重新构图
+      <Button variant="outline" size="sm" onClick={() => setShowRecomposeDialog(true)} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap" title="重新构图">
+        <Camera className="h-4 w-4" />
+        {!isCollapsed && <span className="ml-1">重新构图</span>}
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
@@ -432,31 +438,43 @@ export const EditorToolbar = ({
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={() => setShowCanvasSizeDialog(true)} className="shrink-0 whitespace-nowrap">
-        <Maximize2 className="h-4 w-4 mr-1" />
-        画布尺寸
+      <Button variant="outline" size="sm" onClick={() => setShowCanvasSizeDialog(true)} className="shrink-0 whitespace-nowrap" title="画布尺寸">
+        <Maximize2 className="h-4 w-4" />
+        {!isCollapsed && <span className="ml-1">画布尺寸</span>}
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-sm text-muted-foreground whitespace-nowrap">缩放</span>
-        <Slider
-          value={[zoom]}
-          onValueChange={(values) => onZoomChange(values[0])}
-          min={10}
-          max={200}
-          step={10}
-          className="w-32"
-        />
-        <span className="text-sm text-muted-foreground whitespace-nowrap min-w-[3rem] text-right">{zoom}%</span>
-      </div>
+      {!isCollapsed ? (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">缩放</span>
+          <Slider
+            value={[zoom]}
+            onValueChange={(values) => onZoomChange(values[0])}
+            min={10}
+            max={200}
+            step={10}
+            className="w-32"
+          />
+          <span className="text-sm text-muted-foreground whitespace-nowrap min-w-[3rem] text-right">{zoom}%</span>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" className="shrink-0" title={`缩放 ${zoom}%`}>
+          <span className="text-xs">{zoom}%</span>
+        </Button>
+      )}
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 whitespace-nowrap">
-        <Download className="h-4 w-4 mr-1" />
-        导出
+      <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 whitespace-nowrap" title="导出">
+        <Download className="h-4 w-4" />
+        {!isCollapsed && <span className="ml-1">导出</span>}
+      </Button>
+
+      <Separator orientation="vertical" className="h-6 shrink-0" />
+
+      <Button variant="outline" size="sm" onClick={onToggleCollapse} className="shrink-0" title={isCollapsed ? "展开工具栏" : "折叠工具栏"}>
+        {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </Button>
 
       {/* Canvas Size Settings Dialog */}
