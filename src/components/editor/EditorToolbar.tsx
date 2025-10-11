@@ -164,6 +164,7 @@ export const EditorToolbar = ({
         const scale = Math.min(scaleX, scaleY);
         fabricImg.scale(scale);
         canvas.add(fabricImg);
+        canvas.setActiveObject(fabricImg);
         canvas.renderAll();
         saveState();
         toast.success("重绘完成！");
