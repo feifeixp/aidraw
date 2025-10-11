@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X } from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,8 @@ interface LeftToolbarProps {
   completeTask: (taskId: string) => void;
   cancelTask: () => void;
   onActionComplete?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 export const LeftToolbar = ({
   canvas,
@@ -28,7 +30,9 @@ export const LeftToolbar = ({
   startTask,
   completeTask,
   cancelTask,
-  onActionComplete
+  onActionComplete,
+  isCollapsed = false,
+  onToggleCollapse
 }: LeftToolbarProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
@@ -682,12 +686,33 @@ export const LeftToolbar = ({
   };
   return <>
       <div className="flex flex-col gap-2 p-2 border-r border-border bg-background h-full">
+        {/* Collapse Toggle Button */}
+        {onToggleCollapse && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`}
+            onClick={onToggleCollapse}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <>
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                收起
+              </>
+            )}
+          </Button>
+        )}
+        
+        <Separator />
+
         {/* Add Element */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full justify-start" disabled={isGenerating || isTaskProcessing}>
-              <Plus className="h-4 w-4 mr-2" />
-              添加元素
+            <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} disabled={isGenerating || isTaskProcessing}>
+              <Plus className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">添加元素</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
@@ -742,48 +767,48 @@ export const LeftToolbar = ({
         {/* Image Editing */}
         {isCropMode ? (
           <>
-            <Button variant="outline" size="sm" className="w-full justify-start text-green-600 hover:text-green-700" onClick={handleApplyCrop}>
-              <Check className="h-4 w-4 mr-2" />
-              应用裁剪
+            <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'} text-green-600 hover:text-green-700`} onClick={handleApplyCrop}>
+              <Check className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">应用裁剪</span>}
             </Button>
-            <Button variant="outline" size="sm" className="w-full justify-start text-red-600 hover:text-red-700" onClick={handleCancelCrop}>
-              <X className="h-4 w-4 mr-2" />
-              取消
+            <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'} text-red-600 hover:text-red-700`} onClick={handleCancelCrop}>
+              <X className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">取消</span>}
             </Button>
           </>
         ) : (
-          <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleCrop} disabled={isTaskProcessing}>
-            <Crop className="h-4 w-4 mr-2" />
-            裁剪
+          <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleCrop} disabled={isTaskProcessing}>
+            <Crop className="h-4 w-4" />
+            {!isCollapsed && <span className="ml-2">裁剪</span>}
           </Button>
         )}
 
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowRemoveBgDialog(true)} disabled={isTaskProcessing}>
-          <ImageOff className="h-4 w-4 mr-2" />
-          去背景
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={() => setShowRemoveBgDialog(true)} disabled={isTaskProcessing}>
+          <ImageOff className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">去背景</span>}
         </Button>
 
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleFlip}>
-          <FlipHorizontal className="h-4 w-4 mr-2" />
-          镜像
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleFlip}>
+          <FlipHorizontal className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">镜像</span>}
         </Button>
 
         <Separator />
 
         {/* AI Adjustments */}
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowCameraDialog(true)} disabled={isTaskProcessing}>
-          <RotateCw className="h-4 w-4 mr-2" />
-          场景调整
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={() => setShowCameraDialog(true)} disabled={isTaskProcessing}>
+          <RotateCw className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">场景调整</span>}
         </Button>
 
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowSubjectAngleDialog(true)} disabled={isTaskProcessing}>
-          <Users className="h-4 w-4 mr-2" />
-          主体角度
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={() => setShowSubjectAngleDialog(true)} disabled={isTaskProcessing}>
+          <Users className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">主体角度</span>}
         </Button>
 
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowPoseDialog(true)} disabled={isTaskProcessing}>
-          <PersonStanding className="h-4 w-4 mr-2" />
-          调整动作
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={() => setShowPoseDialog(true)} disabled={isTaskProcessing}>
+          <PersonStanding className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">调整动作</span>}
         </Button>
       </div>
 

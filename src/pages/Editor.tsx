@@ -81,6 +81,7 @@ const Editor = () => {
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [isTaskProcessing, setIsTaskProcessing] = useState(false);
   const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
+  const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState(false);
   const isMobile = useIsMobile();
 
   // Save canvas state to history
@@ -176,9 +177,19 @@ const Editor = () => {
   }, []);
   const leftToolbarContent = <>
       <div className="overflow-auto">
-        <LeftToolbar canvas={canvas} saveState={saveState} isTaskProcessing={isTaskProcessing} startTask={startTask} completeTask={completeTask} cancelTask={cancelTask} onActionComplete={isMobile ? handleCloseMobileMenu : undefined} />
+        <LeftToolbar 
+          canvas={canvas} 
+          saveState={saveState} 
+          isTaskProcessing={isTaskProcessing} 
+          startTask={startTask} 
+          completeTask={completeTask} 
+          cancelTask={cancelTask} 
+          onActionComplete={isMobile ? handleCloseMobileMenu : undefined}
+          isCollapsed={isLeftToolbarCollapsed}
+          onToggleCollapse={() => setIsLeftToolbarCollapsed(!isLeftToolbarCollapsed)}
+        />
       </div>
-      {!isToolbarCollapsed && (
+      {!isLeftToolbarCollapsed && (
         <div className="flex-1 border-t border-border overflow-hidden">
           <PropertiesPanel canvas={canvas} saveState={saveState} />
         </div>
@@ -232,7 +243,7 @@ const Editor = () => {
           onZoomChange={setZoom}
         />
         {!isMobile && (
-          <div className="absolute left-4 top-4 w-48 h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden">
+          <div className={`absolute left-4 top-4 ${isLeftToolbarCollapsed ? 'w-16' : 'w-48'} h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden transition-all duration-300`}>
             {leftToolbarContent}
           </div>
         )}
