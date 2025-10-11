@@ -165,11 +165,25 @@ export const EditorToolbar = ({
   };
   const handleExport = () => {
     if (!canvas) return;
+    
+    // 查找frame对象
+    const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    if (!frame) {
+      toast.error("未找到工作区域");
+      return;
+    }
+    
+    // 只导出frame区域内的内容
     const dataURL = canvas.toDataURL({
       format: "png",
       quality: 1,
-      multiplier: 1
+      multiplier: 1,
+      left: frame.left,
+      top: frame.top,
+      width: frame.width,
+      height: frame.height,
     });
+    
     const link = document.createElement("a");
     link.download = `artwork-${Date.now()}.png`;
     link.href = dataURL;

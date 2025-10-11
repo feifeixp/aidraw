@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
-import { Canvas as FabricCanvas, FabricImage } from "fabric";
+import { Canvas as FabricCanvas, FabricImage, Rect } from "fabric";
 import { toast } from "sonner";
+
+// 无限画布的实际尺寸
+const INFINITE_CANVAS_SIZE = 10000;
 
 interface EditorCanvasProps {
   canvas: FabricCanvas | null;
@@ -26,6 +29,7 @@ export const EditorCanvas = ({
   const saveStateRef = useRef(saveState);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
+  const frameRef = useRef<Rect | null>(null);
   
   // Keep saveStateRef up to date
   useEffect(() => {
@@ -36,11 +40,34 @@ export const EditorCanvas = ({
     if (!canvasRef.current) return;
 
     const fabricCanvas = new FabricCanvas(canvasRef.current, {
-      width: canvasSize?.width || 1024,
-      height: canvasSize?.height || 768,
-      backgroundColor: "#ffffff",
+      width: INFINITE_CANVAS_SIZE,
+      height: INFINITE_CANVAS_SIZE,
+      backgroundColor: "#f5f5f5",
       preserveObjectStacking: true,
     });
+
+    // 创建frame（工作区域）
+    const frameWidth = canvasSize?.width || 1024;
+    const frameHeight = canvasSize?.height || 768;
+    const frameLeft = (INFINITE_CANVAS_SIZE - frameWidth) / 2;
+    const frameTop = (INFINITE_CANVAS_SIZE - frameHeight) / 2;
+
+    const frame = new Rect({
+      left: frameLeft,
+      top: frameTop,
+      width: frameWidth,
+      height: frameHeight,
+      fill: "#ffffff",
+      stroke: "#000000",
+      strokeWidth: 2,
+      selectable: false,
+      evented: false,
+      name: 'workframe',
+    });
+
+    fabricCanvas.add(frame);
+    fabricCanvas.sendObjectToBack(frame);
+    frameRef.current = frame;
 
     // Add keyboard event listener for Delete key
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -57,7 +84,10 @@ export const EditorCanvas = ({
         const activeObjects = fabricCanvas.getActiveObjects();
         if (activeObjects.length > 0) {
           activeObjects.forEach(obj => {
-            fabricCanvas.remove(obj);
+            // 不删除frame
+            if ((obj as any).name !== 'workframe') {
+              fabricCanvas.remove(obj);
+            }
           });
           fabricCanvas.discardActiveObject();
           fabricCanvas.renderAll();
@@ -86,6 +116,17 @@ export const EditorCanvas = ({
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
+    // 初始视图居中到frame
+    setTimeout(() => {
+      if (containerRef.current) {
+        const container = containerRef.current;
+        const scrollX = (INFINITE_CANVAS_SIZE - container.clientWidth) / 2;
+        const scrollY = (INFINITE_CANVAS_SIZE - container.clientHeight) / 2;
+        container.scrollLeft = scrollX;
+        container.scrollTop = scrollY;
+      }
+    }, 100);
+
     return () => {
       fabricCanvas.off('object:modified', handleObjectModified);
       if (canvasElement) {
@@ -93,21 +134,31 @@ export const EditorCanvas = ({
       }
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
+      frameRef.current = null;
     };
   }, [setCanvas]); // Only run once on mount
 
-  // Update canvas size when canvasSize prop changes
+  // Update frame size when canvasSize prop changes
   useEffect(() => {
-    if (!canvas || !canvasSize) return;
+    if (!canvas || !canvasSize || !frameRef.current) return;
     
-    // Use requestAnimationFrame to ensure canvas is fully mounted
     requestAnimationFrame(() => {
       try {
-        canvas.setWidth(canvasSize.width);
-        canvas.setHeight(canvasSize.height);
-        canvas.renderAll();
+        const frame = frameRef.current;
+        if (frame) {
+          const frameLeft = (INFINITE_CANVAS_SIZE - canvasSize.width) / 2;
+          const frameTop = (INFINITE_CANVAS_SIZE - canvasSize.height) / 2;
+          
+          frame.set({
+            left: frameLeft,
+            top: frameTop,
+            width: canvasSize.width,
+            height: canvasSize.height,
+          });
+          canvas.renderAll();
+        }
       } catch (error) {
-        console.error('Error setting canvas size:', error);
+        console.error('Error setting frame size:', error);
       }
     });
   }, [canvas, canvasSize]);
@@ -162,23 +213,24 @@ export const EditorCanvas = ({
   }, [canvas]);
 
   const loadImageToCanvas = (imageUrl: string, name: string = "图片") => {
-    if (!canvas) return;
+    if (!canvas || !frameRef.current) return;
 
     FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then(img => {
       if (!img) return;
       
-      const canvasWidth = canvas.width || 1024;
-      const canvasHeight = canvas.height || 768;
+      const frame = frameRef.current!;
+      const frameWidth = frame.width || 1024;
+      const frameHeight = frame.height || 768;
       const imgWidth = img.width || 1;
       const imgHeight = img.height || 1;
-      const scaleX = canvasWidth / imgWidth;
-      const scaleY = canvasHeight / imgHeight;
+      const scaleX = frameWidth / imgWidth;
+      const scaleY = frameHeight / imgHeight;
       const scale = Math.min(scaleX, scaleY, 1);
       
       img.scale(scale);
       img.set({
-        left: (canvasWidth - imgWidth * scale) / 2,
-        top: (canvasHeight - imgHeight * scale) / 2,
+        left: (frame.left || 0) + (frameWidth - imgWidth * scale) / 2,
+        top: (frame.top || 0) + (frameHeight - imgHeight * scale) / 2,
       });
       
       canvas.add(img);
@@ -300,18 +352,21 @@ export const EditorCanvas = ({
       className="h-full bg-muted/20 overflow-auto"
     >
       <div 
-        className="flex items-center justify-center"
         style={{ 
-          minWidth: `${(canvasSize.width || 1024) * 1.5}px`,
-          minHeight: `${(canvasSize.height || 768) * 1.5}px`,
-          padding: '25%'
+          width: `${INFINITE_CANVAS_SIZE}px`,
+          height: `${INFINITE_CANVAS_SIZE}px`,
         }}
       >
         <div 
-          className="shadow-2xl transition-transform"
-          style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
+          className="transition-transform"
+          style={{ 
+            transform: `scale(${zoom / 100})`, 
+            transformOrigin: 'center',
+            width: `${INFINITE_CANVAS_SIZE}px`,
+            height: `${INFINITE_CANVAS_SIZE}px`,
+          }}
         >
-          <canvas ref={canvasRef} className="border border-border" />
+          <canvas ref={canvasRef} />
         </div>
       </div>
     </div>
