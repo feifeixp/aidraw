@@ -226,6 +226,15 @@ export const EditorCanvas = ({
     });
   }, [canvas, canvasSize]);
 
+  // 设置 Fabric.js 的缩放级别
+  useEffect(() => {
+    if (!canvas) return;
+    
+    const scale = zoom / 100;
+    canvas.setZoom(scale);
+    canvas.renderAll();
+  }, [canvas, zoom]);
+
   useEffect(() => {
     if (!canvas) return;
 
@@ -244,11 +253,9 @@ export const EditorCanvas = ({
     if (!container || !canvas) return;
 
     const centerView = () => {
-      const scale = zoom / 100;
-      // 计算缩放后的画布中心点位置
-      const scaledCanvasSize = INFINITE_CANVAS_SIZE * scale;
-      const centerX = scaledCanvasSize / 2;
-      const centerY = scaledCanvasSize / 2;
+      // 画布大小固定为 INFINITE_CANVAS_SIZE，不受 zoom 影响
+      const centerX = INFINITE_CANVAS_SIZE / 2;
+      const centerY = INFINITE_CANVAS_SIZE / 2;
       
       // 将容器滚动到中心点
       container.scrollLeft = centerX - container.clientWidth / 2;
@@ -256,8 +263,6 @@ export const EditorCanvas = ({
       
       console.log('Centering view:', {
         zoom,
-        scale,
-        scaledCanvasSize,
         centerX,
         centerY,
         scrollLeft: container.scrollLeft,
@@ -374,35 +379,20 @@ export const EditorCanvas = ({
           
           if (newZoom === zoom) return;
           
-          const oldScale = zoom / 100;
-          const newScale = newZoom / 100;
-          
           // 获取鼠标相对于容器的位置
           const rect = container.getBoundingClientRect();
           const mouseX = e.clientX - rect.left;
           const mouseY = e.clientY - rect.top;
           
-          // 计算鼠标下的画布坐标点
-          const canvasX = (container.scrollLeft + mouseX) / oldScale;
-          const canvasY = (container.scrollTop + mouseY) / oldScale;
-          
-          // 计算新的滚动位置以保持鼠标点位置不变
-          const targetScrollLeft = canvasX * newScale - mouseX;
-          const targetScrollTop = canvasY * newScale - mouseY;
+          // 计算鼠标下的画布坐标点（canvas 坐标）
+          const canvasX = container.scrollLeft + mouseX;
+          const canvasY = container.scrollTop + mouseY;
           
           // 先触发缩放状态更新
           onZoomChange(newZoom);
           
-          // 在下一帧同步设置滚动位置，确保在DOM更新后立即执行
-          requestAnimationFrame(() => {
-            container.scrollLeft = targetScrollLeft;
-            container.scrollTop = targetScrollTop;
-            
-            // 确保selection状态正确
-            if (canvas) {
-              canvas.selection = activeTool === "select";
-            }
-          });
+          // 缩放不改变滚动位置，因为画布大小固定
+          // Fabric.js 的 setZoom() 会处理内部的缩放
           
           rafId = null;
         });
@@ -419,41 +409,19 @@ export const EditorCanvas = ({
     };
   }, [zoom, onZoomChange]);
 
-  // Handle zoom changes from slider - keep viewport center fixed
+  // Handle zoom changes from slider
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !frameRef.current) return;
+    if (!canvas) return;
     
     // Skip on initial mount
     if (prevZoomRef.current === zoom) return;
     
-    const oldScale = prevZoomRef.current / 100;
-    const newScale = zoom / 100;
-    
-    // Get viewport center position
-    const viewportCenterX = container.clientWidth / 2;
-    const viewportCenterY = container.clientHeight / 2;
-    
-    // Calculate canvas coordinates at viewport center (before zoom)
-    const canvasX = (container.scrollLeft + viewportCenterX) / oldScale;
-    const canvasY = (container.scrollTop + viewportCenterY) / oldScale;
-    
-    // Calculate target scroll position to keep viewport center fixed
-    const targetScrollLeft = canvasX * newScale - viewportCenterX;
-    const targetScrollTop = canvasY * newScale - viewportCenterY;
-    
-    // Update scroll position
-    container.scrollLeft = targetScrollLeft;
-    container.scrollTop = targetScrollTop;
-    
     // 确保selection状态正确
-    if (canvas) {
-      canvas.selection = activeTool === "select";
-    }
+    canvas.selection = activeTool === "select";
     
     // Update previous zoom
     prevZoomRef.current = zoom;
-  }, [zoom]);
+  }, [zoom, canvas, activeTool]);
 
   // Handle pan with left click when pan tool is active
   useEffect(() => {
@@ -540,8 +508,8 @@ export const EditorCanvas = ({
     >
       <div 
         style={{ 
-          width: `${INFINITE_CANVAS_SIZE * scale}px`,
-          height: `${INFINITE_CANVAS_SIZE * scale}px`,
+          width: `${INFINITE_CANVAS_SIZE}px`,
+          height: `${INFINITE_CANVAS_SIZE}px`,
           position: 'relative',
         }}
       >
@@ -551,8 +519,8 @@ export const EditorCanvas = ({
           height={INFINITE_CANVAS_SIZE}
           style={{
             display: 'block',
-            width: `${INFINITE_CANVAS_SIZE * scale}px`,
-            height: `${INFINITE_CANVAS_SIZE * scale}px`,
+            width: `${INFINITE_CANVAS_SIZE}px`,
+            height: `${INFINITE_CANVAS_SIZE}px`,
           }}
         />
       </div>
