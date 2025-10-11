@@ -6,9 +6,11 @@ import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { TaskQueueDisplay } from "@/components/editor/TaskQueueDisplay";
+import { DraftsList } from "@/components/editor/DraftsList";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 interface Task {
   id: string;
   name: string;
@@ -152,6 +154,39 @@ const Editor = () => {
     }
   }, [canvas, history.length]);
 
+  // Load draft when returning to editor
+  useEffect(() => {
+    if (!canvas) return;
+    
+    const loadDraft = () => {
+      const draftJson = localStorage.getItem('editor-draft');
+      const draftTimestamp = localStorage.getItem('editor-draft-timestamp');
+      
+      if (draftJson && draftTimestamp) {
+        const timestamp = parseInt(draftTimestamp);
+        const now = Date.now();
+        const hoursSinceLastSave = (now - timestamp) / (1000 * 60 * 60);
+        
+        // Only auto-load if draft is less than 24 hours old
+        if (hoursSinceLastSave < 24) {
+          try {
+            canvas.loadFromJSON(JSON.parse(draftJson)).then(() => {
+              canvas.renderAll();
+              saveState();
+              console.log("已加载草稿");
+            });
+          } catch (error) {
+            console.error("加载草稿失败:", error);
+          }
+        }
+      }
+    };
+
+    // Load after a short delay to ensure canvas is ready
+    const timer = setTimeout(loadDraft, 500);
+    return () => clearTimeout(timer);
+  }, [canvas]);
+
   // Keyboard shortcut for pan tool (H key)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -174,6 +209,20 @@ const Editor = () => {
   const handleCloseMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
   }, []);
+
+  const handleLoadDraft = useCallback((draftData: string) => {
+    if (!canvas) return;
+    try {
+      canvas.loadFromJSON(JSON.parse(draftData)).then(() => {
+        canvas.renderAll();
+        saveState();
+        toast.success("草稿已加载到画布");
+      });
+    } catch (error) {
+      console.error("加载草稿失败:", error);
+      toast.error("加载草稿失败");
+    }
+  }, [canvas, saveState]);
   const leftToolbarContent = <>
       <div className="overflow-auto">
         <LeftToolbar 
@@ -207,6 +256,7 @@ const Editor = () => {
               {leftToolbarContent}
             </SheetContent>
           </Sheet>}
+        <DraftsList canvas={canvas} onLoadDraft={handleLoadDraft} />
         <div className="flex-1 min-w-0 overflow-x-auto">
           <EditorToolbar
             canvas={canvas} 
