@@ -1176,16 +1176,20 @@ const ProfessionalGenerateGrid = ({
           return (
             <div
               key={item.id}
-              className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:border-primary cursor-pointer transition-all"
+              className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:border-primary cursor-pointer transition-all bg-muted"
               onClick={() => onSelectImage(imageUrl)}
             >
               <img
                 src={imageUrl}
                 alt={item.prompt}
-                className="w-full h-full object-contain bg-muted"
+                className="w-full h-full object-cover"
                 onError={(e) => {
                   console.error("图片加载失败:", imageUrl);
-                  e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Ctext x='50' y='50' font-size='12' text-anchor='middle' fill='%23999'%3E加载失败%3C/text%3E%3C/svg%3E";
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="flex items-center justify-center h-full text-muted-foreground text-sm">加载失败</div>';
+                  }
                 }}
                 loading="lazy"
               />
