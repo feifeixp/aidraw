@@ -80,7 +80,6 @@ const Editor = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [isTaskProcessing, setIsTaskProcessing] = useState(false);
-  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
   const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState(false);
   const isMobile = useIsMobile();
 
@@ -226,8 +225,6 @@ const Editor = () => {
             onCanvasSizeChange={setCanvasSize}
             zoom={zoom}
             onZoomChange={setZoom}
-            isCollapsed={isToolbarCollapsed}
-            onToggleCollapse={() => setIsToolbarCollapsed(!isToolbarCollapsed)}
           />
         </div>
       </div>
