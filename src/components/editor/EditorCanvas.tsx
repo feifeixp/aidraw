@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useLayoutEffect } from "react";
 import { Canvas as FabricCanvas, FabricImage, Rect } from "fabric";
 import { toast } from "sonner";
 
@@ -30,7 +30,10 @@ export const EditorCanvas = ({
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const frameRef = useRef<Rect | null>(null);
-  const isWheelZoomingRef = useRef(false);
+  
+  // 用于存储待应用的滚动位置
+  const pendingScrollRef = useRef<{ left: number; top: number } | null>(null);
+  const isZoomingRef = useRef(false);
   const prevZoomRef = useRef(zoom);
   
   // Keep saveStateRef up to date
@@ -348,51 +351,71 @@ export const EditorCanvas = ({
     });
   };
 
+  // 在缩放后立即应用滚动位置（在浏览器绘制前）
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container || !pendingScrollRef.current || !isZoomingRef.current) return;
+  
+    // 应用待处理的滚动位置
+    container.scrollLeft = pendingScrollRef.current.left;
+    container.scrollTop = pendingScrollRef.current.top;
+  
+    // 清空待处理状态
+    pendingScrollRef.current = null;
+    isZoomingRef.current = false;
+  }, [zoom]);
+
   // Handle mouse wheel zoom
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !frameRef.current) return;
+
+    let wheelTimeout: NodeJS.Timeout | null = null;
 
     const handleWheel = (e: WheelEvent) => {
       // Prevent default scrolling
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         
-        const delta = e.deltaY;
-        const zoomChange = delta > 0 ? -2 : 2;
-        const newZoom = Math.max(10, Math.min(200, zoom + zoomChange));
-        
-        if (newZoom === zoom) return;
-        
-        const oldScale = zoom / 100;
-        const newScale = newZoom / 100;
-        
-        // Get mouse position relative to container
-        const rect = container.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        // Calculate canvas point under mouse (before zoom)
-        const canvasX = (container.scrollLeft + mouseX) / oldScale;
-        const canvasY = (container.scrollTop + mouseY) / oldScale;
-        
-        // Calculate target scroll to keep mouse point fixed
-        const targetScrollLeft = canvasX * newScale - mouseX;
-        const targetScrollTop = canvasY * newScale - mouseY;
-        
-        // Mark as wheel zoom to prevent other effects from adjusting scroll
-        isWheelZoomingRef.current = true;
-        prevZoomRef.current = newZoom;
-        
-        // Apply zoom and scroll together synchronously
-        onZoomChange(newZoom);
-        container.scrollLeft = targetScrollLeft;
-        container.scrollTop = targetScrollTop;
-        
-        // Reset flag after a short delay
-        setTimeout(() => {
-          isWheelZoomingRef.current = false;
-        }, 50);
+        // 清除之前的延迟执行
+        if (wheelTimeout) {
+          clearTimeout(wheelTimeout);
+        }
+
+        // 使用节流来减少更新频率
+        wheelTimeout = setTimeout(() => {
+          const delta = e.deltaY;
+          const zoomChange = delta > 0 ? -5 : 5; // 增大步长，减少更新次数
+          const newZoom = Math.max(10, Math.min(200, zoom + zoomChange));
+          
+          if (newZoom === zoom) return;
+          
+          const oldScale = zoom / 100;
+          const newScale = newZoom / 100;
+          
+          // 获取鼠标相对于容器的位置
+          const rect = container.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          
+          // 计算鼠标下的画布坐标点
+          const canvasX = (container.scrollLeft + mouseX) / oldScale;
+          const canvasY = (container.scrollTop + mouseY) / oldScale;
+          
+          // 计算新的滚动位置以保持鼠标点位置不变
+          const targetScrollLeft = canvasX * newScale - mouseX;
+          const targetScrollTop = canvasY * newScale - mouseY;
+          
+          // 存储待应用的滚动位置
+          pendingScrollRef.current = { 
+            left: targetScrollLeft, 
+            top: targetScrollTop 
+          };
+          isZoomingRef.current = true;
+          
+          // 触发缩放状态更新
+          onZoomChange(newZoom);
+        }, 10); // 10ms 节流
       }
     };
 
@@ -400,6 +423,9 @@ export const EditorCanvas = ({
 
     return () => {
       container.removeEventListener('wheel', handleWheel);
+      if (wheelTimeout) {
+        clearTimeout(wheelTimeout);
+      }
     };
   }, [zoom, onZoomChange]);
 
@@ -409,7 +435,7 @@ export const EditorCanvas = ({
     if (!container || !frameRef.current) return;
     
     // Skip if this zoom change was triggered by wheel zoom
-    if (isWheelZoomingRef.current) return;
+    if (isZoomingRef.current) return;
     
     // Skip on initial mount
     if (prevZoomRef.current === zoom) return;
