@@ -385,7 +385,7 @@ export const EditorCanvas = ({
         // 使用节流来减少更新频率
         wheelTimeout = setTimeout(() => {
           const delta = e.deltaY;
-          const zoomChange = delta > 0 ? -5 : 5; // 增大步长，减少更新次数
+          const zoomChange = delta > 0 ? -2 : 2; // 使用较小步长保持顺滑
           const newZoom = Math.max(10, Math.min(200, zoom + zoomChange));
           
           if (newZoom === zoom) return;
@@ -415,7 +415,7 @@ export const EditorCanvas = ({
           
           // 触发缩放状态更新
           onZoomChange(newZoom);
-        }, 10); // 10ms 节流
+        }, 16); // 16ms 节流（一帧时间）
       }
     };
 
