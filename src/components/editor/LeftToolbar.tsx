@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -37,6 +39,7 @@ export const LeftToolbar = ({
   isCollapsed = false,
   onToggleCollapse
 }: LeftToolbarProps) => {
+  const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
   const [featherStrength, setFeatherStrength] = useState(50);
@@ -49,6 +52,7 @@ export const LeftToolbar = ({
   const [isCropMode, setIsCropMode] = useState(false);
   const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
 
   // Add Image
   const handleUploadImage = () => {
@@ -86,77 +90,16 @@ export const LeftToolbar = ({
 
     setIsGenerating(true);
     try {
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-chat`;
-      
-      const response = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
-        },
-        body: JSON.stringify({
-          messages: [{
-            role: "user",
-            content: aiPrompt
-          }]
-        })
+      const { data, error } = await supabase.functions.invoke('ai-generate-image', {
+        body: { prompt: aiPrompt }
       });
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error("请求过于频繁，请稍后再试");
-        }
-        if (response.status === 402) {
-          throw new Error("需要充值，请前往设置添加余额");
-        }
-        throw new Error("AI 服务暂时不可用");
-      }
+      if (error) throw error;
 
-      if (!response.body) throw new Error("无法获取响应流");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let generatedImages: string[] = [];
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") continue;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const delta = parsed.choices?.[0]?.delta;
-
-            // Handle tool result (image generation)
-            if (delta?.tool_result?.images) {
-              generatedImages = delta.tool_result.images;
-            }
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
-      }
-
-      // Add the first generated image to canvas
-      if (generatedImages.length > 0) {
+      if (data?.imageUrl) {
         window.dispatchEvent(new CustomEvent('addImageToCanvas', {
           detail: {
-            imageUrl: generatedImages[0],
+            imageUrl: data.imageUrl,
             name: "AI生成的图片"
           }
         }));
@@ -164,14 +107,37 @@ export const LeftToolbar = ({
         setShowAiGenerateDialog(false);
         setAiPrompt("");
       } else {
-        toast.error("未生成图片，请检查提示词或稍后重试");
+        toast.error("未生成图片，请稍后重试");
       }
     } catch (error: any) {
       console.error("AI generation error:", error);
-      toast.error(error.message || "图片生成失败");
+      if (error.message?.includes("429")) {
+        toast.error("请求过于频繁，请稍后再试");
+      } else if (error.message?.includes("402")) {
+        toast.error("需要充值，请前往设置添加余额");
+      } else {
+        toast.error(error.message || "图片生成失败");
+      }
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleNavigateToGenerate = () => {
+    setShowSaveConfirmDialog(true);
+  };
+
+  const handleConfirmNavigate = () => {
+    // Save canvas state
+    if (canvas) {
+      const canvasJson = JSON.stringify(canvas.toJSON());
+      localStorage.setItem('editor-draft', canvasJson);
+      localStorage.setItem('editor-draft-timestamp', Date.now().toString());
+      toast.success("草稿已保存");
+    }
+    setShowSaveConfirmDialog(false);
+    setShowAiGenerateDialog(false);
+    navigate('/generate');
   };
 
   const handleAddHistoryImageToCanvas = (imageUrl: string) => {
@@ -1061,7 +1027,7 @@ export const LeftToolbar = ({
           <Tabs defaultValue="generate" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="generate">直接生成</TabsTrigger>
-              <TabsTrigger value="history">历史记录</TabsTrigger>
+              <TabsTrigger value="professional">专业生成</TabsTrigger>
             </TabsList>
             
             <TabsContent value="generate" className="space-y-4">
@@ -1081,7 +1047,7 @@ export const LeftToolbar = ({
                     }}
                   />
                   <p className="text-sm text-muted-foreground">
-                    使用 Agent 模式智能生成 · 按 Ctrl+Enter 快速生成
+                    使用 Google Imagen 4 生成 · 按 Ctrl+Enter 快速生成
                   </p>
                 </div>
 
@@ -1098,26 +1064,53 @@ export const LeftToolbar = ({
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-2" />
-                      Agent 模式生成
+                      生成图片
                     </>
                   )}
                 </Button>
               </div>
             </TabsContent>
 
-            <TabsContent value="history" className="space-y-4">
-              <HistoryImageGrid onSelectImage={handleAddHistoryImageToCanvas} />
+            <TabsContent value="professional" className="space-y-4">
+              <ProfessionalGenerateGrid 
+                onSelectImage={handleAddHistoryImageToCanvas}
+                onCreateNew={handleNavigateToGenerate}
+              />
             </TabsContent>
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {/* Save Confirm Dialog */}
+      <AlertDialog open={showSaveConfirmDialog} onOpenChange={setShowSaveConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认跳转到图片生成？</AlertDialogTitle>
+            <AlertDialogDescription>
+              当前编辑的内容将自动保存为草稿。您可以随时返回继续编辑。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmNavigate}>
+              保存并跳转
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>;
 };
 
-// History Image Grid Component for AI Generate Dialog
-const HistoryImageGrid = ({ onSelectImage }: { onSelectImage: (url: string) => void }) => {
+// Professional Generate Grid Component with Create New button
+const ProfessionalGenerateGrid = ({ 
+  onSelectImage, 
+  onCreateNew 
+}: { 
+  onSelectImage: (url: string) => void;
+  onCreateNew: () => void;
+}) => {
   const { data: history, isLoading } = useQuery({
-    queryKey: ["generation-history-dialog"],
+    queryKey: ["generation-history-professional"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("generation_history")
@@ -1139,20 +1132,22 @@ const HistoryImageGrid = ({ onSelectImage }: { onSelectImage: (url: string) => v
     );
   }
 
-  if (!history || history.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-        <p className="text-muted-foreground">还没有生成记录</p>
-        <p className="text-sm text-muted-foreground mt-2">前往「图片生成」页面生成图片</p>
-      </div>
-    );
-  }
-
   return (
     <ScrollArea className="h-[400px] pr-4">
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-        {history.map((item) => {
+        {/* Create New Button */}
+        <div
+          className="group relative aspect-square rounded-lg overflow-hidden border-2 border-dashed border-primary/50 hover:border-primary cursor-pointer transition-all bg-muted/50 hover:bg-muted flex items-center justify-center"
+          onClick={onCreateNew}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <Plus className="h-12 w-12 text-primary" />
+            <p className="text-sm font-medium text-primary">创建新图</p>
+          </div>
+        </div>
+
+        {/* History Images */}
+        {history && history.length > 0 && history.map((item) => {
           const images = (item as any).images || (item.image_url ? [item.image_url] : []);
           const imageUrl = images[0];
           
@@ -1178,6 +1173,14 @@ const HistoryImageGrid = ({ onSelectImage }: { onSelectImage: (url: string) => v
             </div>
           );
         })}
+
+        {(!history || history.length === 0) && (
+          <div className="col-span-2 md:col-span-2 text-center py-8">
+            <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+            <p className="text-muted-foreground">还没有生成记录</p>
+            <p className="text-sm text-muted-foreground mt-2">点击「创建新图」开始生成</p>
+          </div>
+        )}
       </div>
     </ScrollArea>
   );
