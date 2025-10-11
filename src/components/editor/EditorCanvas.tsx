@@ -186,8 +186,9 @@ export const EditorCanvas = ({
     if (!container || !canvas) return;
 
     const centerView = () => {
+      const scale = zoom / 100;
       // 计算缩放后的画布中心点位置
-      const scaledCanvasSize = INFINITE_CANVAS_SIZE * (zoom / 100);
+      const scaledCanvasSize = INFINITE_CANVAS_SIZE * scale;
       const centerX = scaledCanvasSize / 2;
       const centerY = scaledCanvasSize / 2;
       
@@ -197,6 +198,7 @@ export const EditorCanvas = ({
       
       console.log('Centering view:', {
         zoom,
+        scale,
         scaledCanvasSize,
         centerX,
         centerY,
@@ -389,17 +391,18 @@ export const EditorCanvas = ({
     };
   }, [canvas, activeTool]);
 
+  const scale = zoom / 100;
+  
   return (
     <div 
       ref={containerRef}
-      className="h-full bg-muted/20 overflow-auto relative"
+      className="h-full bg-gray-200 overflow-auto relative"
     >
       <div 
         style={{ 
-          width: `${INFINITE_CANVAS_SIZE}px`,
-          height: `${INFINITE_CANVAS_SIZE}px`,
-          transform: `scale(${zoom / 100})`, 
-          transformOrigin: 'top left',
+          width: `${INFINITE_CANVAS_SIZE * scale}px`,
+          height: `${INFINITE_CANVAS_SIZE * scale}px`,
+          position: 'relative',
         }}
       >
         <canvas 
@@ -408,6 +411,8 @@ export const EditorCanvas = ({
           height={INFINITE_CANVAS_SIZE}
           style={{
             display: 'block',
+            width: `${INFINITE_CANVAS_SIZE * scale}px`,
+            height: `${INFINITE_CANVAS_SIZE * scale}px`,
           }}
         />
       </div>
