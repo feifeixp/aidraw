@@ -68,6 +68,7 @@ export const EditorCanvas = ({
     fabricCanvas.add(frame);
     fabricCanvas.sendObjectToBack(frame);
     frameRef.current = frame;
+    fabricCanvas.renderAll();
 
     // Add keyboard event listener for Delete key
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -120,9 +121,10 @@ export const EditorCanvas = ({
     setTimeout(() => {
       if (containerRef.current) {
         const container = containerRef.current;
-        // Center the viewport to show the frame
-        const centerX = INFINITE_CANVAS_SIZE / 2;
-        const centerY = INFINITE_CANVAS_SIZE / 2;
+        // Center the viewport to show the frame at current zoom level
+        const scaledCanvasSize = INFINITE_CANVAS_SIZE * (zoom / 100);
+        const centerX = scaledCanvasSize / 2;
+        const centerY = scaledCanvasSize / 2;
         container.scrollLeft = centerX - container.clientWidth / 2;
         container.scrollTop = centerY - container.clientHeight / 2;
       }
@@ -235,9 +237,15 @@ export const EditorCanvas = ({
       });
       
       canvas.add(img);
-      canvas.bringObjectToFront(img);
       canvas.setActiveObject(img);
       canvas.renderAll();
+      
+      // Ensure frame stays at the back
+      if (frameRef.current) {
+        canvas.sendObjectToBack(frameRef.current);
+        canvas.renderAll();
+      }
+      
       saveStateRef.current();
       toast.success("图片已添加");
     }).catch(error => {
