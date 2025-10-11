@@ -357,34 +357,31 @@ export const EditorCanvas = ({
         e.preventDefault();
         
         const delta = e.deltaY;
-        const zoomChange = delta > 0 ? -2 : 2; // Smaller steps for precise control
+        const zoomChange = delta > 0 ? -2 : 2;
         const newZoom = Math.max(10, Math.min(200, zoom + zoomChange));
         
-        if (newZoom === zoom) return; // No change
+        if (newZoom === zoom) return;
         
         const oldScale = zoom / 100;
         const newScale = newZoom / 100;
         
-        // Get viewport center position
-        const viewportCenterX = container.clientWidth / 2;
-        const viewportCenterY = container.clientHeight / 2;
+        // Get mouse position relative to container
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
         
-        // Calculate canvas coordinates at viewport center (before zoom)
-        const canvasX = (container.scrollLeft + viewportCenterX) / oldScale;
-        const canvasY = (container.scrollTop + viewportCenterY) / oldScale;
+        // Calculate canvas point under mouse (before zoom)
+        const canvasX = (container.scrollLeft + mouseX) / oldScale;
+        const canvasY = (container.scrollTop + mouseY) / oldScale;
         
-        // Calculate target scroll position for after zoom
-        const targetScrollLeft = canvasX * newScale - viewportCenterX;
-        const targetScrollTop = canvasY * newScale - viewportCenterY;
+        // Calculate target scroll to keep mouse point fixed
+        const targetScrollLeft = canvasX * newScale - mouseX;
+        const targetScrollTop = canvasY * newScale - mouseY;
         
-        // Apply zoom first
+        // Apply zoom and scroll together synchronously
         onZoomChange(newZoom);
-        
-        // Wait for next frame to adjust scroll after DOM updates
-        requestAnimationFrame(() => {
-          container.scrollLeft = targetScrollLeft;
-          container.scrollTop = targetScrollTop;
-        });
+        container.scrollLeft = targetScrollLeft;
+        container.scrollTop = targetScrollTop;
       }
     };
 
