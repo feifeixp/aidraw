@@ -270,7 +270,6 @@ export const EditorToolbar = ({
             }
           });
           canvas.add(img);
-          canvas.sendObjectToBack(img);
           canvas.setActiveObject(img);
           canvas.renderAll();
           saveState();
