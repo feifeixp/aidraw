@@ -171,9 +171,8 @@ export const EditorCanvas = ({
     if (!container || !canvas) return;
 
     const centerView = () => {
-      const scaledSize = INFINITE_CANVAS_SIZE * (zoom / 100);
-      const centerX = scaledSize / 2;
-      const centerY = scaledSize / 2;
+      const centerX = (INFINITE_CANVAS_SIZE / 2) * (zoom / 100);
+      const centerY = (INFINITE_CANVAS_SIZE / 2) * (zoom / 100);
       container.scrollLeft = centerX - container.clientWidth / 2;
       container.scrollTop = centerY - container.clientHeight / 2;
     };
@@ -363,29 +362,24 @@ export const EditorCanvas = ({
   return (
     <div 
       ref={containerRef}
-      className="h-full bg-muted/20 overflow-auto"
+      className="h-full bg-muted/20 overflow-auto relative"
     >
       <div 
         style={{ 
-          width: `${INFINITE_CANVAS_SIZE * (zoom / 100)}px`,
-          height: `${INFINITE_CANVAS_SIZE * (zoom / 100)}px`,
+          width: `${INFINITE_CANVAS_SIZE}px`,
+          height: `${INFINITE_CANVAS_SIZE}px`,
+          transform: `scale(${zoom / 100})`, 
+          transformOrigin: 'top left',
         }}
       >
-        <div 
-          style={{ 
-            transform: `scale(${zoom / 100})`, 
-            transformOrigin: 'top left',
+        <canvas 
+          ref={canvasRef}
+          style={{
+            display: 'block',
             width: `${INFINITE_CANVAS_SIZE}px`,
             height: `${INFINITE_CANVAS_SIZE}px`,
           }}
-        >
-          <canvas 
-            ref={canvasRef}
-            style={{
-              display: 'block',
-            }}
-          />
-        </div>
+        />
       </div>
     </div>
   );
