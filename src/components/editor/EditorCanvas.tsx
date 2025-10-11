@@ -238,6 +238,32 @@ export const EditorCanvas = ({
     }
   }, [activeTool, canvas]);
 
+  // 修正 Fabric.js 的鼠标坐标以匹配 CSS 缩放
+  useEffect(() => {
+    if (!canvas) return;
+    
+    const scale = zoom / 100;
+    
+    // 保存原始的 getPointer 方法
+    const originalGetPointer = canvas.getPointer.bind(canvas);
+    
+    // 覆盖 getPointer 方法来修正 CSS 缩放
+    canvas.getPointer = function(e: any, ignoreZoom?: boolean) {
+      const pointer = originalGetPointer(e, ignoreZoom);
+      // 除以 CSS 缩放比例来获取真实的画布坐标
+      pointer.x = pointer.x / scale;
+      pointer.y = pointer.y / scale;
+      return pointer;
+    };
+    
+    canvas.renderAll();
+    
+    // 清理函数：恢复原始方法
+    return () => {
+      canvas.getPointer = originalGetPointer;
+    };
+  }, [canvas, zoom]);
+
   // Center view to frame on initial load only
   useEffect(() => {
     const container = containerRef.current;
