@@ -362,35 +362,8 @@ export const EditorCanvas = ({
         
         if (newZoom === zoom) return; // No change
         
-        // Calculate frame center in viewport before zoom
-        const frame = frameRef.current;
-        const oldScale = zoom / 100;
-        const newScale = newZoom / 100;
-        
-        // Frame center in canvas coordinates
-        const frameCenterX = (frame.left || 0) + (frame.width || 0) / 2;
-        const frameCenterY = (frame.top || 0) + (frame.height || 0) / 2;
-        
-        // Frame center position in scaled canvas before zoom
-        const oldFrameCenterX = frameCenterX * oldScale;
-        const oldFrameCenterY = frameCenterY * oldScale;
-        
-        // Frame center position in scaled canvas after zoom
-        const newFrameCenterX = frameCenterX * newScale;
-        const newFrameCenterY = frameCenterY * newScale;
-        
-        // Calculate delta for scroll adjustment
-        const deltaX = newFrameCenterX - oldFrameCenterX;
-        const deltaY = newFrameCenterY - oldFrameCenterY;
-        
-        // Store current scroll position plus delta
-        const targetScrollLeft = container.scrollLeft + deltaX;
-        const targetScrollTop = container.scrollTop + deltaY;
-        
-        // Apply zoom and scroll simultaneously to avoid flicker
+        // Simply apply zoom without adjusting scroll position
         onZoomChange(newZoom);
-        container.scrollLeft = targetScrollLeft;
-        container.scrollTop = targetScrollTop;
       }
     };
 
