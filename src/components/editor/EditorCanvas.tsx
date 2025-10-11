@@ -39,6 +39,11 @@ export const EditorCanvas = ({
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    console.log('=== Initializing Canvas ===');
+    console.log('Canvas element:', canvasRef.current);
+    console.log('Canvas size:', canvasSize);
+    console.log('Infinite canvas size:', INFINITE_CANVAS_SIZE);
+
     const fabricCanvas = new FabricCanvas(canvasRef.current, {
       width: INFINITE_CANVAS_SIZE,
       height: INFINITE_CANVAS_SIZE,
@@ -46,11 +51,17 @@ export const EditorCanvas = ({
       preserveObjectStacking: true,
     });
 
+    console.log('Fabric canvas created:', fabricCanvas);
+    console.log('Fabric canvas width:', fabricCanvas.width);
+    console.log('Fabric canvas height:', fabricCanvas.height);
+
     // 创建frame（工作区域）
     const frameWidth = canvasSize?.width || 1024;
     const frameHeight = canvasSize?.height || 768;
     const frameLeft = (INFINITE_CANVAS_SIZE - frameWidth) / 2;
     const frameTop = (INFINITE_CANVAS_SIZE - frameHeight) / 2;
+
+    console.log('Creating frame:', { frameWidth, frameHeight, frameLeft, frameTop });
 
     const frame = new Rect({
       left: frameLeft,
@@ -69,6 +80,10 @@ export const EditorCanvas = ({
     fabricCanvas.sendObjectToBack(frame);
     frameRef.current = frame;
     fabricCanvas.renderAll();
+
+    console.log('Frame added to canvas');
+    console.log('Canvas objects count:', fabricCanvas.getObjects().length);
+    console.log('Canvas objects:', fabricCanvas.getObjects());
 
     // Add keyboard event listener for Delete key
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -374,10 +389,10 @@ export const EditorCanvas = ({
       >
         <canvas 
           ref={canvasRef}
+          width={INFINITE_CANVAS_SIZE}
+          height={INFINITE_CANVAS_SIZE}
           style={{
             display: 'block',
-            width: `${INFINITE_CANVAS_SIZE}px`,
-            height: `${INFINITE_CANVAS_SIZE}px`,
           }}
         />
       </div>
