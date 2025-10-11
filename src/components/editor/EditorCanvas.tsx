@@ -238,16 +238,6 @@ export const EditorCanvas = ({
     }
   }, [activeTool, canvas]);
 
-  // 设置 Fabric.js 的 viewportTransform 以匹配 CSS 缩放
-  useEffect(() => {
-    if (!canvas) return;
-    
-    const scale = zoom / 100;
-    // 设置 viewportTransform 来匹配 CSS 缩放
-    canvas.setViewportTransform([scale, 0, 0, scale, 0, 0]);
-    canvas.renderAll();
-  }, [canvas, zoom]);
-
   // Center view to frame on initial load only
   useEffect(() => {
     const container = containerRef.current;
