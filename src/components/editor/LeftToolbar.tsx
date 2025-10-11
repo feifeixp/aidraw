@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQuery } from "@tanstack/react-query";
 interface LeftToolbarProps {
   canvas: FabricCanvas | null;
   saveState: () => void;
@@ -44,6 +47,9 @@ export const LeftToolbar = ({
   const [customPose, setCustomPose] = useState("");
   const [poseReferenceImage, setPoseReferenceImage] = useState<string | null>(null);
   const [isCropMode, setIsCropMode] = useState(false);
+  const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [selectedAiModel, setSelectedAiModel] = useState<"imagen" | "seedream">("imagen");
 
   // Add Image
   const handleUploadImage = () => {
@@ -69,29 +75,55 @@ export const LeftToolbar = ({
     };
     input.click();
   };
-  const handleGenerateImage = async () => {
-    const prompt = window.prompt("请输入图片生成提示词：");
-    if (!prompt) return;
+  const handleGenerateImage = () => {
+    setShowAiGenerateDialog(true);
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("请输入提示词");
+      return;
+    }
+    
     setIsGenerating(true);
     try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("liblib-generate", {
-        body: {
-          prompt,
-          model_id: "flux-dev"
+      if (selectedAiModel === "imagen") {
+        // 使用 Google Imagen (gemini-2.5-flash-image-preview)
+        const { data, error } = await supabase.functions.invoke("ai-generate-image", {
+          body: { prompt: aiPrompt }
+        });
+        if (error) throw error;
+        if (data?.imageUrl) {
+          window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+            detail: {
+              imageUrl: data.imageUrl,
+              name: "AI生成的图片"
+            }
+          }));
+          toast.success("图片生成成功");
+          setShowAiGenerateDialog(false);
+          setAiPrompt("");
         }
-      });
-      if (error) throw error;
-      if (data?.images?.[0]?.url) {
-        window.dispatchEvent(new CustomEvent('addImageToCanvas', {
-          detail: {
-            imageUrl: data.images[0].url,
-            name: "生成的图片"
+      } else {
+        // 使用 Seedream (liblib flux-dev)
+        const { data, error } = await supabase.functions.invoke("liblib-generate", {
+          body: {
+            prompt: aiPrompt,
+            model_id: "flux-dev"
           }
-        }));
-        toast.success("图片生成成功");
+        });
+        if (error) throw error;
+        if (data?.images?.[0]?.url) {
+          window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+            detail: {
+              imageUrl: data.images[0].url,
+              name: "生成的图片"
+            }
+          }));
+          toast.success("图片生成成功");
+          setShowAiGenerateDialog(false);
+          setAiPrompt("");
+        }
       }
     } catch (error) {
       console.error("Generation error:", error);
@@ -99,6 +131,17 @@ export const LeftToolbar = ({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleAddHistoryImageToCanvas = (imageUrl: string) => {
+    window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+      detail: {
+        imageUrl,
+        name: "历史图片"
+      }
+    }));
+    toast.success("图片已添加到画布");
+    setShowAiGenerateDialog(false);
   };
 
   // Add Text
@@ -720,9 +763,9 @@ export const LeftToolbar = ({
               <Upload className="h-4 w-4 mr-2" />
               上传图片
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleGenerateImage} disabled={isGenerating || isTaskProcessing}>
+            <DropdownMenuItem onClick={handleGenerateImage} disabled={isTaskProcessing}>
               <Sparkles className="h-4 w-4 mr-2" />
-              {isGenerating ? "生成中..." : "AI生成图片"}
+              AI生成图片
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleAddText}>
@@ -967,5 +1010,159 @@ export const LeftToolbar = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI Generate Dialog */}
+      <Dialog open={showAiGenerateDialog} onOpenChange={setShowAiGenerateDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>AI生成图片</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="generate" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="generate">直接生成</TabsTrigger>
+              <TabsTrigger value="history">历史记录</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="generate" className="space-y-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ai-prompt">输入提示词</Label>
+                  <Textarea
+                    id="ai-prompt"
+                    placeholder="描述你想生成的图片..."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    className="min-h-[100px]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.ctrlKey) {
+                        handleAiGenerate();
+                      }
+                    }}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    按 Ctrl+Enter 快速生成
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>选择模型</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={selectedAiModel === "imagen" ? "default" : "outline"}
+                      onClick={() => setSelectedAiModel("imagen")}
+                      className="w-full"
+                    >
+                      Google Imagen 4
+                    </Button>
+                    <Button
+                      variant={selectedAiModel === "seedream" ? "default" : "outline"}
+                      onClick={() => setSelectedAiModel("seedream")}
+                      className="w-full"
+                    >
+                      Seedream 4.0
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedAiModel === "imagen" 
+                      ? "Google Imagen 4: 快速生成，适合各种风格" 
+                      : "Seedream 4.0: 高质量，更多细节"}
+                  </p>
+                </div>
+
+                <Button 
+                  onClick={handleAiGenerate} 
+                  disabled={isGenerating || !aiPrompt.trim()}
+                  className="w-full"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      生成图片
+                    </>
+                  )}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="history" className="space-y-4">
+              <HistoryImageGrid onSelectImage={handleAddHistoryImageToCanvas} />
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </>;
+};
+
+// History Image Grid Component for AI Generate Dialog
+const HistoryImageGrid = ({ onSelectImage }: { onSelectImage: (url: string) => void }) => {
+  const { data: history, isLoading } = useQuery({
+    queryKey: ["generation-history-dialog"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("generation_history")
+        .select("*")
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">加载中...</p>
+      </div>
+    );
+  }
+
+  if (!history || history.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+        <p className="text-muted-foreground">还没有生成记录</p>
+        <p className="text-sm text-muted-foreground mt-2">前往「图片生成」页面生成图片</p>
+      </div>
+    );
+  }
+
+  return (
+    <ScrollArea className="h-[400px] pr-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+        {history.map((item) => {
+          const images = (item as any).images || (item.image_url ? [item.image_url] : []);
+          const imageUrl = images[0];
+          
+          if (!imageUrl) return null;
+
+          return (
+            <div
+              key={item.id}
+              className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:border-primary cursor-pointer transition-all"
+              onClick={() => onSelectImage(imageUrl)}
+            >
+              <img
+                src={imageUrl}
+                alt={item.prompt}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Plus className="h-8 w-8 text-white" />
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                <p className="text-xs text-white line-clamp-2">{item.prompt}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ScrollArea>
+  );
 };
