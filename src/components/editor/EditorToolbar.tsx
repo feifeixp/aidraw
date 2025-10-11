@@ -110,12 +110,25 @@ export const EditorToolbar = ({
       toast.error("画布未初始化");
       return;
     }
+    
+    // 查找frame对象
+    const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    if (!frame) {
+      toast.error("未找到工作区域");
+      return;
+    }
+    
     toast.info("正在融合图层并重新绘制，请稍候...");
     try {
+      // 只导出frame区域内的内容
       const canvasDataURL = canvas.toDataURL({
         format: "png",
         quality: 1,
-        multiplier: 1
+        multiplier: 1,
+        left: frame.left,
+        top: frame.top,
+        width: frame.width,
+        height: frame.height,
       });
       const instruction = `Redraw this image with professional lighting and shading. Enhance the lighting, add proper shadows and highlights based on the environment and composition. Make it look more polished and professionally lit while keeping all subjects and elements in their exact positions.`;
       const {
@@ -142,12 +155,12 @@ export const EditorToolbar = ({
           img.src = aiData.imageUrl;
         });
         const fabricImg = new FabricImage(img, {
-          left: 0,
-          top: 0,
+          left: frame.left,
+          top: frame.top,
           selectable: true
         });
-        const scaleX = canvas.width! / fabricImg.width!;
-        const scaleY = canvas.height! / fabricImg.height!;
+        const scaleX = frame.width! / fabricImg.width!;
+        const scaleY = frame.height! / fabricImg.height!;
         const scale = Math.min(scaleX, scaleY);
         fabricImg.scale(scale);
         canvas.add(fabricImg);
@@ -342,14 +355,26 @@ export const EditorToolbar = ({
       return;
     }
 
+    // 查找frame对象
+    const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    if (!frame) {
+      toast.error("未找到工作区域");
+      return;
+    }
+
     setShowRecomposeDialog(false);
     const taskId = startTask("正在重新构图");
 
     try {
+      // 只导出frame区域内的内容
       const canvasDataURL = canvas.toDataURL({
         format: "png",
         quality: 1,
-        multiplier: 1
+        multiplier: 1,
+        left: frame.left,
+        top: frame.top,
+        width: frame.width,
+        height: frame.height,
       });
 
       const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-edit-image', {
@@ -367,16 +392,16 @@ export const EditorToolbar = ({
           crossOrigin: 'anonymous'
         });
 
-        const canvasWidth = canvas.width || 1024;
-        const canvasHeight = canvas.height || 768;
+        const frameWidth = frame.width || 1024;
+        const frameHeight = frame.height || 768;
         const imgWidth = img.width || 1;
         const imgHeight = img.height || 1;
-        const scale = Math.min(canvasWidth / imgWidth, canvasHeight / imgHeight, 1);
+        const scale = Math.min(frameWidth / imgWidth, frameHeight / imgHeight, 1);
 
         img.scale(scale);
         img.set({
-          left: (canvasWidth - imgWidth * scale) / 2,
-          top: (canvasHeight - imgHeight * scale) / 2
+          left: frame.left || 0,
+          top: frame.top || 0
         });
 
         canvas.add(img);
