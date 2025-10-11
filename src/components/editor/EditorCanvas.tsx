@@ -186,14 +186,29 @@ export const EditorCanvas = ({
     if (!container || !canvas) return;
 
     const centerView = () => {
-      const centerX = (INFINITE_CANVAS_SIZE / 2) * (zoom / 100);
-      const centerY = (INFINITE_CANVAS_SIZE / 2) * (zoom / 100);
+      // 计算缩放后的画布中心点位置
+      const scaledCanvasSize = INFINITE_CANVAS_SIZE * (zoom / 100);
+      const centerX = scaledCanvasSize / 2;
+      const centerY = scaledCanvasSize / 2;
+      
+      // 将容器滚动到中心点
       container.scrollLeft = centerX - container.clientWidth / 2;
       container.scrollTop = centerY - container.clientHeight / 2;
+      
+      console.log('Centering view:', {
+        zoom,
+        scaledCanvasSize,
+        centerX,
+        centerY,
+        scrollLeft: container.scrollLeft,
+        scrollTop: container.scrollTop,
+        containerWidth: container.clientWidth,
+        containerHeight: container.clientHeight
+      });
     };
 
     // Small delay to ensure DOM is ready
-    const timer = setTimeout(centerView, 50);
+    const timer = setTimeout(centerView, 100);
     return () => clearTimeout(timer);
   }, [canvas, zoom]);
 
