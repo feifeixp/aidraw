@@ -373,16 +373,18 @@ export const EditorCanvas = ({
         const canvasX = (container.scrollLeft + viewportCenterX) / oldScale;
         const canvasY = (container.scrollTop + viewportCenterY) / oldScale;
         
-        // Apply zoom
+        // Calculate target scroll position for after zoom
+        const targetScrollLeft = canvasX * newScale - viewportCenterX;
+        const targetScrollTop = canvasY * newScale - viewportCenterY;
+        
+        // Apply zoom first
         onZoomChange(newZoom);
         
-        // Calculate new position of the same canvas point (after zoom)
-        const newCanvasX = canvasX * newScale;
-        const newCanvasY = canvasY * newScale;
-        
-        // Adjust scroll to keep the same point at viewport center
-        container.scrollLeft = newCanvasX - viewportCenterX;
-        container.scrollTop = newCanvasY - viewportCenterY;
+        // Wait for next frame to adjust scroll after DOM updates
+        requestAnimationFrame(() => {
+          container.scrollLeft = targetScrollLeft;
+          container.scrollTop = targetScrollTop;
+        });
       }
     };
 
