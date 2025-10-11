@@ -434,11 +434,6 @@ export const EditorToolbar = ({
         画布尺寸
       </Button>
 
-      <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 whitespace-nowrap">
-        <Download className="h-4 w-4 mr-1" />
-        导出
-      </Button>
-
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
       <div className="flex items-center gap-2 shrink-0">
@@ -453,6 +448,13 @@ export const EditorToolbar = ({
         />
         <span className="text-sm text-muted-foreground whitespace-nowrap min-w-[3rem] text-right">{zoom}%</span>
       </div>
+
+      <Separator orientation="vertical" className="h-6 shrink-0" />
+
+      <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 whitespace-nowrap">
+        <Download className="h-4 w-4 mr-1" />
+        导出
+      </Button>
 
       {/* Canvas Size Settings Dialog */}
       <CanvasSizeSettings
