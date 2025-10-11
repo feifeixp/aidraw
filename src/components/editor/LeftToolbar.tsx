@@ -1182,7 +1182,7 @@ const ProfessionalGenerateGrid = ({
               <img
                 src={imageUrl}
                 alt={item.prompt}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 onError={(e) => {
                   console.error("图片加载失败:", imageUrl);
                   e.currentTarget.style.display = 'none';
