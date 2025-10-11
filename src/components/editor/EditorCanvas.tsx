@@ -379,7 +379,12 @@ export const EditorCanvas = ({
             height: `${INFINITE_CANVAS_SIZE}px`,
           }}
         >
-          <canvas ref={canvasRef} />
+          <canvas 
+            ref={canvasRef}
+            style={{
+              display: 'block',
+            }}
+          />
         </div>
       </div>
     </div>
