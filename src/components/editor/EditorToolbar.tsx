@@ -120,16 +120,35 @@ export const EditorToolbar = ({
     
     toast.info("正在融合图层并重新绘制，请稍候...");
     try {
-      // 只导出frame区域内的内容
-      const canvasDataURL = canvas.toDataURL({
-        format: "png",
-        quality: 1,
-        multiplier: 1,
-        left: frame.left,
-        top: frame.top,
-        width: frame.width,
-        height: frame.height,
-      });
+      // 临时创建一个新canvas来渲染frame区域
+      const tempCanvas = document.createElement('canvas');
+      const ctx = tempCanvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('无法创建临时画布');
+      }
+
+      // 设置临时画布尺寸为frame尺寸
+      tempCanvas.width = frame.width || 1024;
+      tempCanvas.height = frame.height || 768;
+
+      // 获取主画布的实际canvas元素
+      const mainCanvasElement = canvas.getElement();
+      
+      // 将frame区域绘制到临时画布
+      ctx.drawImage(
+        mainCanvasElement,
+        frame.left || 0,
+        frame.top || 0,
+        frame.width || 1024,
+        frame.height || 768,
+        0,
+        0,
+        tempCanvas.width,
+        tempCanvas.height
+      );
+
+      // 从临时画布导出
+      const canvasDataURL = tempCanvas.toDataURL('image/png', 1.0);
       const instruction = `Redraw this image with professional lighting and shading. Enhance the lighting, add proper shadows and highlights based on the environment and composition. Make it look more polished and professionally lit while keeping all subjects and elements in their exact positions.`;
       const {
         data: aiData,
@@ -380,16 +399,35 @@ export const EditorToolbar = ({
     const taskId = startTask("正在重新构图");
 
     try {
-      // 只导出frame区域内的内容
-      const canvasDataURL = canvas.toDataURL({
-        format: "png",
-        quality: 1,
-        multiplier: 1,
-        left: frame.left,
-        top: frame.top,
-        width: frame.width,
-        height: frame.height,
-      });
+      // 临时创建一个新canvas来渲染frame区域
+      const tempCanvas = document.createElement('canvas');
+      const ctx = tempCanvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('无法创建临时画布');
+      }
+
+      // 设置临时画布尺寸为frame尺寸
+      tempCanvas.width = frame.width || 1024;
+      tempCanvas.height = frame.height || 768;
+
+      // 获取主画布的实际canvas元素
+      const mainCanvasElement = canvas.getElement();
+      
+      // 将frame区域绘制到临时画布
+      ctx.drawImage(
+        mainCanvasElement,
+        frame.left || 0,
+        frame.top || 0,
+        frame.width || 1024,
+        frame.height || 768,
+        0,
+        0,
+        tempCanvas.width,
+        tempCanvas.height
+      );
+
+      // 从临时画布导出
+      const canvasDataURL = tempCanvas.toDataURL('image/png', 1.0);
 
       const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-edit-image', {
         body: {
