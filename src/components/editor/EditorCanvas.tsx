@@ -58,8 +58,8 @@ export const EditorCanvas = ({
       width: frameWidth,
       height: frameHeight,
       fill: "#ffffff",
-      stroke: "#000000",
-      strokeWidth: 2,
+      stroke: "#3b82f6",
+      strokeWidth: 4,
       selectable: false,
       evented: false,
       name: 'workframe',
@@ -120,10 +120,11 @@ export const EditorCanvas = ({
     setTimeout(() => {
       if (containerRef.current) {
         const container = containerRef.current;
-        const scrollX = (INFINITE_CANVAS_SIZE - container.clientWidth) / 2;
-        const scrollY = (INFINITE_CANVAS_SIZE - container.clientHeight) / 2;
-        container.scrollLeft = scrollX;
-        container.scrollTop = scrollY;
+        // Center the viewport to show the frame
+        const centerX = INFINITE_CANVAS_SIZE / 2;
+        const centerY = INFINITE_CANVAS_SIZE / 2;
+        container.scrollLeft = centerX - container.clientWidth / 2;
+        container.scrollTop = centerY - container.clientHeight / 2;
       }
     }, 100);
 
@@ -353,15 +354,14 @@ export const EditorCanvas = ({
     >
       <div 
         style={{ 
-          width: `${INFINITE_CANVAS_SIZE}px`,
-          height: `${INFINITE_CANVAS_SIZE}px`,
+          width: `${INFINITE_CANVAS_SIZE * (zoom / 100)}px`,
+          height: `${INFINITE_CANVAS_SIZE * (zoom / 100)}px`,
         }}
       >
         <div 
-          className="transition-transform"
           style={{ 
             transform: `scale(${zoom / 100})`, 
-            transformOrigin: 'center',
+            transformOrigin: 'top left',
             width: `${INFINITE_CANVAS_SIZE}px`,
             height: `${INFINITE_CANVAS_SIZE}px`,
           }}
