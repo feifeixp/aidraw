@@ -379,21 +379,18 @@ export const EditorCanvas = ({
         const newFrameCenterX = frameCenterX * newScale;
         const newFrameCenterY = frameCenterY * newScale;
         
-        // Calculate scroll position to keep frame center in the same viewport position
-        const scrollCenterX = container.scrollLeft + container.clientWidth / 2;
-        const scrollCenterY = container.scrollTop + container.clientHeight / 2;
-        
+        // Calculate delta for scroll adjustment
         const deltaX = newFrameCenterX - oldFrameCenterX;
         const deltaY = newFrameCenterY - oldFrameCenterY;
         
-        // Apply zoom
-        onZoomChange(newZoom);
+        // Store current scroll position plus delta
+        const targetScrollLeft = container.scrollLeft + deltaX;
+        const targetScrollTop = container.scrollTop + deltaY;
         
-        // Adjust scroll to keep frame centered
-        requestAnimationFrame(() => {
-          container.scrollLeft += deltaX;
-          container.scrollTop += deltaY;
-        });
+        // Apply zoom and scroll simultaneously to avoid flicker
+        onZoomChange(newZoom);
+        container.scrollLeft = targetScrollLeft;
+        container.scrollTop = targetScrollTop;
       }
     };
 
