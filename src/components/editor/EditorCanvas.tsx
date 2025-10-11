@@ -91,6 +91,11 @@ export const EditorCanvas = ({
       strokeWidth: 8,
       selectable: false,
       evented: false,
+      hasControls: false,
+      hasBorders: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      hoverCursor: 'default',
       name: 'workframe',
     });
 
@@ -156,6 +161,13 @@ export const EditorCanvas = ({
       saveStateRef.current();
     };
 
+    const handleObjectAdded = () => {
+      // Ensure frame always stays at the back when new objects are added
+      if (frameRef.current) {
+        fabricCanvas.sendObjectToBack(frameRef.current);
+      }
+    };
+
     // Handle double click on text objects
     const canvasElement = canvasRef.current;
     const handleCanvasDoubleClick = () => {
@@ -168,12 +180,14 @@ export const EditorCanvas = ({
     };
     
     fabricCanvas.on('object:modified', handleObjectModified);
+    fabricCanvas.on('object:added', handleObjectAdded);
     canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
 
     return () => {
       fabricCanvas.off('object:modified', handleObjectModified);
+      fabricCanvas.off('object:added', handleObjectAdded);
       if (canvasElement) {
         canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
       }
