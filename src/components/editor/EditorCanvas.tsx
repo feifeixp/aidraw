@@ -98,6 +98,9 @@ export const EditorCanvas = ({
     fabricCanvas.sendObjectToBack(frame);
     frameRef.current = frame;
     
+    // Store frame reference on canvas for other components to access
+    (fabricCanvas as any).workFrame = frame;
+    
     // Force immediate render
     fabricCanvas.renderAll();
     
@@ -197,6 +200,8 @@ export const EditorCanvas = ({
             width: canvasSize.width,
             height: canvasSize.height,
           });
+          // Update frame reference on canvas
+          (canvas as any).workFrame = frame;
           canvas.renderAll();
         }
       } catch (error) {

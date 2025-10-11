@@ -174,9 +174,15 @@ export const LeftToolbar = ({
   // Add Text
   const handleAddText = () => {
     if (!canvas) return;
+    const frame = (canvas as any).workFrame;
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const frameWidth = frame?.width || 1024;
+    const frameHeight = frame?.height || 768;
+    
     const text = new FabricText("双击编辑文字", {
-      left: 100,
-      top: 100,
+      left: frameLeft + frameWidth / 2 - 100,
+      top: frameTop + frameHeight / 2 - 20,
       fontSize: 40,
       fill: "#000000"
     });
@@ -192,9 +198,15 @@ export const LeftToolbar = ({
   // Add Shapes
   const handleAddRectangle = () => {
     if (!canvas) return;
+    const frame = (canvas as any).workFrame;
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const frameWidth = frame?.width || 1024;
+    const frameHeight = frame?.height || 768;
+    
     const rect = new FabricRect({
-      left: 100,
-      top: 100,
+      left: frameLeft + frameWidth / 2 - 100,
+      top: frameTop + frameHeight / 2 - 75,
       fill: "#3b82f6",
       width: 200,
       height: 150
@@ -209,9 +221,15 @@ export const LeftToolbar = ({
   };
   const handleAddCircle = () => {
     if (!canvas) return;
+    const frame = (canvas as any).workFrame;
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const frameWidth = frame?.width || 1024;
+    const frameHeight = frame?.height || 768;
+    
     const circle = new FabricCircle({
-      left: 100,
-      top: 100,
+      left: frameLeft + frameWidth / 2 - 75,
+      top: frameTop + frameHeight / 2 - 75,
       fill: "#10b981",
       radius: 75
     });
@@ -225,9 +243,15 @@ export const LeftToolbar = ({
   };
   const handleAddTriangle = () => {
     if (!canvas) return;
+    const frame = (canvas as any).workFrame;
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const frameWidth = frame?.width || 1024;
+    const frameHeight = frame?.height || 768;
+    
     const triangle = new FabricTriangle({
-      left: 100,
-      top: 100,
+      left: frameLeft + frameWidth / 2 - 75,
+      top: frameTop + frameHeight / 2 - 65,
       fill: "#f59e0b",
       width: 150,
       height: 130
@@ -244,12 +268,17 @@ export const LeftToolbar = ({
   // Add Speech Bubbles
   const handleAddRoundBubble = () => {
     if (!canvas) return;
+    const frame = (canvas as any).workFrame;
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const frameWidth = frame?.width || 1024;
+    const frameHeight = frame?.height || 768;
 
     // Create round speech bubble using SVG path
     const bubblePath = "M 10 40 Q 10 10, 40 10 L 160 10 Q 190 10, 190 40 L 190 90 Q 190 120, 160 120 L 80 120 L 60 145 L 65 120 L 40 120 Q 10 120, 10 90 Z";
     const bubble = new Path(bubblePath, {
-      left: 100,
-      top: 100,
+      left: frameLeft + frameWidth / 2 - 100,
+      top: frameTop + frameHeight / 2 - 75,
       fill: "#ffffff",
       stroke: "#000000",
       strokeWidth: 2
@@ -264,12 +293,17 @@ export const LeftToolbar = ({
   };
   const handleAddSquareBubble = () => {
     if (!canvas) return;
+    const frame = (canvas as any).workFrame;
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const frameWidth = frame?.width || 1024;
+    const frameHeight = frame?.height || 768;
 
     // Create square speech bubble using SVG path
     const bubblePath = "M 10 10 L 190 10 L 190 120 L 80 120 L 60 145 L 65 120 L 10 120 Z";
     const bubble = new Path(bubblePath, {
-      left: 100,
-      top: 100,
+      left: frameLeft + frameWidth / 2 - 100,
+      top: frameTop + frameHeight / 2 - 75,
       fill: "#ffffff",
       stroke: "#000000",
       strokeWidth: 2
@@ -284,6 +318,11 @@ export const LeftToolbar = ({
   };
   const handleAddThoughtBubble = () => {
     if (!canvas) return;
+    const frame = (canvas as any).workFrame;
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const frameWidth = frame?.width || 1024;
+    const frameHeight = frame?.height || 768;
 
     // Create thought bubble using SVG path (cloud shape)
     const cloudPath = "M 50 60 Q 30 60, 30 40 Q 30 25, 45 20 Q 50 5, 70 5 Q 85 5, 95 15 Q 110 10, 120 15 Q 135 15, 140 30 Q 155 35, 155 50 Q 155 65, 140 70 L 60 70 Q 45 70, 50 60 Z";
@@ -305,8 +344,8 @@ export const LeftToolbar = ({
       strokeWidth: 2
     });
     const thoughtBubble = new Group([mainCloud, small, tiny], {
-      left: 100,
-      top: 100
+      left: frameLeft + frameWidth / 2 - 80,
+      top: frameTop + frameHeight / 2 - 60
     });
     canvas.add(thoughtBubble);
     canvas.bringObjectToFront(thoughtBubble);
@@ -318,12 +357,17 @@ export const LeftToolbar = ({
   };
   const handleAddSharpBubble = () => {
     if (!canvas) return;
+    const frame = (canvas as any).workFrame;
+    const frameLeft = frame?.left || 0;
+    const frameTop = frame?.top || 0;
+    const frameWidth = frame?.width || 1024;
+    const frameHeight = frame?.height || 768;
 
     // Create sharp/spiky speech bubble using SVG path
     const bubblePath = "M 15 15 L 185 15 L 185 115 L 75 115 L 55 145 L 60 115 L 15 115 Z";
     const bubble = new Path(bubblePath, {
-      left: 100,
-      top: 100,
+      left: frameLeft + frameWidth / 2 - 100,
+      top: frameTop + frameHeight / 2 - 75,
       fill: "#ffeb3b",
       stroke: "#000000",
       strokeWidth: 3
