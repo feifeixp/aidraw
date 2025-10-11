@@ -44,8 +44,14 @@ export const EditorCanvas = ({
 
     console.log('=== Initializing Canvas ===');
     console.log('Canvas element:', canvasRef.current);
+    console.log('Canvas element width attr:', canvasRef.current.width);
+    console.log('Canvas element height attr:', canvasRef.current.height);
     console.log('Canvas size:', canvasSize);
     console.log('Infinite canvas size:', INFINITE_CANVAS_SIZE);
+
+    // Ensure canvas element has correct dimensions
+    canvasRef.current.width = INFINITE_CANVAS_SIZE;
+    canvasRef.current.height = INFINITE_CANVAS_SIZE;
 
     const fabricCanvas = new FabricCanvas(canvasRef.current, {
       width: INFINITE_CANVAS_SIZE,
@@ -57,6 +63,8 @@ export const EditorCanvas = ({
     console.log('Fabric canvas created:', fabricCanvas);
     console.log('Fabric canvas width:', fabricCanvas.width);
     console.log('Fabric canvas height:', fabricCanvas.height);
+    console.log('Canvas element after Fabric init:', canvasRef.current.width, canvasRef.current.height);
+
 
     // 创建frame（工作区域）
     const frameWidth = canvasSize?.width || 1024;
@@ -82,8 +90,10 @@ export const EditorCanvas = ({
     fabricCanvas.add(frame);
     fabricCanvas.sendObjectToBack(frame);
     frameRef.current = frame;
+    
+    // Force immediate render
     fabricCanvas.renderAll();
-
+    
     console.log('Frame added to canvas');
     console.log('Canvas objects count:', fabricCanvas.getObjects().length);
     console.log('Canvas objects:', fabricCanvas.getObjects());
@@ -93,8 +103,17 @@ export const EditorCanvas = ({
       frameWidth,
       frameHeight,
       canvasWidth: fabricCanvas.width,
-      canvasHeight: fabricCanvas.height
+      canvasHeight: fabricCanvas.height,
+      frameVisible: frame.visible,
+      frameFill: frame.fill,
+      frameStroke: frame.stroke
     });
+    
+    // Force another render after a delay to ensure visibility
+    setTimeout(() => {
+      fabricCanvas.renderAll();
+      console.log('Forced second render complete');
+    }, 100);
 
     // Add keyboard event listener for Delete key
     const handleKeyDown = (e: KeyboardEvent) => {
