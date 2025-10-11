@@ -21,7 +21,7 @@ const App = () => <QueryClientProvider client={queryClient}>
         
         {/* Logo in top-left corner - visible on all pages */}
         <div className="fixed top-4 left-4 z-50 my-[20px]">
-          <img src={logo} alt="Neo-Domain Logo" className="h-6 w-6 object-contain" />
+          
         </div>
         
         <div>
