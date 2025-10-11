@@ -362,8 +362,27 @@ export const EditorCanvas = ({
         
         if (newZoom === zoom) return; // No change
         
-        // Simply apply zoom without adjusting scroll position
+        const oldScale = zoom / 100;
+        const newScale = newZoom / 100;
+        
+        // Get viewport center position
+        const viewportCenterX = container.clientWidth / 2;
+        const viewportCenterY = container.clientHeight / 2;
+        
+        // Calculate canvas coordinates at viewport center (before zoom)
+        const canvasX = (container.scrollLeft + viewportCenterX) / oldScale;
+        const canvasY = (container.scrollTop + viewportCenterY) / oldScale;
+        
+        // Apply zoom
         onZoomChange(newZoom);
+        
+        // Calculate new position of the same canvas point (after zoom)
+        const newCanvasX = canvasX * newScale;
+        const newCanvasY = canvasY * newScale;
+        
+        // Adjust scroll to keep the same point at viewport center
+        container.scrollLeft = newCanvasX - viewportCenterX;
+        container.scrollTop = newCanvasY - viewportCenterY;
       }
     };
 
