@@ -290,20 +290,16 @@ const Models = () => {
   };
 
   return (
-    <ProtectedRoute requireAdmin>
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-6">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold bg-[var(--gradient-primary)] bg-clip-text text-transparent">
-              模型管理
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              添加和管理LibLib AI模型及其特征标注
-            </p>
-          </div>
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold">模型管理</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            添加和管理LibLib AI模型及其特征标注
+          </p>
+        </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) resetForm();
           }}>
@@ -530,110 +526,108 @@ const Models = () => {
               </form>
             </DialogContent>
           </Dialog>
-        </header>
+        </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">加载中...</p>
-          </div>
-        ) : models && models.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {models.map((model) => (
-              <Card key={model.id} className="overflow-hidden bg-gradient-to-br from-card via-card to-primary/5 border-primary/20">
-                {model.thumbnail_url ? (
-                  <div className="aspect-[3/4] w-full overflow-hidden bg-muted relative">
-                    <img
-                      src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(model.thumbnail_url)}`}
-                      alt={model.name}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        console.error("Failed to load image:", model.thumbnail_url);
-                        const parent = e.currentTarget.parentElement;
-                        if (parent && e.currentTarget.style.display !== 'none') {
-                          e.currentTarget.style.display = 'none';
-                          const fallback = document.createElement('div');
-                          fallback.className = 'absolute inset-0 flex items-center justify-center bg-muted';
-                          fallback.innerHTML = `
-                            <div class="text-center p-4">
-                              <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              <p class="mt-2 text-sm text-muted-foreground">预览图加载失败</p>
-                              <a href="${model.thumbnail_url}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary hover:underline mt-1 block">查看原图</a>
-                            </div>
-                          `;
-                          parent.appendChild(fallback);
-                        }
-                      }}
-                      loading="lazy"
-                    />
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">加载中...</p>
+        </div>
+      ) : models && models.length > 0 ? (
+        <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {models.map((model) => (
+            <Card key={model.id} className="overflow-hidden bg-gradient-to-br from-card via-card to-primary/5 border-primary/20">
+              {model.thumbnail_url ? (
+                <div className="aspect-[3/4] w-full overflow-hidden bg-muted relative">
+                  <img
+                    src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(model.thumbnail_url)}`}
+                    alt={model.name}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      console.error("Failed to load image:", model.thumbnail_url);
+                      const parent = e.currentTarget.parentElement;
+                      if (parent && e.currentTarget.style.display !== 'none') {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.className = 'absolute inset-0 flex items-center justify-center bg-muted';
+                        fallback.innerHTML = `
+                          <div class="text-center p-4">
+                            <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p class="mt-2 text-sm text-muted-foreground">预览图加载失败</p>
+                            <a href="${model.thumbnail_url}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary hover:underline mt-1 block">查看原图</a>
+                          </div>
+                        `;
+                        parent.appendChild(fallback);
+                      }
+                    }}
+                    loading="lazy"
+                  />
+                </div>
+              ) : (
+                <div className="aspect-video w-full overflow-hidden bg-muted flex items-center justify-center">
+                  <div className="text-center p-4">
+                    <svg className="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="mt-2 text-sm text-muted-foreground">暂无预览图</p>
                   </div>
-                ) : (
-                  <div className="aspect-video w-full overflow-hidden bg-muted flex items-center justify-center">
-                    <div className="text-center p-4">
-                      <svg className="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p className="mt-2 text-sm text-muted-foreground">暂无预览图</p>
-                    </div>
+                </div>
+              )}
+              
+              <div className="p-4">
+                <div className="mb-2 flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold">{model.name}</h3>
+                    <p className="text-xs text-muted-foreground">ID: {model.model_id}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleEdit(model)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => deleteMutation.mutate(model.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {model.description && (
+                  <p className="mb-3 text-sm text-muted-foreground line-clamp-2">
+                    {model.description}
+                  </p>
+                )}
+
+                {model.tags && model.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {model.tags.map((tag: string, i: number) => (
+                      <Badge key={i} variant="secondary" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
                 )}
-                
-                <div className="p-4">
-                  <div className="mb-2 flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold">{model.name}</h3>
-                      <p className="text-xs text-muted-foreground">ID: {model.model_id}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleEdit(model)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => deleteMutation.mutate(model.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {model.description && (
-                    <p className="mb-3 text-sm text-muted-foreground line-clamp-2">
-                      {model.description}
-                    </p>
-                  )}
-
-                  {model.tags && model.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {model.tags.map((tag: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="p-12 text-center">
-            <p className="mb-4 text-muted-foreground">还没有添加任何模型</p>
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              添加第一个模型
-            </Button>
+              </div>
           </Card>
-        )}
-      </div>
+        ))}
+        </div>
+      ) : (
+        <Card className="p-12 text-center">
+          <p className="mb-4 text-muted-foreground">还没有添加任何模型</p>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            添加第一个模型
+          </Button>
+        </Card>
+      )}
     </div>
-  </ProtectedRoute>
   );
 };
 

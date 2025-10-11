@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Generate from "./pages/Generate";
-import Models from "./pages/Models";
+import Admin from "./pages/Admin";
 import Editor from "./pages/Editor";
 import Auth from "./pages/Auth";
 import Navigation from "./components/Navigation";
@@ -29,7 +29,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Home />} />
             <Route path="/generate" element={<Generate />} />
-            <Route path="/models" element={<Models />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="/editor" element={<Editor />} />
             {/* IMPORTANT: All routes must be above this line */}
             <Route path="*" element={<NotFound />} />

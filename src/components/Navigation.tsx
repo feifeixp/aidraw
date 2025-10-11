@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Database, Pencil, ChevronDown, Home, ExternalLink, LogOut, User } from "lucide-react";
+import { Sparkles, Settings, Pencil, ChevronDown, Home, ExternalLink, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ const Navigation = () => {
   const [isVisible, setIsVisible] = useState(false);
   const {
     user,
+    isAdmin,
     signOut
   } = useAuth();
   const links = [{
@@ -23,11 +24,16 @@ const Navigation = () => {
     to: "/editor",
     label: "分镜编辑",
     icon: Pencil
-  }, {
-    to: "/models",
-    label: "模型管理",
-    icon: Database
   }];
+  
+  // 只为admin用户添加管理中心链接
+  if (isAdmin) {
+    links.push({
+      to: "/admin",
+      label: "管理中心",
+      icon: Settings
+    });
+  }
   return <>
       {/* Top indicator bar - always visible */}
       <div onMouseEnter={() => setIsVisible(true)} onClick={() => setIsVisible(!isVisible)} className="fixed top-0 left-0 right-0 h-8 w-300 flex items-center justify-center z-50 cursor-pointer rounded-none">
