@@ -49,21 +49,28 @@ export const EditorCanvas = ({
     console.log('Canvas size:', canvasSize);
     console.log('Infinite canvas size:', INFINITE_CANVAS_SIZE);
 
-    // Ensure canvas element has correct dimensions
-    canvasRef.current.width = INFINITE_CANVAS_SIZE;
-    canvasRef.current.height = INFINITE_CANVAS_SIZE;
-
     const fabricCanvas = new FabricCanvas(canvasRef.current, {
       width: INFINITE_CANVAS_SIZE,
       height: INFINITE_CANVAS_SIZE,
       backgroundColor: "#e5e5e5",
       preserveObjectStacking: true,
+      enableRetinaScaling: false, // 禁用高DPI缩放
     });
 
     console.log('Fabric canvas created:', fabricCanvas);
     console.log('Fabric canvas width:', fabricCanvas.width);
     console.log('Fabric canvas height:', fabricCanvas.height);
     console.log('Canvas element after Fabric init:', canvasRef.current.width, canvasRef.current.height);
+    
+    // Verify canvas dimensions are correct
+    if (canvasRef.current.width !== INFINITE_CANVAS_SIZE || canvasRef.current.height !== INFINITE_CANVAS_SIZE) {
+      console.warn('Canvas dimensions changed by Fabric! Resetting...');
+      fabricCanvas.setDimensions({
+        width: INFINITE_CANVAS_SIZE,
+        height: INFINITE_CANVAS_SIZE
+      });
+      console.log('Canvas dimensions after reset:', canvasRef.current.width, canvasRef.current.height);
+    }
 
 
     // 创建frame（工作区域）
