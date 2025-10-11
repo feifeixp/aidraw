@@ -1182,15 +1182,7 @@ const ProfessionalGenerateGrid = ({
               <img
                 src={imageUrl}
                 alt={item.prompt}
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  console.error("图片加载失败:", imageUrl);
-                  e.currentTarget.style.display = 'none';
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    parent.innerHTML = '<div class="flex items-center justify-center h-full text-muted-foreground text-sm">加载失败</div>';
-                  }
-                }}
+                className="w-full h-full object-cover"
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
