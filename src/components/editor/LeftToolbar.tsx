@@ -90,33 +90,53 @@ export const LeftToolbar = ({
 
     setIsGenerating(true);
     try {
+      console.log("开始生成图片，提示词:", aiPrompt);
+      
       const { data, error } = await supabase.functions.invoke('ai-generate-image', {
         body: { prompt: aiPrompt }
       });
 
-      if (error) throw error;
+      console.log("Edge function 响应:", { data, error });
+
+      if (error) {
+        console.error("Edge function 错误:", error);
+        throw error;
+      }
 
       if (data?.imageUrl) {
+        console.log("收到图片 URL，长度:", data.imageUrl.length);
+        
+        // 验证是否为有效的 base64 图片
+        if (!data.imageUrl.startsWith('data:image/')) {
+          throw new Error("返回的不是有效的图片格式");
+        }
+
         window.dispatchEvent(new CustomEvent('addImageToCanvas', {
           detail: {
             imageUrl: data.imageUrl,
             name: "AI生成的图片"
           }
         }));
+        
         toast.success("图片已添加到画布");
         setShowAiGenerateDialog(false);
         setAiPrompt("");
       } else {
+        console.error("响应中没有 imageUrl");
         toast.error("未生成图片，请稍后重试");
       }
     } catch (error: any) {
       console.error("AI generation error:", error);
-      if (error.message?.includes("429")) {
+      
+      // 更详细的错误处理
+      if (error.message?.includes("Load failed")) {
+        toast.error("网络请求失败，请检查网络连接后重试");
+      } else if (error.message?.includes("429") || error.context?.status === 429) {
         toast.error("请求过于频繁，请稍后再试");
-      } else if (error.message?.includes("402")) {
+      } else if (error.message?.includes("402") || error.context?.status === 402) {
         toast.error("需要充值，请前往设置添加余额");
       } else {
-        toast.error(error.message || "图片生成失败");
+        toast.error(error.message || "图片生成失败，请重试");
       }
     } finally {
       setIsGenerating(false);
