@@ -349,7 +349,7 @@ export const EditorCanvas = ({
   // Handle mouse wheel zoom
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !frameRef.current) return;
 
     const handleWheel = (e: WheelEvent) => {
       // Prevent default scrolling
@@ -357,10 +357,43 @@ export const EditorCanvas = ({
         e.preventDefault();
         
         const delta = e.deltaY;
-        const zoomChange = delta > 0 ? -5 : 5; // Reduced from 10 to 5 for smoother control
+        const zoomChange = delta > 0 ? -2 : 2; // Smaller steps for precise control
         const newZoom = Math.max(10, Math.min(200, zoom + zoomChange));
         
+        if (newZoom === zoom) return; // No change
+        
+        // Calculate frame center in viewport before zoom
+        const frame = frameRef.current;
+        const oldScale = zoom / 100;
+        const newScale = newZoom / 100;
+        
+        // Frame center in canvas coordinates
+        const frameCenterX = (frame.left || 0) + (frame.width || 0) / 2;
+        const frameCenterY = (frame.top || 0) + (frame.height || 0) / 2;
+        
+        // Frame center position in scaled canvas before zoom
+        const oldFrameCenterX = frameCenterX * oldScale;
+        const oldFrameCenterY = frameCenterY * oldScale;
+        
+        // Frame center position in scaled canvas after zoom
+        const newFrameCenterX = frameCenterX * newScale;
+        const newFrameCenterY = frameCenterY * newScale;
+        
+        // Calculate scroll position to keep frame center in the same viewport position
+        const scrollCenterX = container.scrollLeft + container.clientWidth / 2;
+        const scrollCenterY = container.scrollTop + container.clientHeight / 2;
+        
+        const deltaX = newFrameCenterX - oldFrameCenterX;
+        const deltaY = newFrameCenterY - oldFrameCenterY;
+        
+        // Apply zoom
         onZoomChange(newZoom);
+        
+        // Adjust scroll to keep frame centered
+        requestAnimationFrame(() => {
+          container.scrollLeft += deltaX;
+          container.scrollTop += deltaY;
+        });
       }
     };
 
