@@ -30,6 +30,8 @@ export const EditorCanvas = ({
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const frameRef = useRef<Rect | null>(null);
+  const isWheelZoomingRef = useRef(false);
+  const prevZoomRef = useRef(zoom);
   
   // Keep saveStateRef up to date
   useEffect(() => {
@@ -378,10 +380,19 @@ export const EditorCanvas = ({
         const targetScrollLeft = canvasX * newScale - mouseX;
         const targetScrollTop = canvasY * newScale - mouseY;
         
+        // Mark as wheel zoom to prevent other effects from adjusting scroll
+        isWheelZoomingRef.current = true;
+        prevZoomRef.current = newZoom;
+        
         // Apply zoom and scroll together synchronously
         onZoomChange(newZoom);
         container.scrollLeft = targetScrollLeft;
         container.scrollTop = targetScrollTop;
+        
+        // Reset flag after a short delay
+        setTimeout(() => {
+          isWheelZoomingRef.current = false;
+        }, 50);
       }
     };
 
@@ -391,6 +402,40 @@ export const EditorCanvas = ({
       container.removeEventListener('wheel', handleWheel);
     };
   }, [zoom, onZoomChange]);
+
+  // Handle zoom changes from slider - keep viewport center fixed
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !frameRef.current) return;
+    
+    // Skip if this zoom change was triggered by wheel zoom
+    if (isWheelZoomingRef.current) return;
+    
+    // Skip on initial mount
+    if (prevZoomRef.current === zoom) return;
+    
+    const oldScale = prevZoomRef.current / 100;
+    const newScale = zoom / 100;
+    
+    // Get viewport center position
+    const viewportCenterX = container.clientWidth / 2;
+    const viewportCenterY = container.clientHeight / 2;
+    
+    // Calculate canvas coordinates at viewport center (before zoom)
+    const canvasX = (container.scrollLeft + viewportCenterX) / oldScale;
+    const canvasY = (container.scrollTop + viewportCenterY) / oldScale;
+    
+    // Calculate target scroll position to keep viewport center fixed
+    const targetScrollLeft = canvasX * newScale - viewportCenterX;
+    const targetScrollTop = canvasY * newScale - viewportCenterY;
+    
+    // Update scroll position
+    container.scrollLeft = targetScrollLeft;
+    container.scrollTop = targetScrollTop;
+    
+    // Update previous zoom
+    prevZoomRef.current = zoom;
+  }, [zoom]);
 
   // Handle pan with left click when pan tool is active
   useEffect(() => {
