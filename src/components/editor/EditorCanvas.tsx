@@ -31,9 +31,6 @@ export const EditorCanvas = ({
   const panStartRef = useRef({ x: 0, y: 0 });
   const frameRef = useRef<Rect | null>(null);
   
-  // 用于存储待应用的滚动位置
-  const pendingScrollRef = useRef<{ left: number; top: number } | null>(null);
-  const isZoomingRef = useRef(false);
   const prevZoomRef = useRef(zoom);
   
   // Keep saveStateRef up to date
@@ -351,19 +348,6 @@ export const EditorCanvas = ({
     });
   };
 
-  // 在缩放后立即应用滚动位置（在浏览器绘制前）
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container || !pendingScrollRef.current || !isZoomingRef.current) return;
-  
-    // 应用待处理的滚动位置
-    container.scrollLeft = pendingScrollRef.current.left;
-    container.scrollTop = pendingScrollRef.current.top;
-  
-    // 清空待处理状态
-    pendingScrollRef.current = null;
-    isZoomingRef.current = false;
-  }, [zoom]);
 
   // Handle mouse wheel zoom
   useEffect(() => {
@@ -406,15 +390,15 @@ export const EditorCanvas = ({
           const targetScrollLeft = canvasX * newScale - mouseX;
           const targetScrollTop = canvasY * newScale - mouseY;
           
-          // 存储待应用的滚动位置
-          pendingScrollRef.current = { 
-            left: targetScrollLeft, 
-            top: targetScrollTop 
-          };
-          isZoomingRef.current = true;
-          
-          // 触发缩放状态更新
+          // 先触发缩放状态更新
           onZoomChange(newZoom);
+          
+          // 在下一帧同步设置滚动位置，确保在DOM更新后立即执行
+          requestAnimationFrame(() => {
+            container.scrollLeft = targetScrollLeft;
+            container.scrollTop = targetScrollTop;
+          });
+          
           rafId = null;
         });
       }
@@ -434,9 +418,6 @@ export const EditorCanvas = ({
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !frameRef.current) return;
-    
-    // Skip if this zoom change was triggered by wheel zoom
-    if (isZoomingRef.current) return;
     
     // Skip on initial mount
     if (prevZoomRef.current === zoom) return;
