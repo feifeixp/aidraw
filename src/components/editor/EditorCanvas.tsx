@@ -297,13 +297,22 @@ export const EditorCanvas = ({
   return (
     <div 
       ref={containerRef}
-      className="flex items-center justify-center h-full bg-muted/20 p-4 overflow-auto"
+      className="h-full bg-muted/20 overflow-auto"
     >
       <div 
-        className="shadow-2xl transition-transform"
-        style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
+        className="flex items-center justify-center"
+        style={{ 
+          minWidth: `${(canvasSize.width || 1024) * 1.5}px`,
+          minHeight: `${(canvasSize.height || 768) * 1.5}px`,
+          padding: '25%'
+        }}
       >
-        <canvas ref={canvasRef} className="border border-border" />
+        <div 
+          className="shadow-2xl transition-transform"
+          style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
+        >
+          <canvas ref={canvasRef} className="border border-border" />
+        </div>
       </div>
     </div>
   );
