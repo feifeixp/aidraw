@@ -694,7 +694,7 @@ export const LeftToolbar = ({
       });
       let instruction = `Change this character's pose to: ${pose}. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position.`;
       if (referenceImage) {
-        instruction = `Change this character's pose to match the pose shown in the reference image. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose and position to match the reference pose.`;
+        instruction = `Change this character's pose and facial expression to match the reference image. Copy both the body pose AND the facial expression (including emotion, eyes, mouth, eyebrows) from the reference image. Keep the character's appearance, clothing, style, and background exactly the same, only change the body pose, position, and facial expression to match the reference.`;
       }
       const requestBody: any = {
         imageUrl: imageDataURL,
