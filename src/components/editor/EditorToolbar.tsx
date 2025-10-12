@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera, Maximize2, Hand, Copy } from "lucide-react";
+import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera, Maximize2, Hand } from "lucide-react";
 import { CanvasSizeSettings } from "./CanvasSizeSettings";
 import { Canvas as FabricCanvas, FabricImage } from "fabric";
 import { toast } from "sonner";
@@ -106,29 +106,6 @@ export const EditorToolbar = ({
     toast.success("已移到最后");
   };
 
-  const handleDuplicate = async () => {
-    const activeObject = canvas?.getActiveObject();
-    if (!activeObject) {
-      toast.error("请先选择一个对象");
-      return;
-    }
-
-    try {
-      const cloned = await activeObject.clone();
-      cloned.set({
-        left: (cloned.left || 0) + 10,
-        top: (cloned.top || 0) + 10,
-      });
-      canvas?.add(cloned);
-      canvas?.setActiveObject(cloned);
-      canvas?.renderAll();
-      saveState();
-      toast.success("已复制元素");
-    } catch (error) {
-      console.error("Clone error:", error);
-      toast.error("复制失败");
-    }
-  };
   const handleRedraw = async () => {
     if (!canvas) {
       toast.error("画布未初始化");
@@ -511,13 +488,6 @@ export const EditorToolbar = ({
       </Button>
       <Button variant="outline" size="sm" onClick={handleRedo} disabled={!canRedo} className="shrink-0" title="重做">
         <Redo className="h-4 w-4" />
-      </Button>
-
-      <Separator orientation="vertical" className="h-6 shrink-0" />
-
-      <Button variant="outline" size="sm" onClick={handleDuplicate} className="shrink-0" title="复制">
-        <Copy className="h-4 w-4" />
-        <span className="ml-1">复制</span>
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />

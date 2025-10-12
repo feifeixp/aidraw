@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets } from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Copy } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -452,6 +452,31 @@ export const LeftToolbar = ({
       toast.error("请先选择一个对象");
     }
   };
+  
+  const handleDuplicate = async () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+
+    try {
+      const cloned = await activeObject.clone();
+      cloned.set({
+        left: (cloned.left || 0) + 10,
+        top: (cloned.top || 0) + 10,
+      });
+      canvas?.add(cloned);
+      canvas?.setActiveObject(cloned);
+      canvas?.renderAll();
+      saveState();
+      toast.success("已复制元素");
+    } catch (error) {
+      console.error("Clone error:", error);
+      toast.error("复制失败");
+    }
+  };
+  
   const handleColorAdjust = () => {
     toast.info("颜色调整功能开发中");
   };
@@ -905,6 +930,11 @@ export const LeftToolbar = ({
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleFlip}>
           <FlipHorizontal className="h-4 w-4" />
           {!isCollapsed && <span className="ml-2">镜像</span>}
+        </Button>
+
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleDuplicate}>
+          <Copy className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">复制</span>}
         </Button>
 
         <Separator />
