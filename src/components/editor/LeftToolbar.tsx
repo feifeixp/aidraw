@@ -599,6 +599,41 @@ export const LeftToolbar = ({
     saveState();
     toast.success(isLocked ? "已解锁" : "已锁定");
   };
+
+  const handleUnlockAll = () => {
+    if (!canvas) return;
+    
+    const objects = canvas.getObjects();
+    let unlockedCount = 0;
+    
+    objects.forEach(obj => {
+      // 跳过工作区域frame
+      if ((obj as any).name === 'workframe') return;
+      
+      // 如果对象被锁定，则解锁
+      if (!obj.selectable || !obj.evented) {
+        obj.set({
+          selectable: true,
+          evented: true,
+          lockMovementX: false,
+          lockMovementY: false,
+          lockRotation: false,
+          lockScalingX: false,
+          lockScalingY: false,
+        });
+        unlockedCount++;
+      }
+    });
+    
+    canvas.renderAll();
+    saveState();
+    
+    if (unlockedCount > 0) {
+      toast.success(`已解锁 ${unlockedCount} 个对象`);
+    } else {
+      toast.info("没有被锁定的对象");
+    }
+  };
   
   const handleColorAdjust = () => {
     toast.info("颜色调整功能开发中");
@@ -913,6 +948,17 @@ export const LeftToolbar = ({
               {!isCollapsed && <span className="ml-2">锁定</span>}
             </>
           )}
+        </Button>
+
+        {/* Unlock All */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} 
+          onClick={handleUnlockAll}
+        >
+          <Unlock className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">解锁全部</span>}
         </Button>
 
       </div>
