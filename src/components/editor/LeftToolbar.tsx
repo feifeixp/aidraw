@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Copy, User, Box } from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Copy, User, Box, Film } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,8 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
+import { StoryboardDialog } from "./StoryboardDialog";
+
 interface LeftToolbarProps {
   canvas: FabricCanvas | null;
   saveState: () => void;
@@ -61,6 +63,8 @@ export const LeftToolbar = ({
   }>>([]);
   const [showAddElementDialog, setShowAddElementDialog] = useState(false);
   const [selectedElementType, setSelectedElementType] = useState<'character' | 'scene' | 'prop' | 'effect' | null>(null);
+  const [showStoryboardDialog, setShowStoryboardDialog] = useState(false);
+  const [isGeneratingStoryboard, setIsGeneratingStoryboard] = useState(false);
 
   // Load preset pose references
   useEffect(() => {
@@ -194,6 +198,63 @@ export const LeftToolbar = ({
       }
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateStoryboard = async (prompt: string, customPrompt?: string) => {
+    setIsGeneratingStoryboard(true);
+    try {
+      // Combine preset prompt with custom prompt if provided
+      const finalPrompt = customPrompt 
+        ? `${prompt}. Additional details: ${customPrompt}` 
+        : prompt;
+
+      console.log("生成分镜草图，提示词:", finalPrompt);
+      
+      const { data, error } = await supabase.functions.invoke('ai-generate-image', {
+        body: { prompt: finalPrompt }
+      });
+
+      if (error) {
+        console.error("Edge function 错误:", error);
+        throw error;
+      }
+
+      if (data?.imageUrl) {
+        // 验证是否为有效的 base64 图片
+        if (!data.imageUrl.startsWith('data:image/')) {
+          throw new Error("返回的不是有效的图片格式");
+        }
+
+        window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+          detail: {
+            imageUrl: data.imageUrl,
+            name: "分镜草图",
+            elementType: 'scene'
+          }
+        }));
+        
+        setShowStoryboardDialog(false);
+        toast.success("分镜草图生成成功");
+        onActionComplete?.();
+      } else {
+        console.error("响应中没有 imageUrl");
+        toast.error("未生成草图，请稍后重试");
+      }
+    } catch (error: any) {
+      console.error("Storyboard generation error:", error);
+      
+      if (error.message?.includes("Load failed")) {
+        toast.error("网络请求失败，请检查网络连接后重试");
+      } else if (error.message?.includes("429") || error.context?.status === 429) {
+        toast.error("请求过于频繁，请稍后再试");
+      } else if (error.message?.includes("402") || error.context?.status === 402) {
+        toast.error("需要充值，请前往设置添加余额");
+      } else {
+        toast.error(error.message || "草图生成失败，请重试");
+      }
+    } finally {
+      setIsGeneratingStoryboard(false);
     }
   };
 
@@ -949,6 +1010,12 @@ export const LeftToolbar = ({
           {!isCollapsed && <span className="ml-2">添加元素</span>}
         </Button>
 
+        {/* Storyboard */}
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={() => setShowStoryboardDialog(true)} disabled={isGenerating || isTaskProcessing}>
+          <Film className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">分镜构图</span>}
+        </Button>
+
         {/* Add Text */}
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleAddText}>
           <Type className="h-4 w-4" />
@@ -1549,6 +1616,14 @@ export const LeftToolbar = ({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Storyboard Dialog */}
+      <StoryboardDialog
+        open={showStoryboardDialog}
+        onOpenChange={setShowStoryboardDialog}
+        onGenerate={handleGenerateStoryboard}
+        isGenerating={isGeneratingStoryboard}
+      />
     </>;
 };
 
