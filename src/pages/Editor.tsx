@@ -7,6 +7,7 @@ import { LeftToolbar } from "@/components/editor/LeftToolbar";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { TaskQueueDisplay } from "@/components/editor/TaskQueueDisplay";
 import { DraftsList } from "@/components/editor/DraftsList";
+import { Tutorial } from "@/components/editor/Tutorial";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -84,7 +85,18 @@ const Editor = () => {
   const [isTaskProcessing, setIsTaskProcessing] = useState(false);
   const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
+  const [showTutorial, setShowTutorial] = useState(false);
   const isMobile = useIsMobile();
+
+  // Check if tutorial should be shown
+  useEffect(() => {
+    const tutorialCompleted = localStorage.getItem("editor-tutorial-completed");
+    if (!tutorialCompleted) {
+      // Show tutorial after a short delay to let the UI settle
+      const timer = setTimeout(() => setShowTutorial(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Save canvas state to history
   const saveState = useCallback(() => {
@@ -245,8 +257,9 @@ const Editor = () => {
       )}
     </>;
   return <div className="h-screen w-full bg-background flex flex-col">
+      {showTutorial && <Tutorial onComplete={() => setShowTutorial(false)} />}
       <TaskQueueDisplay currentTask={currentTask} />
-      <div className="border-b border-border p-2 flex items-center gap-2 my-[20px] overflow-x-auto">
+      <div className="border-b border-border p-2 flex items-center gap-2 my-[20px] overflow-x-auto editor-toolbar">
         {isMobile && <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="shrink-0">
@@ -257,12 +270,14 @@ const Editor = () => {
               {leftToolbarContent}
             </SheetContent>
           </Sheet>}
-        <DraftsList 
-          canvas={canvas} 
-          onLoadDraft={handleLoadDraft}
-          currentDraftId={currentDraftId}
-          onDraftIdChange={setCurrentDraftId}
-        />
+        <div className="drafts-list">
+          <DraftsList 
+            canvas={canvas} 
+            onLoadDraft={handleLoadDraft}
+            currentDraftId={currentDraftId}
+            onDraftIdChange={setCurrentDraftId}
+          />
+        </div>
         <div className="flex-1 min-w-0 overflow-x-auto">
           <EditorToolbar
             canvas={canvas} 
@@ -285,7 +300,7 @@ const Editor = () => {
         </div>
       </div>
       
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden editor-canvas">
         <EditorCanvas 
           canvas={canvas} 
           setCanvas={setCanvas} 
@@ -296,7 +311,7 @@ const Editor = () => {
           onZoomChange={setZoom}
         />
         {!isMobile && (
-          <div className={`absolute left-4 top-4 ${isLeftToolbarCollapsed ? 'w-16' : 'w-48'} h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden transition-all duration-300`}>
+          <div className={`absolute left-4 top-4 ${isLeftToolbarCollapsed ? 'w-16' : 'w-48'} h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden transition-all duration-300 left-toolbar`}>
             {leftToolbarContent}
           </div>
         )}

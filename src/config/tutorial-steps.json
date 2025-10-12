@@ -1,0 +1,38 @@
+{
+  "steps": [
+    {
+      "id": "welcome",
+      "title": "欢迎使用编辑器",
+      "description": "让我们快速了解一下主要功能",
+      "position": "center"
+    },
+    {
+      "id": "toolbar",
+      "title": "工具栏",
+      "description": "这里是主工具栏，包含撤销、重做、画布设置等功能",
+      "targetSelector": ".editor-toolbar",
+      "position": "bottom"
+    },
+    {
+      "id": "left-toolbar",
+      "title": "左侧工具面板",
+      "description": "使用这些工具添加图形、文字、图片等元素到画布",
+      "targetSelector": ".left-toolbar",
+      "position": "right"
+    },
+    {
+      "id": "canvas",
+      "title": "画布区域",
+      "description": "在这里创建和编辑你的设计。可以通过滚轮缩放，按H键切换平移模式",
+      "targetSelector": ".editor-canvas",
+      "position": "center"
+    },
+    {
+      "id": "drafts",
+      "title": "草稿管理",
+      "description": "保存和管理你的设计草稿，支持本地存储和云端同步",
+      "targetSelector": ".drafts-list",
+      "position": "bottom"
+    }
+  ]
+}
