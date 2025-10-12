@@ -311,7 +311,7 @@ export const PropertiesPanel = ({
     }
   };
   if (!selectedObject) {
-    return <div className="h-full flex items-center justify-center p-4 text-muted-foreground text-sm my-[15px] rounded-sm bg-slate-100">
+    return <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
         <div className="text-center">
           <Square className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p>选择对象以编辑属性</p>
@@ -501,7 +501,7 @@ export const PropertiesPanel = ({
       </div>
     </>;
   };
-  return <div className="h-full overflow-auto p-4 space-y-4">
+  return <div className="space-y-4">
       {selectedObject.type === 'text' && renderTextProperties()}
       {['rect', 'circle', 'polygon', 'path'].includes(selectedObject.type) && renderShapeProperties()}
       {selectedObject.type === 'image' && renderImageProperties()}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { Canvas as FabricCanvas } from "fabric";
-import { Menu } from "lucide-react";
+import { Menu, ChevronLeft, ChevronRight } from "lucide-react";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
@@ -84,6 +84,7 @@ const Editor = () => {
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [isTaskProcessing, setIsTaskProcessing] = useState(false);
   const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState(false);
+  const [isPropertiesPanelCollapsed, setIsPropertiesPanelCollapsed] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
   const [showTutorial, setShowTutorial] = useState(false);
   const isMobile = useIsMobile();
@@ -236,26 +237,21 @@ const Editor = () => {
       toast.error("加载草稿失败");
     }
   }, [canvas, saveState]);
-  const leftToolbarContent = <>
-      <div className="overflow-auto">
-        <LeftToolbar 
-          canvas={canvas} 
-          saveState={saveState} 
-          isTaskProcessing={isTaskProcessing} 
-          startTask={startTask} 
-          completeTask={completeTask} 
-          cancelTask={cancelTask} 
-          onActionComplete={isMobile ? handleCloseMobileMenu : undefined}
-          isCollapsed={isLeftToolbarCollapsed}
-          onToggleCollapse={() => setIsLeftToolbarCollapsed(!isLeftToolbarCollapsed)}
-        />
-      </div>
-      {!isLeftToolbarCollapsed && (
-        <div className="flex-1 border-t border-border overflow-hidden">
-          <PropertiesPanel canvas={canvas} saveState={saveState} />
-        </div>
-      )}
-    </>;
+  const leftToolbarContent = (
+    <div className="overflow-auto h-full">
+      <LeftToolbar 
+        canvas={canvas} 
+        saveState={saveState} 
+        isTaskProcessing={isTaskProcessing} 
+        startTask={startTask} 
+        completeTask={completeTask} 
+        cancelTask={cancelTask} 
+        onActionComplete={isMobile ? handleCloseMobileMenu : undefined}
+        isCollapsed={isLeftToolbarCollapsed}
+        onToggleCollapse={() => setIsLeftToolbarCollapsed(!isLeftToolbarCollapsed)}
+      />
+    </div>
+  );
   return <div className="h-screen w-full bg-background flex flex-col">
       {showTutorial && <Tutorial onComplete={() => setShowTutorial(false)} />}
       <TaskQueueDisplay currentTask={currentTask} />
@@ -300,7 +296,7 @@ const Editor = () => {
         </div>
       </div>
       
-      <div className="flex-1 relative overflow-hidden editor-canvas">
+      <div className="flex-1 relative overflow-hidden editor-canvas flex">
         <EditorCanvas 
           canvas={canvas} 
           setCanvas={setCanvas} 
@@ -314,6 +310,39 @@ const Editor = () => {
           <div className={`absolute left-4 top-4 ${isLeftToolbarCollapsed ? 'w-16' : 'w-48'} h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden transition-all duration-300 left-toolbar`}>
             {leftToolbarContent}
           </div>
+        )}
+        
+        {/* Right Properties Panel */}
+        {!isMobile && !isPropertiesPanelCollapsed && (
+          <div className="absolute right-4 top-4 w-80 h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <h3 className="font-medium">属性面板</h3>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsPropertiesPanelCollapsed(true)}
+                className="h-8 w-8"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <PropertiesPanel canvas={canvas} saveState={saveState} />
+            </div>
+          </div>
+        )}
+        
+        {/* Collapsed Properties Panel Toggle */}
+        {!isMobile && isPropertiesPanelCollapsed && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsPropertiesPanelCollapsed(false)}
+            className="absolute right-4 top-4 z-10 bg-background/95 backdrop-blur-sm"
+            title="显示属性面板"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
         )}
       </div>
     </div>;
