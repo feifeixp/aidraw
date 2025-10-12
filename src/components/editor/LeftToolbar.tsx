@@ -1185,7 +1185,7 @@ export const LeftToolbar = ({
                 <div className="space-y-2">
                   <Label>预设参考图片</Label>
                   <ScrollArea className="h-64 rounded-md border p-2">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-5 gap-2">
                       {presetReferences.map((ref) => (
                         <div
                           key={ref.id}
