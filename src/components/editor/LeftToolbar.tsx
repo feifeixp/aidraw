@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box } from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Lock, Unlock } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,31 @@ export const LeftToolbar = ({
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
   const [showAddElementDialog, setShowAddElementDialog] = useState(false);
   const [selectedElementType, setSelectedElementType] = useState<'character' | 'scene' | 'prop' | 'effect' | null>(null);
+  const [isObjectLocked, setIsObjectLocked] = useState(false);
+
+  // Update lock state when selection changes
+  useEffect(() => {
+    if (!canvas) return;
+    
+    const updateLockState = () => {
+      const activeObject = canvas.getActiveObject();
+      if (activeObject) {
+        setIsObjectLocked(activeObject.lockMovementX || false);
+      } else {
+        setIsObjectLocked(false);
+      }
+    };
+    
+    canvas.on('selection:created', updateLockState);
+    canvas.on('selection:updated', updateLockState);
+    canvas.on('selection:cleared', () => setIsObjectLocked(false));
+    
+    return () => {
+      canvas.off('selection:created', updateLockState);
+      canvas.off('selection:updated', updateLockState);
+      canvas.off('selection:cleared', () => setIsObjectLocked(false));
+    };
+  }, [canvas]);
 
 
   const handleAddElement = () => {
@@ -505,6 +530,76 @@ export const LeftToolbar = ({
     }
   };
   
+  // Layer order functions
+  const handleBringToFront = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    canvas?.bringObjectToFront(activeObject);
+    canvas?.renderAll();
+    saveState();
+    toast.success("已置于顶层");
+  };
+
+  const handleSendToBack = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    canvas?.sendObjectToBack(activeObject);
+    canvas?.renderAll();
+    saveState();
+    toast.success("已置于底层");
+  };
+
+  const handleBringForward = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    canvas?.bringObjectForward(activeObject);
+    canvas?.renderAll();
+    saveState();
+    toast.success("已上移一层");
+  };
+
+  const handleSendBackwards = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    canvas?.sendObjectBackwards(activeObject);
+    canvas?.renderAll();
+    saveState();
+    toast.success("已下移一层");
+  };
+
+  const handleToggleLock = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    const isLocked = activeObject.lockMovementX || false;
+    activeObject.set({
+      lockMovementX: !isLocked,
+      lockMovementY: !isLocked,
+      lockRotation: !isLocked,
+      lockScalingX: !isLocked,
+      lockScalingY: !isLocked,
+      selectable: isLocked, // If locked, make unselectable; if unlocked, make selectable
+    });
+    setIsObjectLocked(!isLocked);
+    canvas?.renderAll();
+    saveState();
+    toast.success(isLocked ? "已解锁" : "已锁定");
+  };
+  
   const handleColorAdjust = () => {
     toast.info("颜色调整功能开发中");
   };
@@ -768,6 +863,56 @@ export const LeftToolbar = ({
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleDuplicate}>
           <Copy className="h-4 w-4" />
           {!isCollapsed && <span className="ml-2">复制</span>}
+        </Button>
+
+        <Separator />
+
+        {/* Layer Order */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`}>
+              <ChevronsUp className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">图层顺序</span>}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuItem onClick={handleBringToFront}>
+              <ChevronsUp className="h-4 w-4 mr-2" />
+              置于顶层
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleBringForward}>
+              <ArrowUp className="h-4 w-4 mr-2" />
+              上移一层
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSendBackwards}>
+              <ArrowDown className="h-4 w-4 mr-2" />
+              下移一层
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSendToBack}>
+              <ChevronsDown className="h-4 w-4 mr-2" />
+              置于底层
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Lock/Unlock */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} 
+          onClick={handleToggleLock}
+        >
+          {isObjectLocked ? (
+            <>
+              <Unlock className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">解锁</span>}
+            </>
+          ) : (
+            <>
+              <Lock className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">锁定</span>}
+            </>
+          )}
         </Button>
 
       </div>
