@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Palette, RotateCcw, Sun, Moon, Droplets, Cloud, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Sparkles } from "lucide-react";
+import { Palette, RotateCcw, Sun, Moon, Droplets, Cloud, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,7 +22,6 @@ export const ColorAdjustmentPanel = ({ canvas, selectedObject, saveState }: Colo
   const [hue, setHue] = useState(0);
   const [saturation, setSaturation] = useState(0);
   const [brightness, setBrightness] = useState(0);
-  const [isAIProcessing, setIsAIProcessing] = useState(false);
 
   const applyFilters = (
     newChannel: ColorChannel = channel,
@@ -130,70 +129,6 @@ export const ColorAdjustmentPanel = ({ canvas, selectedObject, saveState }: Colo
     toast.success("颜色调整已重置");
   };
 
-  // AI Environment effects
-  const applyAIEnvironment = async (instruction: string, presetName: string) => {
-    if (!selectedObject || !canvas || selectedObject.type !== 'image') {
-      toast.error("请先选择一张图片");
-      return;
-    }
-
-    setIsAIProcessing(true);
-    try {
-      // Export current image as data URL
-      const imageDataURL = selectedObject.toDataURL({
-        format: 'png',
-        quality: 1,
-      });
-
-      // Call the AI edit function
-      const { data, error } = await supabase.functions.invoke('ai-edit-image', {
-        body: {
-          imageUrl: imageDataURL,
-          instruction: instruction,
-        },
-      });
-
-      if (error) throw error;
-
-      if (!data?.editedImageUrl) {
-        throw new Error('未收到编辑后的图片');
-      }
-
-      // Load the edited image and replace the current one
-      const img = await FabricImage.fromURL(data.editedImageUrl, {
-        crossOrigin: 'anonymous',
-      });
-
-      // Preserve the position and scale of the original image
-      const left = selectedObject.left;
-      const top = selectedObject.top;
-      const scaleX = selectedObject.scaleX;
-      const scaleY = selectedObject.scaleY;
-      const angle = selectedObject.angle;
-
-      img.set({
-        left,
-        top,
-        scaleX,
-        scaleY,
-        angle,
-      });
-
-      canvas.remove(selectedObject);
-      canvas.add(img);
-      canvas.setActiveObject(img);
-      canvas.renderAll();
-      saveState();
-
-      toast.success(`已应用${presetName}效果`);
-    } catch (error: any) {
-      console.error('AI环境效果失败:', error);
-      toast.error(error.message || 'AI处理失败，请重试');
-    } finally {
-      setIsAIProcessing(false);
-    }
-  };
-
   // Environment preset configurations
   const applyPreset = (presetHue: number, presetSaturation: number, presetBrightness: number, presetName: string) => {
     setChannel("all");
@@ -229,34 +164,6 @@ export const ColorAdjustmentPanel = ({ canvas, selectedObject, saveState }: Colo
     { name: "复古", icon: Palette, hue: 25, saturation: -15, brightness: -10 },
   ];
 
-  // AI Environment presets with detailed instructions
-  const aiEnvironmentPresets = [
-    // Time of day
-    { name: "白天", icon: Sun, instruction: "Transform this image to a bright daytime scene with clear blue sky and natural sunlight" },
-    { name: "夜晚", icon: Moon, instruction: "Transform this image to a nighttime scene with dark sky, moonlight, and ambient night lighting" },
-    { name: "黎明", icon: Sunrise, instruction: "Transform this image to an early morning dawn scene with golden sunrise light and soft morning glow" },
-    { name: "黄昏", icon: Sunset, instruction: "Transform this image to a sunset scene with warm orange and pink sky and golden hour lighting" },
-    
-    // Weather conditions
-    { name: "晴天", icon: Sun, instruction: "Transform this image to a sunny clear day with bright sunlight and clear blue sky" },
-    { name: "雨天", icon: CloudRain, instruction: "Transform this image to a rainy day scene with rain, wet surfaces, and overcast sky" },
-    { name: "雪天", icon: CloudSnow, instruction: "Transform this image to a snowy winter scene with falling snow and snow-covered surfaces" },
-    { name: "阴天", icon: Cloud, instruction: "Transform this image to an overcast cloudy day with soft diffused light and gray clouds" },
-    
-    // Special weather
-    { name: "雾天", icon: CloudFog, instruction: "Transform this image to a foggy misty scene with reduced visibility and atmospheric fog" },
-    { name: "风暴", icon: CloudRain, instruction: "Transform this image to a stormy scene with dramatic dark clouds and intense weather" },
-    
-    // Color tones
-    { name: "暖色调", icon: Droplets, instruction: "Transform this image to have warm color tones with golden, orange, and red hues" },
-    { name: "冷色调", icon: Droplets, instruction: "Transform this image to have cool color tones with blue, cyan, and purple hues" },
-    
-    // Atmosphere
-    { name: "梦幻", icon: Sparkles, instruction: "Transform this image to have a dreamy, ethereal atmosphere with soft glows and magical lighting" },
-    { name: "复古", icon: Palette, instruction: "Transform this image to have a vintage retro look with faded colors and nostalgic atmosphere" },
-    { name: "赛博朋克", icon: Palette, instruction: "Transform this image to have a cyberpunk style with neon lights, futuristic atmosphere, and vibrant colors" },
-    { name: "水彩", icon: Droplets, instruction: "Transform this image to have a watercolor painting style with soft edges and artistic effects" },
-  ];
 
   if (!selectedObject || selectedObject.type !== 'image') {
     return null;
@@ -280,10 +187,9 @@ export const ColorAdjustmentPanel = ({ canvas, selectedObject, saveState }: Colo
       </div>
 
       <Tabs defaultValue="manual" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="manual">手动调整</TabsTrigger>
           <TabsTrigger value="environment">色彩预设</TabsTrigger>
-          <TabsTrigger value="ai">AI环境</TabsTrigger>
         </TabsList>
 
         <TabsContent value="manual" className="space-y-4 mt-4">
@@ -424,96 +330,6 @@ export const ColorAdjustmentPanel = ({ canvas, selectedObject, saveState }: Colo
                 ))}
               </div>
             </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="ai" className="mt-4">
-          <div className="space-y-4">
-            <div className="text-sm text-muted-foreground mb-3">
-              使用AI生成逼真的环境效果
-            </div>
-
-            <div>
-              <Label className="mb-3 block">时间</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {aiEnvironmentPresets.slice(0, 4).map((preset) => (
-                  <Button
-                    key={preset.name}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyAIEnvironment(preset.instruction, preset.name)}
-                    disabled={isAIProcessing}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <preset.icon className="w-4 h-4" />
-                    {preset.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-3 block">天气</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {aiEnvironmentPresets.slice(4, 10).map((preset) => (
-                  <Button
-                    key={preset.name}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyAIEnvironment(preset.instruction, preset.name)}
-                    disabled={isAIProcessing}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <preset.icon className="w-4 h-4" />
-                    {preset.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-3 block">色调</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {aiEnvironmentPresets.slice(10, 12).map((preset) => (
-                  <Button
-                    key={preset.name}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyAIEnvironment(preset.instruction, preset.name)}
-                    disabled={isAIProcessing}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <preset.icon className="w-4 h-4" />
-                    {preset.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-3 block">风格</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {aiEnvironmentPresets.slice(12).map((preset) => (
-                  <Button
-                    key={preset.name}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyAIEnvironment(preset.instruction, preset.name)}
-                    disabled={isAIProcessing}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <preset.icon className="w-4 h-4" />
-                    {preset.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {isAIProcessing && (
-              <div className="text-sm text-center text-muted-foreground py-2">
-                AI正在处理中，请稍候...
-              </div>
-            )}
           </div>
         </TabsContent>
       </Tabs>

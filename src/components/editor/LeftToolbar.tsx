@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -933,9 +933,10 @@ export const LeftToolbar = ({
             <DialogTitle>场景调整</DialogTitle>
           </DialogHeader>
           <Tabs defaultValue="distance" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="distance">拍摄距离</TabsTrigger>
               <TabsTrigger value="angle">镜头角度</TabsTrigger>
+              <TabsTrigger value="environment">AI环境</TabsTrigger>
             </TabsList>
             <TabsContent value="distance" className="space-y-2">
               <Button onClick={() => handleAdjustCamera("a full shot showing the entire subject from head to toe", "全景镜头")} className="w-full">全景镜头 (Full Shot)</Button>
@@ -951,6 +952,102 @@ export const LeftToolbar = ({
               <Button onClick={() => handleAdjustCamera("an eye level shot at the subject's eye level", "平视镜头")} className="w-full">平视镜头 (Eye Level)</Button>
               <Button onClick={() => handleAdjustCamera("rotate the camera view 30 degrees to the left", "左转30度")} className="w-full">左转30度 (Rotate Left 30°)</Button>
               <Button onClick={() => handleAdjustCamera("rotate the camera view 30 degrees to the right", "右转30度")} className="w-full">右转30度 (Rotate Right 30°)</Button>
+            </TabsContent>
+            
+            <TabsContent value="environment" className="space-y-3">
+              <ScrollArea className="h-[400px] pr-4">
+                {/* Time of day */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">时间</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={() => handleAdjustCamera("Transform this image to a bright daytime scene with clear blue sky and natural sunlight", "白天")} className="w-full" disabled={isTaskProcessing}>
+                      <Sun className="w-4 h-4 mr-2" />
+                      白天
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to a nighttime scene with dark sky, moonlight, and ambient night lighting", "夜晚")} className="w-full" disabled={isTaskProcessing}>
+                      <Moon className="w-4 h-4 mr-2" />
+                      夜晚
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to an early morning dawn scene with golden sunrise light and soft morning glow", "黎明")} className="w-full" disabled={isTaskProcessing}>
+                      <Sunrise className="w-4 h-4 mr-2" />
+                      黎明
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to a sunset scene with warm orange and pink sky and golden hour lighting", "黄昏")} className="w-full" disabled={isTaskProcessing}>
+                      <Sunset className="w-4 h-4 mr-2" />
+                      黄昏
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Weather */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">天气</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={() => handleAdjustCamera("Transform this image to a sunny clear day with bright sunlight and clear blue sky", "晴天")} className="w-full" disabled={isTaskProcessing}>
+                      <Sun className="w-4 h-4 mr-2" />
+                      晴天
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to a rainy day scene with rain, wet surfaces, and overcast sky", "雨天")} className="w-full" disabled={isTaskProcessing}>
+                      <CloudRain className="w-4 h-4 mr-2" />
+                      雨天
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to a snowy winter scene with falling snow and snow-covered surfaces", "雪天")} className="w-full" disabled={isTaskProcessing}>
+                      <CloudSnow className="w-4 h-4 mr-2" />
+                      雪天
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to an overcast cloudy day with soft diffused light and gray clouds", "阴天")} className="w-full" disabled={isTaskProcessing}>
+                      <Cloud className="w-4 h-4 mr-2" />
+                      阴天
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to a foggy misty scene with reduced visibility and atmospheric fog", "雾天")} className="w-full" disabled={isTaskProcessing}>
+                      <CloudFog className="w-4 h-4 mr-2" />
+                      雾天
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to a stormy scene with dramatic dark clouds and intense weather", "风暴")} className="w-full" disabled={isTaskProcessing}>
+                      <CloudRain className="w-4 h-4 mr-2" />
+                      风暴
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Color Tones */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">色调</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={() => handleAdjustCamera("Transform this image to have warm color tones with golden, orange, and red hues", "暖色调")} className="w-full" disabled={isTaskProcessing}>
+                      <Droplets className="w-4 h-4 mr-2" />
+                      暖色调
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to have cool color tones with blue, cyan, and purple hues", "冷色调")} className="w-full" disabled={isTaskProcessing}>
+                      <Droplets className="w-4 h-4 mr-2" />
+                      冷色调
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Atmosphere */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">氛围</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={() => handleAdjustCamera("Transform this image to have a dreamy, ethereal atmosphere with soft glows and magical lighting", "梦幻")} className="w-full" disabled={isTaskProcessing}>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      梦幻
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to have a vintage retro look with faded colors and nostalgic atmosphere", "复古")} className="w-full" disabled={isTaskProcessing}>
+                      <Palette className="w-4 h-4 mr-2" />
+                      复古
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to have a cyberpunk style with neon lights, futuristic atmosphere, and vibrant colors", "赛博朋克")} className="w-full" disabled={isTaskProcessing}>
+                      <Palette className="w-4 h-4 mr-2" />
+                      赛博朋克
+                    </Button>
+                    <Button onClick={() => handleAdjustCamera("Transform this image to have a watercolor painting style with soft edges and artistic effects", "水彩")} className="w-full" disabled={isTaskProcessing}>
+                      <Droplets className="w-4 h-4 mr-2" />
+                      水彩
+                    </Button>
+                  </div>
+                </div>
+              </ScrollArea>
             </TabsContent>
           </Tabs>
         </DialogContent>
