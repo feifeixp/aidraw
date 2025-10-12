@@ -1,12 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Sparkles, Settings, Pencil, ChevronDown, Home, ExternalLink, LogOut, User } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 const Navigation = () => {
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
+  const [hasHovered, setHasHovered] = useState(false);
+
+  // Ensure navigation starts hidden and only shows on hover
+  useEffect(() => {
+    setIsVisible(false);
+  }, [location.pathname]);
+
+  const handleMouseEnter = () => {
+    setIsVisible(true);
+    setHasHovered(true);
+  };
   const {
     user,
     isAdmin,
@@ -35,10 +46,27 @@ const Navigation = () => {
     });
   }
   return <>
-      {/* Top indicator bar - always visible */}
-      <div onMouseEnter={() => setIsVisible(true)} onClick={() => setIsVisible(!isVisible)} className="fixed top-0 left-0 right-0 h-8 w-300 flex items-center justify-center z-50 cursor-pointer rounded-none">
-        <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-300", isVisible && "rotate-180")} />
-      </div>
+      {/* Top hover area - invisible trigger */}
+      <div 
+        onMouseEnter={handleMouseEnter} 
+        className="fixed top-0 left-0 right-0 h-4 z-50 cursor-pointer"
+      />
+
+      {/* Top indicator - only shows after first hover */}
+      {hasHovered && (
+        <div 
+          onMouseEnter={handleMouseEnter} 
+          onClick={() => setIsVisible(!isVisible)} 
+          className={cn(
+            "fixed top-0 left-0 right-0 h-6 flex items-center justify-center z-50 cursor-pointer transition-opacity duration-300",
+            isVisible ? "opacity-0 pointer-events-none" : "opacity-100"
+          )}
+        >
+          <div className="bg-background/80 backdrop-blur-sm rounded-b-lg px-4 py-1">
+            <ChevronDown className="h-3 w-3 text-muted-foreground/50" />
+          </div>
+        </div>
+      )}
 
       {/* Main navigation bar */}
       <nav className={cn("fixed top-0 left-0 right-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur transition-all duration-300 overflow-x-auto", isVisible ? "translate-y-0" : "-translate-y-full")} onMouseLeave={() => setIsVisible(false)}>
