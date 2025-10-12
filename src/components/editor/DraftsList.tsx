@@ -88,60 +88,126 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
       const timestamp = Date.now();
       const draftId = currentDraftId && !forceNew ? currentDraftId : timestamp.toString();
       
-      // 1. 保存到本地存储
-      const latestDraftsJson = localStorage.getItem('editor-drafts-list');
-      const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
+      // 检查数据大小
+      const dataSizeKB = Math.round(canvasJson.length / 1024);
+      console.log(`草稿数据大小: ${dataSizeKB}KB`);
       
-      if (currentDraftId && !forceNew) {
-        // 更新现有草稿
-        const updatedDrafts = latestDrafts.map((draft: Draft) => 
-          draft.id === currentDraftId 
-            ? { ...draft, timestamp, data: canvasJson, source: 'local' }
-            : draft
-        ).sort((a: Draft, b: Draft) => b.timestamp - a.timestamp);
-        
-        localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-        setDrafts(updatedDrafts);
-      } else {
-        // 创建新草稿
-        const newDraft: Draft = {
-          id: draftId,
-          timestamp,
-          data: canvasJson,
-          source: 'local'
-        };
-        const existingDrafts = latestDrafts.slice(0, 9);
-        const updatedDrafts = [newDraft, ...existingDrafts];
-        
-        localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-        setDrafts(updatedDrafts);
-        onDraftIdChange?.(newDraft.id);
-      }
-
-      // 2. 如果用户已登录，同时保存到服务器
+      // 1. 如果用户已登录，优先保存到服务器
       if (user) {
-        const { error } = await supabase
-          .from('canvas_drafts')
-          .upsert({
-            user_id: user.id,
-            draft_id: draftId,
-            canvas_data: canvasData,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id,draft_id'
-          });
+        try {
+          const { error } = await supabase
+            .from('canvas_drafts')
+            .upsert({
+              user_id: user.id,
+              draft_id: draftId,
+              canvas_data: canvasData,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_id,draft_id'
+            });
 
-        if (error) {
-          console.error("服务器保存失败:", error);
-          toast.success("已保存到本地（云端同步失败）");
-        } else {
-          console.log(`草稿已保存到本地和云端: ${draftId}`);
-          toast.success("草稿已保存（本地 + 云端）");
-          await loadDrafts(); // 重新加载以更新来源标记
+          if (error) throw error;
+          
+          console.log(`草稿已保存到云端: ${draftId} (${dataSizeKB}KB)`);
+          toast.success(`草稿已保存到云端 (${dataSizeKB}KB)`);
+          
+          // 云端保存成功后，只在本地保留最近2个草稿作为缓存
+          try {
+            const latestDraftsJson = localStorage.getItem('editor-drafts-list');
+            const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
+            
+            const newDraft: Draft = {
+              id: draftId,
+              timestamp,
+              data: canvasJson,
+              source: 'local'
+            };
+            
+            // 只保留最新的1个本地草稿（当前这个）
+            const updatedDrafts = [newDraft];
+            localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
+            console.log("本地缓存已更新（仅保留当前草稿）");
+          } catch (localError: any) {
+            // 本地缓存失败不影响主要功能
+            console.warn("本地缓存更新失败:", localError);
+          }
+          
+          await loadDrafts();
+          onDraftIdChange?.(draftId);
+          return;
+        } catch (serverError) {
+          console.error("云端保存失败，尝试本地保存:", serverError);
+          toast.warning("云端保存失败，将保存到本地");
         }
-      } else {
-        console.log(`草稿已保存到本地: ${draftId}`);
-        toast.success("草稿已保存到本地");
+      }
+      
+      // 2. 未登录或云端保存失败时，保存到本地（限制数量）
+      try {
+        const latestDraftsJson = localStorage.getItem('editor-drafts-list');
+        const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
+        
+        if (currentDraftId && !forceNew) {
+          // 更新现有草稿
+          const updatedDrafts = latestDrafts.map((draft: Draft) => 
+            draft.id === currentDraftId 
+              ? { ...draft, timestamp, data: canvasJson, source: 'local' }
+              : draft
+          ).sort((a: Draft, b: Draft) => b.timestamp - a.timestamp)
+          .slice(0, 3); // 只保留最近3个
+          
+          localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
+          setDrafts(updatedDrafts);
+          toast.success(`已保存到本地 (${dataSizeKB}KB)`);
+        } else {
+          // 创建新草稿
+          const newDraft: Draft = {
+            id: draftId,
+            timestamp,
+            data: canvasJson,
+            source: 'local'
+          };
+          // 只保留最近2个旧草稿
+          const existingDrafts = latestDrafts.slice(0, 2);
+          const updatedDrafts = [newDraft, ...existingDrafts];
+          
+          localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
+          setDrafts(updatedDrafts);
+          onDraftIdChange?.(newDraft.id);
+          toast.success(`已保存到本地 (${dataSizeKB}KB)`);
+        }
+        console.log(`草稿已保存到本地: ${draftId} (${dataSizeKB}KB)`);
+      } catch (localError: any) {
+        // localStorage配额超出时的处理
+        if (localError.name === 'QuotaExceededError') {
+          console.error("localStorage配额超出，清理旧草稿后重试");
+          
+          // 清理所有本地草稿
+          localStorage.removeItem('editor-drafts-list');
+          
+          // 只保存当前草稿
+          const newDraft: Draft = {
+            id: draftId,
+            timestamp,
+            data: canvasJson,
+            source: 'local'
+          };
+          
+          try {
+            localStorage.setItem('editor-drafts-list', JSON.stringify([newDraft]));
+            setDrafts([newDraft]);
+            onDraftIdChange?.(newDraft.id);
+            
+            if (user) {
+              toast.warning(`本地存储空间不足，已清理。草稿已保存到云端 (${dataSizeKB}KB)`);
+            } else {
+              toast.warning(`本地存储空间不足，已清理旧草稿。当前草稿已保存 (${dataSizeKB}KB)`);
+            }
+          } catch (retryError) {
+            toast.error(`草稿过大(${dataSizeKB}KB)，无法保存到本地。${user ? '请检查云端是否保存成功。' : '请登录使用云端存储。'}`);
+          }
+        } else {
+          throw localError;
+        }
       }
     } catch (error) {
       console.error("保存草稿失败:", error);
