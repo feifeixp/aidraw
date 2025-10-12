@@ -29,14 +29,20 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
   }, [open]);
 
   const loadDrafts = () => {
-    const draftsJson = localStorage.getItem('editor-drafts-list');
-    if (draftsJson) {
-      try {
+    try {
+      const draftsJson = localStorage.getItem('editor-drafts-list');
+      if (draftsJson) {
         const loadedDrafts = JSON.parse(draftsJson);
-        setDrafts(loadedDrafts.sort((a: Draft, b: Draft) => b.timestamp - a.timestamp));
-      } catch (error) {
-        console.error("加载草稿列表失败:", error);
+        const sortedDrafts = loadedDrafts.sort((a: Draft, b: Draft) => b.timestamp - a.timestamp);
+        setDrafts(sortedDrafts);
+        console.log(`已加载 ${sortedDrafts.length} 个草稿`);
+      } else {
+        setDrafts([]);
       }
+    } catch (error) {
+      console.error("加载草稿列表失败:", error);
+      setDrafts([]);
+      toast.error("加载草稿列表失败");
     }
   };
 
@@ -46,34 +52,62 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
       return;
     }
 
-    const canvasJson = JSON.stringify(canvas.toJSON());
-    
-    // 如果有当前草稿ID且不是强制创建新草稿，则更新现有草稿
-    if (currentDraftId && !forceNew) {
-      const updatedDrafts = drafts.map(draft => 
-        draft.id === currentDraftId 
-          ? { ...draft, timestamp: Date.now(), data: canvasJson }
-          : draft
-      ).sort((a, b) => b.timestamp - a.timestamp);
+    try {
+      const canvasJson = JSON.stringify(canvas.toJSON());
       
-      localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-      setDrafts(updatedDrafts);
-      toast.success("草稿已更新");
-    } else {
-      // 创建新草稿
-      const newDraft: Draft = {
-        id: Date.now().toString(),
-        timestamp: Date.now(),
-        data: canvasJson,
-      };
+      // 如果有当前草稿ID且不是强制创建新草稿，则更新现有草稿
+      if (currentDraftId && !forceNew) {
+        // 重新从 localStorage 加载最新数据，避免状态不一致
+        const latestDraftsJson = localStorage.getItem('editor-drafts-list');
+        const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
+        
+        const updatedDrafts = latestDrafts.map((draft: Draft) => 
+          draft.id === currentDraftId 
+            ? { ...draft, timestamp: Date.now(), data: canvasJson }
+            : draft
+        ).sort((a: Draft, b: Draft) => b.timestamp - a.timestamp);
+        
+        localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
+        
+        // 验证保存是否成功
+        const verified = localStorage.getItem('editor-drafts-list');
+        if (verified) {
+          setDrafts(updatedDrafts);
+          console.log(`草稿已更新: ${currentDraftId}`);
+          toast.success("草稿已更新");
+        } else {
+          throw new Error("保存验证失败");
+        }
+      } else {
+        // 创建新草稿
+        const newDraft: Draft = {
+          id: Date.now().toString(),
+          timestamp: Date.now(),
+          data: canvasJson,
+        };
 
-      const existingDrafts = drafts.slice(0, 9); // Keep only last 10 drafts
-      const updatedDrafts = [newDraft, ...existingDrafts];
-      
-      localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-      setDrafts(updatedDrafts);
-      onDraftIdChange?.(newDraft.id);
-      toast.success("新草稿已创建");
+        // 重新从 localStorage 加载最新数据
+        const latestDraftsJson = localStorage.getItem('editor-drafts-list');
+        const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
+        const existingDrafts = latestDrafts.slice(0, 9); // Keep only last 10 drafts
+        const updatedDrafts = [newDraft, ...existingDrafts];
+        
+        localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
+        
+        // 验证保存是否成功
+        const verified = localStorage.getItem('editor-drafts-list');
+        if (verified) {
+          setDrafts(updatedDrafts);
+          onDraftIdChange?.(newDraft.id);
+          console.log(`新草稿已创建: ${newDraft.id}，共 ${updatedDrafts.length} 个草稿`);
+          toast.success("新草稿已创建");
+        } else {
+          throw new Error("保存验证失败");
+        }
+      }
+    } catch (error) {
+      console.error("保存草稿失败:", error);
+      toast.error("保存草稿失败，请重试");
     }
   };
 
@@ -90,13 +124,19 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
   };
 
   const handleDeleteDraft = (draftId: string) => {
-    const updatedDrafts = drafts.filter(d => d.id !== draftId);
-    localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-    setDrafts(updatedDrafts);
-    if (currentDraftId === draftId) {
-      onDraftIdChange?.(undefined);
+    try {
+      const updatedDrafts = drafts.filter(d => d.id !== draftId);
+      localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
+      setDrafts(updatedDrafts);
+      if (currentDraftId === draftId) {
+        onDraftIdChange?.(undefined);
+      }
+      console.log(`草稿已删除: ${draftId}`);
+      toast.success("草稿已删除");
+    } catch (error) {
+      console.error("删除草稿失败:", error);
+      toast.error("删除草稿失败");
     }
-    toast.success("草稿已删除");
   };
 
   const formatTimestamp = (timestamp: number) => {
