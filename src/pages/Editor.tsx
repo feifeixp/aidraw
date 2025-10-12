@@ -327,7 +327,14 @@ const Editor = () => {
               </Button>
             </div>
             <div className="flex-1 overflow-auto p-4">
-              <PropertiesPanel canvas={canvas} saveState={saveState} />
+              <PropertiesPanel 
+                canvas={canvas} 
+                saveState={saveState}
+                isTaskProcessing={isTaskProcessing}
+                startTask={startTask}
+                completeTask={completeTask}
+                cancelTask={cancelTask}
+              />
             </div>
           </div>
         )}
