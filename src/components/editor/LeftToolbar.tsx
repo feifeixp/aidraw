@@ -1515,7 +1515,10 @@ export const LeftToolbar = ({
               <ScrollArea className="h-[400px] pr-4">
                 <div className="grid grid-cols-3 gap-4">
                   {/* Show history images - filtered by type if needed */}
-                  <AddElementHistoryGrid onSelectImage={handleAddHistoryImageToCanvas} />
+                  <AddElementHistoryGrid 
+                    elementType={selectedElementType} 
+                    onSelectImage={handleAddHistoryImageToCanvas} 
+                  />
                 </div>
               </ScrollArea>
               <div className="flex gap-2 pt-4">
@@ -1637,18 +1640,26 @@ const ProfessionalGenerateGrid = ({
 
 // Add Element History Grid Component
 const AddElementHistoryGrid = ({ 
+  elementType,
   onSelectImage
 }: { 
+  elementType: 'character' | 'scene' | 'prop' | 'effect' | null;
   onSelectImage: (url: string) => void;
 }) => {
   const { data: history, isLoading } = useQuery({
-    queryKey: ["generation-history-add-element"],
+    queryKey: ["generation-history-add-element", elementType],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("generation_history")
         .select("*")
         .eq("status", "completed")
-        .not("element_name", "is", null)
+        .not("element_name", "is", null);
+      
+      if (elementType) {
+        query = query.eq("element_type", elementType);
+      }
+      
+      const { data, error } = await query
         .order("created_at", { ascending: false })
         .limit(20);
       
