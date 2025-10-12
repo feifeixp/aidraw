@@ -2,15 +2,18 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Clock, Trash2 } from "lucide-react";
+import { FileText, Clock, Trash2, Download, Cloud, HardDrive } from "lucide-react";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas } from "fabric";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Draft {
   id: string;
   timestamp: number;
   data: string;
   preview?: string;
+  source?: 'local' | 'server'; // 标记草稿来源
 }
 
 interface DraftsListProps {
@@ -23,22 +26,49 @@ interface DraftsListProps {
 export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChange }: DraftsListProps) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     loadDrafts();
   }, [open]);
 
-  const loadDrafts = () => {
+  const loadDrafts = async () => {
     try {
+      // 加载本地草稿
+      const localDrafts: Draft[] = [];
       const draftsJson = localStorage.getItem('editor-drafts-list');
       if (draftsJson) {
         const loadedDrafts = JSON.parse(draftsJson);
-        const sortedDrafts = loadedDrafts.sort((a: Draft, b: Draft) => b.timestamp - a.timestamp);
-        setDrafts(sortedDrafts);
-        console.log(`已加载 ${sortedDrafts.length} 个草稿`);
-      } else {
-        setDrafts([]);
+        localDrafts.push(...loadedDrafts.map((d: Draft) => ({ ...d, source: 'local' as const })));
       }
+
+      // 如果用户已登录，加载服务器草稿
+      const serverDrafts: Draft[] = [];
+      if (user) {
+        const { data, error } = await supabase
+          .from('canvas_drafts')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false });
+
+        if (!error && data) {
+          serverDrafts.push(...data.map(d => ({
+            id: d.draft_id,
+            timestamp: new Date(d.updated_at).getTime(),
+            data: JSON.stringify(d.canvas_data),
+            source: 'server' as const
+          })));
+        }
+      }
+
+      // 合并并去重（服务器优先）
+      const allDrafts = [...serverDrafts, ...localDrafts];
+      const uniqueDrafts = Array.from(
+        new Map(allDrafts.map(d => [d.id, d])).values()
+      ).sort((a, b) => b.timestamp - a.timestamp);
+
+      setDrafts(uniqueDrafts);
+      console.log(`已加载 ${localDrafts.length} 个本地草稿, ${serverDrafts.length} 个云端草稿`);
     } catch (error) {
       console.error("加载草稿列表失败:", error);
       setDrafts([]);
@@ -46,64 +76,72 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
     }
   };
 
-  const saveDraft = (forceNew: boolean = false) => {
+  const saveDraft = async (forceNew: boolean = false) => {
     if (!canvas) {
       toast.error("画布未初始化");
       return;
     }
 
     try {
-      const canvasJson = JSON.stringify(canvas.toJSON());
+      const canvasData = canvas.toJSON();
+      const canvasJson = JSON.stringify(canvasData);
+      const timestamp = Date.now();
+      const draftId = currentDraftId && !forceNew ? currentDraftId : timestamp.toString();
       
-      // 如果有当前草稿ID且不是强制创建新草稿，则更新现有草稿
+      // 1. 保存到本地存储
+      const latestDraftsJson = localStorage.getItem('editor-drafts-list');
+      const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
+      
       if (currentDraftId && !forceNew) {
-        // 重新从 localStorage 加载最新数据，避免状态不一致
-        const latestDraftsJson = localStorage.getItem('editor-drafts-list');
-        const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
-        
+        // 更新现有草稿
         const updatedDrafts = latestDrafts.map((draft: Draft) => 
           draft.id === currentDraftId 
-            ? { ...draft, timestamp: Date.now(), data: canvasJson }
+            ? { ...draft, timestamp, data: canvasJson, source: 'local' }
             : draft
         ).sort((a: Draft, b: Draft) => b.timestamp - a.timestamp);
         
         localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-        
-        // 验证保存是否成功
-        const verified = localStorage.getItem('editor-drafts-list');
-        if (verified) {
-          setDrafts(updatedDrafts);
-          console.log(`草稿已更新: ${currentDraftId}`);
-          toast.success("草稿已更新");
-        } else {
-          throw new Error("保存验证失败");
-        }
+        setDrafts(updatedDrafts);
       } else {
         // 创建新草稿
         const newDraft: Draft = {
-          id: Date.now().toString(),
-          timestamp: Date.now(),
+          id: draftId,
+          timestamp,
           data: canvasJson,
+          source: 'local'
         };
-
-        // 重新从 localStorage 加载最新数据
-        const latestDraftsJson = localStorage.getItem('editor-drafts-list');
-        const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
-        const existingDrafts = latestDrafts.slice(0, 9); // Keep only last 10 drafts
+        const existingDrafts = latestDrafts.slice(0, 9);
         const updatedDrafts = [newDraft, ...existingDrafts];
         
         localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-        
-        // 验证保存是否成功
-        const verified = localStorage.getItem('editor-drafts-list');
-        if (verified) {
-          setDrafts(updatedDrafts);
-          onDraftIdChange?.(newDraft.id);
-          console.log(`新草稿已创建: ${newDraft.id}，共 ${updatedDrafts.length} 个草稿`);
-          toast.success("新草稿已创建");
+        setDrafts(updatedDrafts);
+        onDraftIdChange?.(newDraft.id);
+      }
+
+      // 2. 如果用户已登录，同时保存到服务器
+      if (user) {
+        const { error } = await supabase
+          .from('canvas_drafts')
+          .upsert({
+            user_id: user.id,
+            draft_id: draftId,
+            canvas_data: canvasData,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,draft_id'
+          });
+
+        if (error) {
+          console.error("服务器保存失败:", error);
+          toast.success("已保存到本地（云端同步失败）");
         } else {
-          throw new Error("保存验证失败");
+          console.log(`草稿已保存到本地和云端: ${draftId}`);
+          toast.success("草稿已保存（本地 + 云端）");
+          await loadDrafts(); // 重新加载以更新来源标记
         }
+      } else {
+        console.log(`草稿已保存到本地: ${draftId}`);
+        toast.success("草稿已保存到本地");
       }
     } catch (error) {
       console.error("保存草稿失败:", error);
@@ -123,11 +161,26 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
     toast.success("草稿已加载");
   };
 
-  const handleDeleteDraft = (draftId: string) => {
+  const handleDeleteDraft = async (draftId: string) => {
     try {
+      // 1. 从本地删除
       const updatedDrafts = drafts.filter(d => d.id !== draftId);
       localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
       setDrafts(updatedDrafts);
+      
+      // 2. 如果用户已登录，同时从服务器删除
+      if (user) {
+        const { error } = await supabase
+          .from('canvas_drafts')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('draft_id', draftId);
+
+        if (error) {
+          console.error("服务器删除失败:", error);
+        }
+      }
+
       if (currentDraftId === draftId) {
         onDraftIdChange?.(undefined);
       }
@@ -136,6 +189,32 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
     } catch (error) {
       console.error("删除草稿失败:", error);
       toast.error("删除草稿失败");
+    }
+  };
+
+  const exportDraft = (draft: Draft) => {
+    try {
+      const exportData = {
+        id: draft.id,
+        timestamp: draft.timestamp,
+        canvasData: JSON.parse(draft.data),
+        exportedAt: new Date().toISOString()
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `draft-${draft.id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("草稿已导出");
+    } catch (error) {
+      console.error("导出草稿失败:", error);
+      toast.error("导出草稿失败");
     }
   };
 
@@ -212,11 +291,18 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
                     }`}
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      {draft.source === 'server' ? (
+                        <Cloud className="h-5 w-5 text-blue-500" />
+                      ) : (
+                        <HardDrive className="h-5 w-5 text-muted-foreground" />
+                      )}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="h-3 w-3" />
                           {formatTimestamp(draft.timestamp)}
+                          <span className="text-xs">
+                            {draft.source === 'server' ? '(云端)' : '(本地)'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -227,6 +313,14 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
                         onClick={() => handleLoadDraft(draft)}
                       >
                         加载
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => exportDraft(draft)}
+                        title="导出为文件"
+                      >
+                        <Download className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"

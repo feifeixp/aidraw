@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      canvas_drafts: {
+        Row: {
+          canvas_data: Json
+          created_at: string
+          draft_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          canvas_data: Json
+          created_at?: string
+          draft_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          canvas_data?: Json
+          created_at?: string
+          draft_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string
