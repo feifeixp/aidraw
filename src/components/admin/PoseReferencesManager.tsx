@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, Trash2, Eye, EyeOff } from "lucide-react";
+import { Upload, Trash2, Eye, EyeOff, Edit2, X, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface PoseReference {
@@ -23,6 +23,11 @@ const PoseReferencesManager = () => {
   const [uploading, setUploading] = useState(false);
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editTags, setEditTags] = useState("");
 
   useEffect(() => {
     loadReferences();
@@ -44,7 +49,7 @@ const PoseReferencesManager = () => {
     }
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -58,15 +63,23 @@ const PoseReferencesManager = () => {
       return;
     }
 
+    setSelectedFile(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!selectedFile) return;
+
     setUploading(true);
     try {
-      const fileExt = file.name.split(".").pop();
+      const fileExt = selectedFile.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = fileName;
 
       const { error: uploadError } = await supabase.storage
         .from("pose-references")
-        .upload(filePath, file);
+        .upload(filePath, selectedFile);
 
       if (uploadError) throw uploadError;
 
@@ -92,12 +105,21 @@ const PoseReferencesManager = () => {
       toast.success("上传成功");
       setDescription("");
       setTags("");
+      setSelectedFile(null);
+      setPreviewUrl("");
       loadReferences();
     } catch (error: any) {
       toast.error("上传失败: " + error.message);
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleCancelUpload = () => {
+    setSelectedFile(null);
+    setPreviewUrl("");
+    setDescription("");
+    setTags("");
   };
 
   const handleToggleActive = async (id: string, currentState: boolean) => {
@@ -139,6 +161,43 @@ const PoseReferencesManager = () => {
     }
   };
 
+  const handleStartEdit = (ref: PoseReference) => {
+    setEditingId(ref.id);
+    setEditDescription(ref.description || "");
+    setEditTags(ref.tags.join(", "));
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditDescription("");
+    setEditTags("");
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    try {
+      const tagsArray = editTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t);
+
+      const { error } = await supabase
+        .from("pose_reference_presets")
+        .update({
+          description: editDescription || null,
+          tags: tagsArray,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("更新成功");
+      setEditingId(null);
+      loadReferences();
+    } catch (error: any) {
+      toast.error("更新失败: " + error.message);
+    }
+  };
+
   if (loading) {
     return <div className="p-6">加载中...</div>;
   }
@@ -148,6 +207,15 @@ const PoseReferencesManager = () => {
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">上传新的参考图片</h3>
         <div className="space-y-4">
+          {previewUrl && (
+            <div className="relative aspect-square rounded-lg overflow-hidden bg-muted max-w-md">
+              <img
+                src={previewUrl}
+                alt="预览"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
           <div>
             <label className="text-sm font-medium mb-2 block">描述</label>
             <Textarea
@@ -155,6 +223,7 @@ const PoseReferencesManager = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
+              disabled={!selectedFile}
             />
           </div>
           <div>
@@ -163,24 +232,47 @@ const PoseReferencesManager = () => {
               placeholder="用逗号分隔多个标签，例如：站立,微笑,正面"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
+              disabled={!selectedFile}
             />
           </div>
-          <div>
-            <label htmlFor="upload-pose-ref" className="cursor-pointer">
-              <Button disabled={uploading} asChild>
-                <span>
-                  <Upload className="w-4 h-4 mr-2" />
-                  {uploading ? "上传中..." : "选择图片"}
-                </span>
-              </Button>
-            </label>
-            <input
-              id="upload-pose-ref"
-              type="file"
-              accept="image/*"
-              onChange={handleUpload}
-              className="hidden"
-            />
+          <div className="flex gap-2">
+            {!selectedFile ? (
+              <>
+                <label htmlFor="upload-pose-ref" className="cursor-pointer">
+                  <Button disabled={uploading} asChild>
+                    <span>
+                      <Upload className="w-4 h-4 mr-2" />
+                      选择图片
+                    </span>
+                  </Button>
+                </label>
+                <input
+                  id="upload-pose-ref"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={handleConfirmUpload}
+                  disabled={uploading}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  {uploading ? "上传中..." : "确认上传"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleCancelUpload}
+                  disabled={uploading}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  取消
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </Card>
@@ -200,46 +292,101 @@ const PoseReferencesManager = () => {
                 </div>
               )}
             </div>
-            {ref.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {ref.description}
-              </p>
-            )}
-            {ref.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {ref.tags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
+            {editingId === ref.id ? (
+              <>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">描述</label>
+                  <Textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">标签</label>
+                  <Input
+                    value={editTags}
+                    onChange={(e) => setEditTags(e.target.value)}
+                    className="text-sm"
+                    placeholder="用逗号分隔"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {ref.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {ref.description}
+                  </p>
+                )}
+                {ref.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {ref.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleToggleActive(ref.id, ref.is_active)}
-                className="flex-1"
-              >
-                {ref.is_active ? (
-                  <>
-                    <EyeOff className="w-4 h-4 mr-1" />
-                    隐藏
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-4 h-4 mr-1" />
-                    显示
-                  </>
-                )}
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => handleDelete(ref.id, ref.image_url)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              {editingId === ref.id ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => handleSaveEdit(ref.id)}
+                    className="flex-1"
+                  >
+                    <Check className="w-4 h-4 mr-1" />
+                    保存
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleToggleActive(ref.id, ref.is_active)}
+                    className="flex-1"
+                  >
+                    {ref.is_active ? (
+                      <>
+                        <EyeOff className="w-4 h-4 mr-1" />
+                        隐藏
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4 mr-1" />
+                        显示
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStartEdit(ref)}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(ref.id, ref.image_url)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
             </div>
           </Card>
         ))}
