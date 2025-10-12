@@ -260,17 +260,22 @@ export const EditorToolbar = ({
     });
     let instruction = "";
     
-    // If no annotations or shapes, use default redraw mode
+    // Build instruction based on available content
     if (textAnnotations.length === 0 && shapes.length === 0) {
+      // No annotations or shapes - use default enhancement mode
       instruction = "Enhance this image with professional lighting and shading. Fix any defects or missing areas in the image. Adjust the camera angle to make the composition more reasonable and visually appealing. Add proper shadows and highlights based on the environment.";
-    } else {
-      // Use annotations and shapes to build instruction
-      if (textAnnotations.length > 0) {
-        instruction += textAnnotations.join(". ") + ".";
-      }
+    } else if (textAnnotations.length > 0) {
+      // Has text annotations - use them as main prompt
+      instruction = textAnnotations.join(". ") + ".";
       if (shapes.length > 0) {
         instruction += ` Visual markers: ${shapes.join(", ")}.`;
       }
+    } else if (shapes.length > 0) {
+      // Only has shapes, no text - need a base prompt
+      toast.error("请添加文字描述来指导AI生成图片，仅标记形状位置是不够的");
+      setIsComposing(false);
+      cancelTask();
+      return;
     }
     toast.info(`正在使用AI ${composeMode === "generate" ? "生成" : "编辑"}图片，请稍候...`);
     try {
