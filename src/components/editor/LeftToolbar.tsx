@@ -1648,6 +1648,7 @@ const AddElementHistoryGrid = ({
         .from("generation_history")
         .select("*")
         .eq("status", "completed")
+        .not("element_name", "is", null)
         .order("created_at", { ascending: false })
         .limit(20);
       

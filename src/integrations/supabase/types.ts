@@ -101,6 +101,10 @@ export type Database = {
         Row: {
           checkpoint_id: string | null
           created_at: string | null
+          element_description: string | null
+          element_name: string | null
+          element_style: string | null
+          element_type: string | null
           error_message: string | null
           id: string
           image_url: string | null
@@ -118,6 +122,10 @@ export type Database = {
         Insert: {
           checkpoint_id?: string | null
           created_at?: string | null
+          element_description?: string | null
+          element_name?: string | null
+          element_style?: string | null
+          element_type?: string | null
           error_message?: string | null
           id?: string
           image_url?: string | null
@@ -135,6 +143,10 @@ export type Database = {
         Update: {
           checkpoint_id?: string | null
           created_at?: string | null
+          element_description?: string | null
+          element_name?: string | null
+          element_style?: string | null
+          element_type?: string | null
           error_message?: string | null
           id?: string
           image_url?: string | null

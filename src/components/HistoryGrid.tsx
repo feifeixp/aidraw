@@ -3,15 +3,17 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Clock, Image as ImageIcon, Star, Download } from "lucide-react";
+import { Clock, Image as ImageIcon, Star, Download, Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { ImageMetadataEditDialog } from "./ImageMetadataEditDialog";
 
 export const HistoryGrid = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [editingItem, setEditingItem] = useState<any>(null);
   
   const { data: history, isLoading } = useQuery({
     queryKey: ["generation-history"],
@@ -42,6 +44,40 @@ export const HistoryGrid = () => {
       toast({
         title: "成功",
         description: "分享状态已更新",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "错误",
+        description: "更新失败，请重试",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMetadataMutation = useMutation({
+    mutationFn: async ({ id, metadata }: { 
+      id: string; 
+      metadata: {
+        element_type: string;
+        element_name: string;
+        element_style: string;
+        element_description: string;
+      }
+    }) => {
+      const { error } = await supabase
+        .from("generation_history")
+        .update(metadata)
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["generation-history"] });
+      queryClient.invalidateQueries({ queryKey: ["generation-history-add-element"] });
+      toast({
+        title: "成功",
+        description: "图片信息已更新",
       });
     },
     onError: () => {
@@ -207,6 +243,13 @@ export const HistoryGrid = () => {
                 {item.status === "completed" && (
                   <>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingItem(item)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
                       variant={item.is_template ? "secondary" : "outline"}
                       size="sm"
                       className="flex-1"
@@ -247,6 +290,25 @@ export const HistoryGrid = () => {
           </Card>
         );
       })}
+      
+      <ImageMetadataEditDialog
+        open={!!editingItem}
+        onOpenChange={(open) => !open && setEditingItem(null)}
+        onSave={(metadata) => {
+          if (editingItem) {
+            updateMetadataMutation.mutate({
+              id: editingItem.id,
+              metadata
+            });
+          }
+        }}
+        initialData={editingItem ? {
+          element_type: editingItem.element_type,
+          element_name: editingItem.element_name,
+          element_style: editingItem.element_style,
+          element_description: editingItem.element_description
+        } : undefined}
+      />
     </div>
   );
 };
