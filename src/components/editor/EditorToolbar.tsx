@@ -492,9 +492,9 @@ export const EditorToolbar = ({
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleRedraw} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap" title="重绘">
+      <Button variant="outline" size="sm" onClick={handleRedraw} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap" title="渲染">
         <Sparkles className="h-4 w-4" />
-        <span className="ml-1">重绘</span>
+        <span className="ml-1">渲染</span>
       </Button>
       <Button variant="outline" size="sm" onClick={() => setShowSmartComposeDialog(true)} disabled={isTaskProcessing || isComposing} className="shrink-0 whitespace-nowrap" title="智能合成">
         <Wand2 className="h-4 w-4" />
