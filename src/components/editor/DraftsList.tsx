@@ -13,7 +13,7 @@ interface Draft {
   timestamp: number;
   data: string;
   preview?: string;
-  source?: 'local' | 'server'; // 标记草稿来源
+  syncStatus: 'local' | 'cloud' | 'synced'; // local=仅本地, cloud=仅云端, synced=已同步
 }
 
 interface DraftsListProps {
@@ -35,15 +35,22 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
   const loadDrafts = async () => {
     try {
       // 加载本地草稿
-      const localDrafts: Draft[] = [];
+      const localDraftsMap = new Map<string, Draft>();
       const draftsJson = localStorage.getItem('editor-drafts-list');
       if (draftsJson) {
         const loadedDrafts = JSON.parse(draftsJson);
-        localDrafts.push(...loadedDrafts.map((d: Draft) => ({ ...d, source: 'local' as const })));
+        loadedDrafts.forEach((d: any) => {
+          localDraftsMap.set(d.id, {
+            id: d.id,
+            timestamp: d.timestamp,
+            data: d.data,
+            syncStatus: 'local' as const
+          });
+        });
       }
 
-      // 如果用户已登录，加载服务器草稿
-      const serverDrafts: Draft[] = [];
+      // 如果用户已登录，加载云端草稿
+      const cloudDraftsMap = new Map<string, Draft>();
       if (user) {
         const { data, error } = await supabase
           .from('canvas_drafts')
@@ -52,23 +59,49 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
           .order('updated_at', { ascending: false });
 
         if (!error && data) {
-          serverDrafts.push(...data.map(d => ({
-            id: d.draft_id,
-            timestamp: new Date(d.updated_at).getTime(),
-            data: JSON.stringify(d.canvas_data),
-            source: 'server' as const
-          })));
+          data.forEach(d => {
+            cloudDraftsMap.set(d.draft_id, {
+              id: d.draft_id,
+              timestamp: new Date(d.updated_at).getTime(),
+              data: JSON.stringify(d.canvas_data),
+              syncStatus: 'cloud' as const
+            });
+          });
         }
       }
 
-      // 合并并去重（服务器优先）
-      const allDrafts = [...serverDrafts, ...localDrafts];
-      const uniqueDrafts = Array.from(
-        new Map(allDrafts.map(d => [d.id, d])).values()
-      ).sort((a, b) => b.timestamp - a.timestamp);
+      // 合并本地和云端草稿，判断同步状态
+      const mergedDrafts = new Map<string, Draft>();
+      
+      // 先添加云端草稿
+      cloudDraftsMap.forEach((draft, id) => {
+        mergedDrafts.set(id, draft);
+      });
+      
+      // 再处理本地草稿
+      localDraftsMap.forEach((localDraft, id) => {
+        if (cloudDraftsMap.has(id)) {
+          // 本地和云端都有，标记为已同步
+          mergedDrafts.set(id, {
+            ...localDraft,
+            syncStatus: 'synced'
+          });
+        } else {
+          // 只有本地，标记为本地
+          mergedDrafts.set(id, localDraft);
+        }
+      });
+
+      const uniqueDrafts = Array.from(mergedDrafts.values())
+        .sort((a, b) => b.timestamp - a.timestamp);
 
       setDrafts(uniqueDrafts);
-      console.log(`已加载 ${localDrafts.length} 个本地草稿, ${serverDrafts.length} 个云端草稿`);
+      
+      const localCount = Array.from(mergedDrafts.values()).filter(d => d.syncStatus === 'local').length;
+      const cloudCount = Array.from(mergedDrafts.values()).filter(d => d.syncStatus === 'cloud').length;
+      const syncedCount = Array.from(mergedDrafts.values()).filter(d => d.syncStatus === 'synced').length;
+      
+      console.log(`已加载草稿: ${localCount}个仅本地, ${cloudCount}个仅云端, ${syncedCount}个已同步`);
     } catch (error) {
       console.error("加载草稿列表失败:", error);
       setDrafts([]);
@@ -92,7 +125,11 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
       const dataSizeKB = Math.round(canvasJson.length / 1024);
       console.log(`草稿数据大小: ${dataSizeKB}KB`);
       
-      // 1. 如果用户已登录，优先保存到服务器
+      let cloudSaved = false;
+      let localSaved = false;
+      let saveError: string | null = null;
+      
+      // 1. 如果用户已登录，尝试保存到云端
       if (user) {
         try {
           const { error } = await supabase
@@ -106,108 +143,93 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
               onConflict: 'user_id,draft_id'
             });
 
-          if (error) throw error;
-          
-          console.log(`草稿已保存到云端: ${draftId} (${dataSizeKB}KB)`);
-          toast.success(`草稿已保存到云端 (${dataSizeKB}KB)`);
-          
-          // 云端保存成功后，只在本地保留最近2个草稿作为缓存
-          try {
-            const latestDraftsJson = localStorage.getItem('editor-drafts-list');
-            const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
-            
-            const newDraft: Draft = {
-              id: draftId,
-              timestamp,
-              data: canvasJson,
-              source: 'local'
-            };
-            
-            // 只保留最新的1个本地草稿（当前这个）
-            const updatedDrafts = [newDraft];
-            localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-            console.log("本地缓存已更新（仅保留当前草稿）");
-          } catch (localError: any) {
-            // 本地缓存失败不影响主要功能
-            console.warn("本地缓存更新失败:", localError);
+          if (error) {
+            console.error("云端保存失败:", error);
+            saveError = `云端保存失败: ${error.message}`;
+          } else {
+            cloudSaved = true;
+            console.log(`草稿已保存到云端: ${draftId} (${dataSizeKB}KB)`);
           }
-          
-          await loadDrafts();
-          onDraftIdChange?.(draftId);
-          return;
-        } catch (serverError) {
-          console.error("云端保存失败，尝试本地保存:", serverError);
-          toast.warning("云端保存失败，将保存到本地");
+        } catch (serverError: any) {
+          console.error("云端保存异常:", serverError);
+          saveError = `云端保存异常: ${serverError.message || '网络错误'}`;
         }
       }
       
-      // 2. 未登录或云端保存失败时，保存到本地（限制数量）
+      // 2. 尝试保存到本地（限制数量）
       try {
         const latestDraftsJson = localStorage.getItem('editor-drafts-list');
         const latestDrafts = latestDraftsJson ? JSON.parse(latestDraftsJson) : [];
         
         if (currentDraftId && !forceNew) {
           // 更新现有草稿
-          const updatedDrafts = latestDrafts.map((draft: Draft) => 
+          const updatedDrafts = latestDrafts.map((draft: any) => 
             draft.id === currentDraftId 
-              ? { ...draft, timestamp, data: canvasJson, source: 'local' }
+              ? { id: draft.id, timestamp, data: canvasJson }
               : draft
-          ).sort((a: Draft, b: Draft) => b.timestamp - a.timestamp)
-          .slice(0, 3); // 只保留最近3个
+          ).sort((a: any, b: any) => b.timestamp - a.timestamp)
+          .slice(0, 5); // 保留最近5个
           
           localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-          setDrafts(updatedDrafts);
-          toast.success(`已保存到本地 (${dataSizeKB}KB)`);
+          localSaved = true;
         } else {
           // 创建新草稿
-          const newDraft: Draft = {
+          const newDraft = {
             id: draftId,
             timestamp,
-            data: canvasJson,
-            source: 'local'
+            data: canvasJson
           };
-          // 只保留最近2个旧草稿
-          const existingDrafts = latestDrafts.slice(0, 2);
+          // 保留最近4个旧草稿
+          const existingDrafts = latestDrafts.slice(0, 4);
           const updatedDrafts = [newDraft, ...existingDrafts];
           
           localStorage.setItem('editor-drafts-list', JSON.stringify(updatedDrafts));
-          setDrafts(updatedDrafts);
+          localSaved = true;
           onDraftIdChange?.(newDraft.id);
-          toast.success(`已保存到本地 (${dataSizeKB}KB)`);
         }
         console.log(`草稿已保存到本地: ${draftId} (${dataSizeKB}KB)`);
       } catch (localError: any) {
         // localStorage配额超出时的处理
         if (localError.name === 'QuotaExceededError') {
           console.error("localStorage配额超出，清理旧草稿后重试");
-          
-          // 清理所有本地草稿
-          localStorage.removeItem('editor-drafts-list');
-          
-          // 只保存当前草稿
-          const newDraft: Draft = {
-            id: draftId,
-            timestamp,
-            data: canvasJson,
-            source: 'local'
-          };
+          saveError = saveError ? `${saveError}; 本地存储空间不足` : '本地存储空间不足';
           
           try {
-            localStorage.setItem('editor-drafts-list', JSON.stringify([newDraft]));
-            setDrafts([newDraft]);
-            onDraftIdChange?.(newDraft.id);
+            // 清理所有本地草稿
+            localStorage.removeItem('editor-drafts-list');
             
-            if (user) {
-              toast.warning(`本地存储空间不足，已清理。草稿已保存到云端 (${dataSizeKB}KB)`);
-            } else {
-              toast.warning(`本地存储空间不足，已清理旧草稿。当前草稿已保存 (${dataSizeKB}KB)`);
-            }
+            // 只保存当前草稿
+            const newDraft = {
+              id: draftId,
+              timestamp,
+              data: canvasJson
+            };
+            
+            localStorage.setItem('editor-drafts-list', JSON.stringify([newDraft]));
+            localSaved = true;
+            onDraftIdChange?.(newDraft.id);
+            console.log("已清理旧草稿并保存当前草稿");
           } catch (retryError) {
-            toast.error(`草稿过大(${dataSizeKB}KB)，无法保存到本地。${user ? '请检查云端是否保存成功。' : '请登录使用云端存储。'}`);
+            console.error("清理后仍无法保存:", retryError);
+            saveError = saveError ? `${saveError}; 草稿过大(${dataSizeKB}KB)无法保存` : `草稿过大(${dataSizeKB}KB)无法保存`;
           }
         } else {
-          throw localError;
+          console.error("本地保存失败:", localError);
+          saveError = saveError ? `${saveError}; 本地保存失败: ${localError.message}` : `本地保存失败: ${localError.message}`;
         }
+      }
+      
+      // 3. 显示保存结果
+      await loadDrafts();
+      
+      if (cloudSaved && localSaved) {
+        toast.success(`草稿已同步保存 (${dataSizeKB}KB)`);
+      } else if (cloudSaved) {
+        toast.success(`草稿已保存到云端 (${dataSizeKB}KB)`);
+      } else if (localSaved) {
+        toast.warning(`草稿仅保存到本地 (${dataSizeKB}KB)${saveError ? ` - ${saveError}` : ''}`);
+      } else {
+        toast.error(`草稿保存失败: ${saveError || '未知错误'}`);
       }
     } catch (error) {
       console.error("保存草稿失败:", error);
@@ -356,18 +378,24 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
                       draft.id === currentDraftId ? 'border-primary bg-primary/5' : 'border-border'
                     }`}
                   >
-                    <div className="flex items-center gap-3 flex-1">
-                      {draft.source === 'server' ? (
+                  <div className="flex items-center gap-3 flex-1">
+                      {draft.syncStatus === 'synced' ? (
+                        <div className="relative">
+                          <Cloud className="h-5 w-5 text-green-500" />
+                          <HardDrive className="h-3 w-3 text-green-500 absolute -bottom-1 -right-1" />
+                        </div>
+                      ) : draft.syncStatus === 'cloud' ? (
                         <Cloud className="h-5 w-5 text-blue-500" />
                       ) : (
-                        <HardDrive className="h-5 w-5 text-muted-foreground" />
+                        <HardDrive className="h-5 w-5 text-orange-500" />
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="h-3 w-3" />
                           {formatTimestamp(draft.timestamp)}
                           <span className="text-xs">
-                            {draft.source === 'server' ? '(云端)' : '(本地)'}
+                            {draft.syncStatus === 'synced' ? '(已同步)' : 
+                             draft.syncStatus === 'cloud' ? '(仅云端)' : '(仅本地)'}
                           </span>
                         </div>
                       </div>
