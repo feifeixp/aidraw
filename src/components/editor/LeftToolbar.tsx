@@ -59,6 +59,8 @@ export const LeftToolbar = ({
     description: string | null;
     tags: string[];
   }>>([]);
+  const [showElementTypeDialog, setShowElementTypeDialog] = useState(false);
+  const [pendingImageData, setPendingImageData] = useState<{url: string, name: string} | null>(null);
 
   // Load preset pose references
   useEffect(() => {
@@ -82,7 +84,7 @@ export const LeftToolbar = ({
     }
   }, [showPoseDialog]);
 
-  // Add Image
+  // Add Image with type selection
   const handleUploadImage = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -93,18 +95,28 @@ export const LeftToolbar = ({
         const reader = new FileReader();
         reader.onload = event => {
           const imageUrl = event.target?.result as string;
-          window.dispatchEvent(new CustomEvent('addImageToCanvas', {
-            detail: {
-              imageUrl,
-              name: file.name
-            }
-          }));
-          onActionComplete?.();
+          setPendingImageData({ url: imageUrl, name: file.name });
+          setShowElementTypeDialog(true);
         };
         reader.readAsDataURL(file);
       }
     };
     input.click();
+  };
+
+  const handleAddImageWithType = (elementType: string) => {
+    if (pendingImageData) {
+      window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+        detail: {
+          imageUrl: pendingImageData.url,
+          name: pendingImageData.name,
+          elementType
+        }
+      }));
+      setPendingImageData(null);
+      setShowElementTypeDialog(false);
+      onActionComplete?.();
+    }
   };
   const handleGenerateImage = () => {
     setShowAiGenerateDialog(true);
@@ -139,15 +151,9 @@ export const LeftToolbar = ({
           throw new Error("返回的不是有效的图片格式");
         }
 
-        window.dispatchEvent(new CustomEvent('addImageToCanvas', {
-          detail: {
-            imageUrl: data.imageUrl,
-            name: "AI生成的图片"
-          }
-        }));
-        
-        toast.success("图片已添加到画布");
+        setPendingImageData({ url: data.imageUrl, name: "AI生成的图片" });
         setShowAiGenerateDialog(false);
+        setShowElementTypeDialog(true);
         setAiPrompt("");
       } else {
         console.error("响应中没有 imageUrl");
@@ -189,14 +195,9 @@ export const LeftToolbar = ({
   };
 
   const handleAddHistoryImageToCanvas = (imageUrl: string) => {
-    window.dispatchEvent(new CustomEvent('addImageToCanvas', {
-      detail: {
-        imageUrl,
-        name: "历史图片"
-      }
-    }));
-    toast.success("图片已添加到画布");
+    setPendingImageData({ url: imageUrl, name: "历史图片" });
     setShowAiGenerateDialog(false);
+    setShowElementTypeDialog(true);
   };
 
   // Add Text
@@ -652,6 +653,14 @@ export const LeftToolbar = ({
       toast.error("请先选择画布上的图片");
       return;
     }
+    
+    // Check element type
+    const elementType = (activeObject as any).data?.elementType;
+    if (elementType !== 'scene') {
+      toast.error("场景调整仅针对场景元素");
+      return;
+    }
+    
     if (isTaskProcessing) {
       toast.error("当前有任务正在处理，请等待完成");
       return;
@@ -685,7 +694,8 @@ export const LeftToolbar = ({
           left: activeObject.left,
           top: activeObject.top,
           scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY
+          scaleY: activeObject.scaleY,
+          data: { elementType: 'scene' }
         });
         canvas.remove(activeObject);
         canvas.add(img);
@@ -709,6 +719,14 @@ export const LeftToolbar = ({
       toast.error("请先选择画布上的图片");
       return;
     }
+    
+    // Check element type
+    const elementType = (activeObject as any).data?.elementType;
+    if (elementType !== 'character') {
+      toast.error("调整动作仅针对角色元素");
+      return;
+    }
+    
     if (isTaskProcessing) {
       toast.error("当前有任务正在处理，请等待完成");
       return;
@@ -760,7 +778,8 @@ export const LeftToolbar = ({
           left: activeObject.left,
           top: activeObject.top,
           scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY
+          scaleY: activeObject.scaleY,
+          data: { elementType: 'character' }
         });
         canvas.remove(activeObject);
         canvas.add(img);
@@ -811,6 +830,14 @@ export const LeftToolbar = ({
       toast.error("请先选择画布上的图片");
       return;
     }
+    
+    // Check element type
+    const elementType = (activeObject as any).data?.elementType;
+    if (elementType !== 'character' && elementType !== 'prop') {
+      toast.error("主体调整仅针对角色和道具元素");
+      return;
+    }
+    
     if (isTaskProcessing) {
       toast.error("当前有任务正在处理，请等待完成");
       return;
@@ -844,7 +871,8 @@ export const LeftToolbar = ({
           left: activeObject.left,
           top: activeObject.top,
           scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY
+          scaleY: activeObject.scaleY,
+          data: { elementType }
         });
         canvas.remove(activeObject);
         canvas.add(img);
@@ -1392,6 +1420,49 @@ export const LeftToolbar = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Element Type Selection Dialog */}
+      <Dialog open={showElementTypeDialog} onOpenChange={setShowElementTypeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>选择元素类型</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              variant="outline"
+              className="h-24 flex flex-col gap-2"
+              onClick={() => handleAddImageWithType('character')}
+            >
+              <Users className="h-8 w-8" />
+              <span>角色</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-24 flex flex-col gap-2"
+              onClick={() => handleAddImageWithType('scene')}
+            >
+              <ImageIcon className="h-8 w-8" />
+              <span>场景</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-24 flex flex-col gap-2"
+              onClick={() => handleAddImageWithType('prop')}
+            >
+              <Square className="h-8 w-8" />
+              <span>道具</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-24 flex flex-col gap-2"
+              onClick={() => handleAddImageWithType('effect')}
+            >
+              <Sparkles className="h-8 w-8" />
+              <span>特效</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>;
 };
 

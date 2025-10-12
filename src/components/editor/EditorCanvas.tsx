@@ -322,8 +322,8 @@ export const EditorCanvas = ({
     };
 
     const handleAddImage = (e: CustomEvent) => {
-      const { imageUrl, name } = e.detail;
-      loadImageToCanvas(imageUrl, name);
+      const { imageUrl, name, elementType } = e.detail;
+      loadImageToCanvas(imageUrl, name, elementType);
     };
 
     window.addEventListener('paste', handlePaste);
@@ -335,7 +335,7 @@ export const EditorCanvas = ({
     };
   }, [canvas]);
 
-  const loadImageToCanvas = (imageUrl: string, name: string = "图片") => {
+  const loadImageToCanvas = (imageUrl: string, name: string = "图片", elementType?: string) => {
     if (!canvas || !frameRef.current) return;
 
     FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then(img => {
@@ -354,6 +354,7 @@ export const EditorCanvas = ({
       img.set({
         left: (frame.left || 0) + (frameWidth - imgWidth * scale) / 2,
         top: (frame.top || 0) + (frameHeight - imgHeight * scale) / 2,
+        data: { elementType: elementType || 'character' }
       });
       
       canvas.add(img);

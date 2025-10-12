@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { Type, Bold, Italic, Underline, Square, Image, Upload, Sparkles } from "lucide-react";
+import { Type, Bold, Italic, Underline, Square, Image, Upload, Sparkles, Users, PersonStanding, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ColorAdjustmentPanel } from "./ColorAdjustmentPanel";
@@ -39,6 +39,18 @@ export const PropertiesPanel = ({
   const [blendMode, setBlendMode] = useState("source-over");
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [elementType, setElementType] = useState<string>("character");
+  
+  // Element type display names
+  const getElementTypeName = (type: string) => {
+    const typeMap: Record<string, string> = {
+      character: "角色",
+      scene: "场景",
+      prop: "道具",
+      effect: "特效"
+    };
+    return typeMap[type] || type;
+  };
   useEffect(() => {
     if (!canvas) return;
     const handleSelectionCreated = (e: any) => {
@@ -92,6 +104,7 @@ export const PropertiesPanel = ({
     // Image properties
     if (obj.type === 'image') {
       setBlendMode((obj as any).globalCompositeOperation || "source-over");
+      setElementType(obj.data?.elementType || "character");
     }
   };
   const updateText = () => {
@@ -392,13 +405,23 @@ export const PropertiesPanel = ({
         </div>
       </div>
     </>;
-  const renderImageProperties = () => <>
+  const renderImageProperties = () => {
+    const canAdjustScene = elementType === 'scene';
+    const canAdjustSubject = elementType === 'character' || elementType === 'prop';
+    const canAdjustPose = elementType === 'character';
+    
+    return <>
       <div className="flex items-center gap-2 mb-4">
         <Image className="w-5 h-5" />
         <h3 className="font-medium">图片属性</h3>
       </div>
 
       <div className="space-y-3">
+        <div className="p-3 bg-muted rounded-lg">
+          <Label className="text-sm text-muted-foreground">元素类型</Label>
+          <p className="text-base font-medium mt-1">{getElementTypeName(elementType)}</p>
+        </div>
+
         <div>
           <Label htmlFor="image-upload">重新导入图片</Label>
           <div className="mt-1">
@@ -414,6 +437,42 @@ export const PropertiesPanel = ({
             {isGenerating ? "修改中..." : "修改图片"}
           </Button>
         </div>
+
+        {canAdjustScene && (
+          <div className="border-t pt-3">
+            <Button variant="outline" className="w-full" disabled>
+              <RotateCw className="w-4 h-4 mr-2" />
+              场景调整（仅针对场景元素）
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              在左侧工具栏中选择「场景调整」
+            </p>
+          </div>
+        )}
+
+        {canAdjustSubject && (
+          <div className="border-t pt-3">
+            <Button variant="outline" className="w-full" disabled>
+              <PersonStanding className="w-4 h-4 mr-2" />
+              主体调整（仅针对角色和道具）
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              在左侧工具栏中选择「主体调整」
+            </p>
+          </div>
+        )}
+
+        {canAdjustPose && (
+          <div className="border-t pt-3">
+            <Button variant="outline" className="w-full" disabled>
+              <Users className="w-4 h-4 mr-2" />
+              调整动作（仅针对角色元素）
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              在左侧工具栏中选择「调整动作」
+            </p>
+          </div>
+        )}
 
         <div>
           <Label htmlFor="blend-mode">混合模式</Label>
@@ -441,6 +500,7 @@ export const PropertiesPanel = ({
         <ColorAdjustmentPanel canvas={canvas} selectedObject={selectedObject} saveState={saveState} />
       </div>
     </>;
+  };
   return <div className="h-full overflow-auto p-4 space-y-4">
       {selectedObject.type === 'text' && renderTextProperties()}
       {['rect', 'circle', 'polygon', 'path'].includes(selectedObject.type) && renderShapeProperties()}
