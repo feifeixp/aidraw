@@ -5,7 +5,7 @@ import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as Fabri
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -53,6 +53,34 @@ export const LeftToolbar = ({
   const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
+  const [presetReferences, setPresetReferences] = useState<Array<{
+    id: string;
+    image_url: string;
+    description: string | null;
+    tags: string[];
+  }>>([]);
+
+  // Load preset pose references
+  useEffect(() => {
+    const loadPresetReferences = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("pose_reference_presets")
+          .select("id, image_url, description, tags")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setPresetReferences(data || []);
+      } catch (error) {
+        console.error("Failed to load preset references:", error);
+      }
+    };
+
+    if (showPoseDialog) {
+      loadPresetReferences();
+    }
+  }, [showPoseDialog]);
 
   // Add Image
   const handleUploadImage = () => {
@@ -1152,9 +1180,56 @@ export const LeftToolbar = ({
             </TabsContent>
             
             <TabsContent value="reference" className="space-y-4">
+              {/* Preset References */}
+              {presetReferences.length > 0 && (
+                <div className="space-y-2">
+                  <Label>预设参考图片</Label>
+                  <ScrollArea className="h-64 rounded-md border p-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      {presetReferences.map((ref) => (
+                        <div
+                          key={ref.id}
+                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                            poseReferenceImage === ref.image_url
+                              ? "border-primary ring-2 ring-primary"
+                              : "border-transparent hover:border-primary/50"
+                          }`}
+                          onClick={() => {
+                            setPoseReferenceImage(ref.image_url);
+                            if (ref.description) {
+                              setCustomPose(ref.description);
+                            }
+                          }}
+                        >
+                          <div className="aspect-square bg-muted">
+                            <img
+                              src={ref.image_url}
+                              alt={ref.description || "参考图片"}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          {ref.description && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1 truncate">
+                              {ref.description}
+                            </div>
+                          )}
+                          {poseReferenceImage === ref.image_url && (
+                            <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-1">
+                              <Check className="w-3 h-3" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {/* Upload Custom Reference */}
               <div className="space-y-2">
-                <Label>上传姿势参考线稿</Label>
-                {poseReferenceImage ? <div className="space-y-2">
+                <Label>或上传自定义参考线稿</Label>
+                {poseReferenceImage && !presetReferences.find(r => r.image_url === poseReferenceImage) ? (
+                  <div className="space-y-2">
                     <div className="relative w-full aspect-square border rounded-lg overflow-hidden bg-muted">
                       <img src={poseReferenceImage} alt="姿势参考" className="w-full h-full object-contain" />
                     </div>
@@ -1166,23 +1241,40 @@ export const LeftToolbar = ({
                         清除
                       </Button>
                     </div>
-                  </div> : <Button variant="outline" onClick={handleUploadPoseReference} className="w-full h-32 border-dashed">
-                    <Upload className="h-8 w-8 mr-2" />
+                  </div>
+                ) : !poseReferenceImage ? (
+                  <Button variant="outline" onClick={handleUploadPoseReference} className="w-full h-24 border-dashed">
+                    <Upload className="h-6 w-6 mr-2" />
                     点击上传姿势线稿
-                  </Button>}
+                  </Button>
+                ) : null}
                 <p className="text-sm text-muted-foreground">
-                  上传一张姿势线稿或参考图片，AI将让选中的角色模仿该姿势
+                  选择预设或上传一张姿势线稿，AI将让选中的角色模仿该姿势和表情
                 </p>
               </div>
-              {poseReferenceImage && <>
+
+              {/* Apply Button */}
+              {poseReferenceImage && (
+                <>
                   <div className="space-y-2">
                     <Label htmlFor="reference-pose-desc">补充描述（可选）</Label>
-                    <Input id="reference-pose-desc" placeholder="例如：注意手部细节、保持平衡感..." value={customPose} onChange={e => setCustomPose(e.target.value)} />
+                    <Input
+                      id="reference-pose-desc"
+                      placeholder="例如：注意手部细节、保持平衡感..."
+                      value={customPose}
+                      onChange={(e) => setCustomPose(e.target.value)}
+                    />
                   </div>
-                  <Button onClick={() => handleAdjustPose(customPose || "match the reference pose", poseReferenceImage)} className="w-full">
+                  <Button
+                    onClick={() =>
+                      handleAdjustPose(customPose || "match the reference pose and facial expression", poseReferenceImage)
+                    }
+                    className="w-full"
+                  >
                     应用参考姿势
                   </Button>
-                </>}
+                </>
+              )}
             </TabsContent>
           </Tabs>
         </DialogContent>

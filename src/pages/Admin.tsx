@@ -2,6 +2,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import ModelsContent from "./Models";
+import PoseReferencesManager from "@/components/admin/PoseReferencesManager";
 
 const Admin = () => {
   return (
@@ -18,13 +19,21 @@ const Admin = () => {
           </header>
 
           <Tabs defaultValue="models" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsList className="grid w-full max-w-2xl grid-cols-3">
               <TabsTrigger value="models">模型管理</TabsTrigger>
+              <TabsTrigger value="pose-refs">动作参考</TabsTrigger>
               <TabsTrigger value="users">用户管理</TabsTrigger>
             </TabsList>
             
             <TabsContent value="models" className="mt-6">
               <ModelsContent />
+            </TabsContent>
+
+            <TabsContent value="pose-refs" className="mt-6">
+              <Card className="p-6">
+                <h2 className="text-2xl font-bold mb-4">动作参考图片管理</h2>
+                <PoseReferencesManager />
+              </Card>
             </TabsContent>
             
             <TabsContent value="users" className="mt-6">
