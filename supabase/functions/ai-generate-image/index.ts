@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, width, height } = await req.json();
     
     if (!prompt) {
       return new Response(
@@ -20,12 +20,41 @@ serve(async (req) => {
       );
     }
 
+    // Determine image dimensions based on aspect ratio
+    let imageWidth = 1024;
+    let imageHeight = 1024;
+    
+    if (width && height) {
+      const aspectRatio = width / height;
+      
+      if (aspectRatio > 1.3) {
+        // Landscape
+        imageWidth = 1536;
+        imageHeight = 1024;
+      } else if (aspectRatio < 0.77) {
+        // Portrait
+        imageWidth = 1024;
+        imageHeight = 1536;
+      }
+      // else keep 1024x1024 for square/near-square
+    }
+
+    const dimensionHint = imageWidth > imageHeight 
+      ? "horizontal layout" 
+      : imageHeight > imageWidth 
+      ? "vertical layout" 
+      : "square composition";
+    
+    const enhancedPrompt = `${prompt}. ${dimensionHint}`;
+
+    console.log("Generating image with prompt:", enhancedPrompt);
+    console.log("Canvas dimensions:", width, "x", height);
+    console.log("Image dimensions:", imageWidth, "x", imageHeight);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
-
-    console.log("Generating image with prompt:", prompt);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -38,7 +67,7 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: prompt,
+            content: enhancedPrompt,
           },
         ],
         modalities: ["image", "text"],

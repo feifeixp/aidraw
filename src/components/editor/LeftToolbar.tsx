@@ -204,15 +204,25 @@ export const LeftToolbar = ({
   const handleGenerateStoryboard = async (prompt: string, customPrompt?: string) => {
     setIsGeneratingStoryboard(true);
     try {
+      // Get canvas dimensions
+      const frame = canvas ? (canvas as any).workFrame : null;
+      const frameWidth = frame?.width || 1024;
+      const frameHeight = frame?.height || 768;
+      
       // Combine preset prompt with custom prompt if provided
       const finalPrompt = customPrompt 
         ? `${prompt}. Additional details: ${customPrompt}` 
         : prompt;
 
       console.log("生成分镜草图，提示词:", finalPrompt);
+      console.log("画布尺寸:", frameWidth, "x", frameHeight);
       
       const { data, error } = await supabase.functions.invoke('ai-generate-image', {
-        body: { prompt: finalPrompt }
+        body: { 
+          prompt: finalPrompt,
+          width: frameWidth,
+          height: frameHeight
+        }
       });
 
       if (error) {

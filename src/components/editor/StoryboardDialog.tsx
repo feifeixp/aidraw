@@ -19,97 +19,97 @@ const storyboardTypes = [
     id: "close-up",
     name: "特写镜头",
     description: "聚焦角色面部表情或物体细节",
-    prompt: "Close-up shot composition, focus on facial details and emotions, dramatic lighting, sketch style line art"
+    prompt: "Close-up shot composition, simple abstract wireframe sketch, minimalist geometric shapes representing facial features, basic line art, composition guide only"
   },
   {
     id: "medium-shot",
     name: "中景镜头",
     description: "展示角色上半身，适合对话场景",
-    prompt: "Medium shot composition, character from waist up, balanced framing, sketch style line art"
+    prompt: "Medium shot composition, simple abstract wireframe sketch, minimalist stick figure from waist up, basic geometric shapes, composition guide only"
   },
   {
     id: "full-shot",
     name: "全景镜头",
     description: "展示角色全身及周围环境",
-    prompt: "Full shot composition, complete character body visible, environment context, sketch style line art"
+    prompt: "Full shot composition, simple abstract wireframe sketch, minimalist stick figure full body, basic geometric environment shapes, composition guide only"
   },
   {
     id: "long-shot",
     name: "远景镜头",
     description: "广阔的场景，角色较小",
-    prompt: "Long shot composition, wide view of scene, character in environment, sketch style line art"
+    prompt: "Long shot composition, simple abstract wireframe sketch, tiny minimalist figure in wide space, basic geometric environment, composition guide only"
   },
   {
     id: "over-shoulder",
     name: "过肩镜头",
     description: "从一个角色肩膀后方拍摄另一角色",
-    prompt: "Over-the-shoulder shot composition, foreground character shoulder and back, facing subject, sketch style line art"
+    prompt: "Over-the-shoulder shot composition, simple abstract wireframe sketch, minimalist geometric shapes for shoulder and subject, basic line art, composition guide only"
   },
   {
     id: "high-angle",
     name: "俯视镜头",
     description: "从上方向下拍摄，营造弱势感",
-    prompt: "High angle shot composition, camera looking down at subject, creates vulnerability, sketch style line art"
+    prompt: "High angle shot composition, simple abstract wireframe sketch from above, minimalist stick figure looking down, basic geometric shapes, composition guide only"
   },
   {
     id: "low-angle",
     name: "仰视镜头",
     description: "从下方向上拍摄，展现力量感",
-    prompt: "Low angle shot composition, camera looking up at subject, creates power and dominance, sketch style line art"
+    prompt: "Low angle shot composition, simple abstract wireframe sketch from below, minimalist stick figure looking up, basic geometric shapes, composition guide only"
   },
   {
     id: "birds-eye",
     name: "鸟瞰镜头",
     description: "完全垂直向下的顶视图",
-    prompt: "Bird's eye view composition, directly overhead shot, top-down perspective, sketch style line art"
+    prompt: "Bird's eye view composition, simple abstract wireframe sketch directly overhead, minimalist top-down geometric shapes, basic line art, composition guide only"
   },
   {
     id: "eye-level",
     name: "平视镜头",
     description: "与角色视线平齐，自然视角",
-    prompt: "Eye level shot composition, neutral camera height, natural perspective, sketch style line art"
+    prompt: "Eye level shot composition, simple abstract wireframe sketch at neutral height, minimalist stick figure front view, basic geometric shapes, composition guide only"
   },
   {
     id: "dutch-angle",
     name: "荷兰角度",
     description: "倾斜的相机角度，营造不安感",
-    prompt: "Dutch angle shot composition, tilted camera angle, creates tension and unease, sketch style line art"
+    prompt: "Dutch angle shot composition, simple abstract wireframe sketch with tilted frame, minimalist geometric shapes at angle, basic line art, composition guide only"
   },
   {
     id: "two-shot",
     name: "双人镜头",
     description: "同时展示两个角色的互动",
-    prompt: "Two shot composition, two characters in frame, interaction and relationship, sketch style line art"
+    prompt: "Two shot composition, simple abstract wireframe sketch with two figures, minimalist stick figures interacting, basic geometric shapes, composition guide only"
   },
   {
     id: "group-shot",
     name: "群体镜头",
     description: "多个角色的群组画面",
-    prompt: "Group shot composition, multiple characters arranged in frame, ensemble scene, sketch style line art"
+    prompt: "Group shot composition, simple abstract wireframe sketch with multiple figures, minimalist stick figures arranged together, basic geometric shapes, composition guide only"
   },
   {
     id: "tracking-shot",
     name: "移动镜头",
     description: "跟随移动主体的动态镜头",
-    prompt: "Tracking shot composition, dynamic movement, following subject motion, sketch style line art with motion lines"
+    prompt: "Tracking shot composition, simple abstract wireframe sketch showing motion, minimalist stick figure with arrow lines indicating movement, basic geometric shapes, composition guide only"
   },
   {
     id: "follow-shot",
     name: "追随镜头",
     description: "跟随角色移动的镜头",
-    prompt: "Follow shot composition, camera moving with character, sense of journey, sketch style line art"
+    prompt: "Follow shot composition, simple abstract wireframe sketch with movement sense, minimalist stick figure in motion path, basic geometric shapes, composition guide only"
   },
   {
     id: "symmetrical",
     name: "对称构图",
     description: "画面左右对称的构图方式",
-    prompt: "Symmetrical composition, balanced left and right elements, centered subject, sketch style line art"
+    prompt: "Symmetrical composition, simple abstract wireframe sketch with mirror balance, minimalist geometric shapes centered and balanced, basic line art, composition guide only"
   },
   {
     id: "rule-of-thirds",
     name: "三分法构图",
     description: "将画面分为九宫格的经典构图",
-    prompt: "Rule of thirds composition, subject positioned at intersection points, balanced negative space, sketch style line art"
+    prompt: "Rule of thirds composition, simple abstract wireframe sketch with grid guides, minimalist geometric shapes at intersection points, basic line art, composition guide only"
   }
 ];
 
