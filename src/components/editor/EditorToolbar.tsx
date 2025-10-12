@@ -556,6 +556,39 @@ export const EditorToolbar = ({
         onApply={(width, height) => onCanvasSizeChange({ width, height })}
         currentWidth={canvasSize?.width || 1024}
         currentHeight={canvasSize?.height || 768}
+        onGenerateComposition={async (imageUrl) => {
+          if (!canvas) return;
+          
+          const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+          if (!frame) return;
+
+          try {
+            const { FabricImage } = await import("fabric");
+            const img = await FabricImage.fromURL(imageUrl, {
+              crossOrigin: 'anonymous'
+            });
+
+            img.set({
+              left: frame.left || 0,
+              top: frame.top || 0,
+              selectable: true
+            });
+
+            const scaleX = (frame.width || 1024) / (img.width || 1);
+            const scaleY = (frame.height || 768) / (img.height || 1);
+            const scale = Math.min(scaleX, scaleY);
+            img.scale(scale);
+
+            canvas.add(img);
+            canvas.sendObjectToBack(frame as any);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+            saveState();
+          } catch (error) {
+            console.error("Add composition image error:", error);
+            toast.error("添加构图参考失败");
+          }
+        }}
       />
 
       {/* Smart Compose Dialog */}
