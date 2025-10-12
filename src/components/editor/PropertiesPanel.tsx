@@ -234,61 +234,65 @@ export const PropertiesPanel = ({
     };
     reader.readAsDataURL(file);
   };
-  const handleAIGenerate = async () => {
+  const handleAIEdit = async () => {
     if (!aiPrompt.trim()) {
-      toast.error("请输入提示词");
+      toast.error("请输入修改指令");
       return;
     }
+
+    if (!selectedObject || selectedObject.type !== 'image') {
+      toast.error("请先选择一张图片");
+      return;
+    }
+
     setIsGenerating(true);
     try {
+      // Export the selected image as data URL
+      const imageDataURL = selectedObject.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 1
+      });
+
       const {
         data,
         error
-      } = await supabase.functions.invoke('ai-generate-image', {
+      } = await supabase.functions.invoke('ai-edit-image', {
         body: {
-          prompt: aiPrompt
+          imageUrl: imageDataURL,
+          instruction: aiPrompt
         }
       });
+
       if (error) throw error;
+
       if (data?.imageUrl) {
         FabricImage.fromURL(data.imageUrl, {
           crossOrigin: 'anonymous'
         }).then(img => {
           if (!img || !canvas) return;
-          if (selectedObject && selectedObject.type === 'image') {
-            // Replace existing image
-            img.set({
-              left: selectedObject.left,
-              top: selectedObject.top,
-              scaleX: selectedObject.scaleX,
-              scaleY: selectedObject.scaleY,
-              angle: selectedObject.angle,
-              opacity: selectedObject.opacity
-            });
-            canvas.remove(selectedObject);
-          } else {
-            // Add new image
-            const canvasWidth = canvas.width || 1024;
-            const canvasHeight = canvas.height || 768;
-            const imgWidth = img.width || 1;
-            const imgHeight = img.height || 1;
-            const scale = Math.min(canvasWidth / imgWidth, canvasHeight / imgHeight, 0.5);
-            img.scale(scale);
-            img.set({
-              left: (canvasWidth - imgWidth * scale) / 2,
-              top: (canvasHeight - imgHeight * scale) / 2
-            });
-          }
+
+          // Replace the existing image with edited one
+          img.set({
+            left: selectedObject.left,
+            top: selectedObject.top,
+            scaleX: selectedObject.scaleX,
+            scaleY: selectedObject.scaleY,
+            angle: selectedObject.angle,
+            opacity: selectedObject.opacity
+          });
+          
+          canvas.remove(selectedObject);
           canvas.add(img);
           canvas.setActiveObject(img);
           canvas.renderAll();
           saveState();
-          toast.success("图片已生成");
+          toast.success("图片修改完成");
         });
       }
     } catch (error) {
-      console.error('AI generation error:', error);
-      toast.error("图片生成失败");
+      console.error('AI edit error:', error);
+      toast.error("图片修改失败");
     } finally {
       setIsGenerating(false);
     }
@@ -403,11 +407,11 @@ export const PropertiesPanel = ({
         </div>
 
         <div className="border-t pt-3">
-          <Label htmlFor="ai-prompt">AI 生成图片</Label>
-          <Textarea id="ai-prompt" value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="描述你想要生成的图片..." className="mt-1" rows={3} />
-          <Button onClick={handleAIGenerate} disabled={isGenerating} className="w-full mt-2">
+          <Label htmlFor="ai-prompt">AI 修改图片</Label>
+          <Textarea id="ai-prompt" value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="描述你想要如何修改这张图片..." className="mt-1" rows={3} />
+          <Button onClick={handleAIEdit} disabled={isGenerating} className="w-full mt-2">
             <Sparkles className="w-4 h-4 mr-2" />
-            {isGenerating ? "生成中..." : "生成图片"}
+            {isGenerating ? "修改中..." : "修改图片"}
           </Button>
         </div>
 
