@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Clock, Trash2, Download, Cloud, HardDrive } from "lucide-react";
+import { FileText, Clock, Trash2, Download, Cloud, HardDrive, HardDriveDownload } from "lucide-react";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas } from "fabric";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Progress } from "@/components/ui/progress";
 
 interface Draft {
   id: string;
@@ -27,10 +28,40 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const [storageInfo, setStorageInfo] = useState({ used: 0, total: 0, percentage: 0 });
 
   useEffect(() => {
     loadDrafts();
+    calculateStorageUsage();
   }, [open]);
+
+  const calculateStorageUsage = () => {
+    try {
+      // 计算localStorage已使用大小
+      let totalSize = 0;
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          totalSize += localStorage[key].length + key.length;
+        }
+      }
+      
+      // localStorage大多数浏览器限制为5MB左右
+      const estimatedQuota = 5 * 1024 * 1024; // 5MB in bytes
+      const usedKB = Math.round(totalSize / 1024);
+      const totalKB = Math.round(estimatedQuota / 1024);
+      const percentage = Math.round((totalSize / estimatedQuota) * 100);
+      
+      setStorageInfo({
+        used: usedKB,
+        total: totalKB,
+        percentage: Math.min(percentage, 100)
+      });
+      
+      console.log(`localStorage使用情况: ${usedKB}KB / ${totalKB}KB (${percentage}%)`);
+    } catch (error) {
+      console.error("计算存储使用情况失败:", error);
+    }
+  };
 
   const loadDrafts = async () => {
     try {
@@ -221,6 +252,7 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
       
       // 3. 显示保存结果
       await loadDrafts();
+      calculateStorageUsage(); // 更新存储使用情况
       
       if (cloudSaved && localSaved) {
         toast.success(`草稿已同步保存 (${dataSizeKB}KB)`);
@@ -274,6 +306,7 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
       }
       console.log(`草稿已删除: ${draftId}`);
       toast.success("草稿已删除");
+      calculateStorageUsage(); // 更新存储使用情况
     } catch (error) {
       console.error("删除草稿失败:", error);
       toast.error("删除草稿失败");
@@ -341,6 +374,31 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
           <DialogTitle>草稿管理</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* 存储使用情况 */}
+          <div className="p-3 border rounded-lg bg-muted/30">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-sm">
+                <HardDriveDownload className="h-4 w-4" />
+                <span className="font-medium">本地存储</span>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {storageInfo.used}KB / {storageInfo.total}KB
+              </span>
+            </div>
+            <Progress 
+              value={storageInfo.percentage} 
+              className="h-2"
+            />
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-muted-foreground">
+                {storageInfo.percentage >= 80 ? '⚠️ 存储空间不足，建议清理旧草稿' : '存储空间充足'}
+              </span>
+              <span className="text-xs font-medium">
+                {storageInfo.percentage}%
+              </span>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <Button onClick={() => saveDraft(false)} className="flex-1">
               {currentDraftId ? "保存当前草稿" : "保存为新草稿"}
