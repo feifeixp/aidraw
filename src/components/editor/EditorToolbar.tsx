@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera, Maximize2, Hand } from "lucide-react";
+import { MousePointer2, Download, Undo, Redo, Sparkles, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Wand2, Camera, Maximize2, Hand, Lock, Unlock } from "lucide-react";
 import { CanvasSizeSettings } from "./CanvasSizeSettings";
 import { Canvas as FabricCanvas, FabricImage } from "fabric";
 import { toast } from "sonner";
@@ -104,6 +104,65 @@ export const EditorToolbar = ({
     canvas?.renderAll();
     saveState();
     toast.success("已移到最后");
+  };
+
+  const handleLockSelected = () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject) {
+      toast.error("请先选择一个对象");
+      return;
+    }
+    
+    // 锁定对象的所有交互
+    activeObject.set({
+      selectable: false,
+      evented: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      lockRotation: true,
+      lockScalingX: true,
+      lockScalingY: true,
+    });
+    
+    canvas?.discardActiveObject();
+    canvas?.renderAll();
+    saveState();
+    toast.success("已锁定选中对象");
+  };
+
+  const handleUnlockAll = () => {
+    if (!canvas) return;
+    
+    const objects = canvas.getObjects();
+    let unlockedCount = 0;
+    
+    objects.forEach(obj => {
+      // 跳过工作区域frame
+      if ((obj as any).name === 'workframe') return;
+      
+      // 如果对象被锁定，则解锁
+      if (!obj.selectable || !obj.evented) {
+        obj.set({
+          selectable: true,
+          evented: true,
+          lockMovementX: false,
+          lockMovementY: false,
+          lockRotation: false,
+          lockScalingX: false,
+          lockScalingY: false,
+        });
+        unlockedCount++;
+      }
+    });
+    
+    canvas.renderAll();
+    saveState();
+    
+    if (unlockedCount > 0) {
+      toast.success(`已解锁 ${unlockedCount} 个对象`);
+    } else {
+      toast.info("没有被锁定的对象");
+    }
   };
 
   const handleRedraw = async () => {
@@ -479,6 +538,17 @@ export const EditorToolbar = ({
       <Button variant={activeTool === "pan" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("pan")} className="shrink-0" title="平移画布 (H)">
         <Hand className="h-4 w-4" />
         <span className="ml-1">平移</span>
+      </Button>
+
+      <Separator orientation="vertical" className="h-6 shrink-0" />
+
+      <Button variant="outline" size="sm" onClick={handleLockSelected} className="shrink-0" title="锁定选中对象">
+        <Lock className="h-4 w-4" />
+        <span className="ml-1">锁定</span>
+      </Button>
+      <Button variant="outline" size="sm" onClick={handleUnlockAll} className="shrink-0" title="解锁所有对象">
+        <Unlock className="h-4 w-4" />
+        <span className="ml-1">解锁全部</span>
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
