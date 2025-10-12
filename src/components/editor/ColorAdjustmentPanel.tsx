@@ -172,7 +172,7 @@ export const ColorAdjustmentPanel = ({ canvas, selectedObject, saveState }: Colo
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Palette className="w-5 h-5" />
-          <h3 className="font-medium">场景调整</h3>
+          <h3 className="font-medium">色彩调整</h3>
         </div>
         <Button
           variant="ghost"
