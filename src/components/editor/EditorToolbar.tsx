@@ -279,51 +279,8 @@ export const EditorToolbar = ({
     }
     toast.info(`正在使用AI ${composeMode === "generate" ? "生成" : "编辑"}图片，请稍候...`);
     try {
-      if (composeMode === "generate") {
-        const {
-          data,
-          error
-        } = await supabase.functions.invoke('ai-generate-image', {
-          body: {
-            prompt: instruction
-          }
-        });
-        if (error) throw error;
-        if (data?.imageUrl) {
-          const {
-            FabricImage
-          } = await import("fabric");
-          const img = await FabricImage.fromURL(data.imageUrl, {
-            crossOrigin: 'anonymous'
-          });
-          const canvasWidth = canvas.width || 1024;
-          const canvasHeight = canvas.height || 768;
-          const imgWidth = img.width || 1;
-          const imgHeight = img.height || 1;
-          const scale = Math.min(canvasWidth / imgWidth, canvasHeight / imgHeight, 1);
-          img.scale(scale);
-          img.set({
-            left: (canvasWidth - imgWidth * scale) / 2,
-            top: (canvasHeight - imgHeight * scale) / 2
-          });
-          objects.forEach(obj => {
-            if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
-              canvas.remove(obj);
-            }
-          });
-          canvas.add(img);
-          canvas.setActiveObject(img);
-          canvas.renderAll();
-          saveState();
-          completeTask(taskId);
-          toast.success("图片已生成");
-        }
-      } else {
-        if (!baseImage) {
-          toast.error("画布中没有图片可以编辑");
-          setIsComposing(false);
-          return;
-        }
+      // If there's a base image, always use edit mode regardless of composeMode
+      if (baseImage) {
         const imageDataURL = baseImage.toDataURL({
           format: 'png',
           quality: 1
@@ -362,7 +319,47 @@ export const EditorToolbar = ({
           canvas.renderAll();
           saveState();
           completeTask(taskId);
-          toast.success("图片已编辑");
+          toast.success("图片已生成");
+        }
+      } else {
+        // No base image - use pure generation mode
+        const {
+          data,
+          error
+        } = await supabase.functions.invoke('ai-generate-image', {
+          body: {
+            prompt: instruction
+          }
+        });
+        if (error) throw error;
+        if (data?.imageUrl) {
+          const {
+            FabricImage
+          } = await import("fabric");
+          const img = await FabricImage.fromURL(data.imageUrl, {
+            crossOrigin: 'anonymous'
+          });
+          const canvasWidth = canvas.width || 1024;
+          const canvasHeight = canvas.height || 768;
+          const imgWidth = img.width || 1;
+          const imgHeight = img.height || 1;
+          const scale = Math.min(canvasWidth / imgWidth, canvasHeight / imgHeight, 1);
+          img.scale(scale);
+          img.set({
+            left: (canvasWidth - imgWidth * scale) / 2,
+            top: (canvasHeight - imgHeight * scale) / 2
+          });
+          objects.forEach(obj => {
+            if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
+              canvas.remove(obj);
+            }
+          });
+          canvas.add(img);
+          canvas.setActiveObject(img);
+          canvas.renderAll();
+          saveState();
+          completeTask(taskId);
+          toast.success("图片已生成");
         }
       }
     } catch (error) {
