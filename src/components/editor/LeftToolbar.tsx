@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Copy } from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, RotateCw, Users, PersonStanding, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Copy, User, Box } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,8 +59,8 @@ export const LeftToolbar = ({
     description: string | null;
     tags: string[];
   }>>([]);
-  const [showElementTypeDialog, setShowElementTypeDialog] = useState(false);
-  const [pendingImageData, setPendingImageData] = useState<{url: string, name: string} | null>(null);
+  const [showAddElementDialog, setShowAddElementDialog] = useState(false);
+  const [selectedElementType, setSelectedElementType] = useState<'character' | 'scene' | 'prop' | 'effect' | null>(null);
 
   // Load preset pose references
   useEffect(() => {
@@ -84,7 +84,15 @@ export const LeftToolbar = ({
     }
   }, [showPoseDialog]);
 
-  // Add Image with type selection
+  const handleAddElement = () => {
+    setSelectedElementType(null);
+    setShowAddElementDialog(true);
+  };
+
+  const handleSelectElementType = (type: 'character' | 'scene' | 'prop' | 'effect') => {
+    setSelectedElementType(type);
+  };
+
   const handleUploadImage = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -95,36 +103,41 @@ export const LeftToolbar = ({
         const reader = new FileReader();
         reader.onload = event => {
           const imageUrl = event.target?.result as string;
-          setPendingImageData({ url: imageUrl, name: file.name });
-          setShowElementTypeDialog(true);
+          if (selectedElementType) {
+            window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+              detail: {
+                imageUrl,
+                name: file.name,
+                elementType: selectedElementType
+              }
+            }));
+            setShowAddElementDialog(false);
+            setSelectedElementType(null);
+            onActionComplete?.();
+          }
         };
         reader.readAsDataURL(file);
       }
     };
     input.click();
   };
-
-  const handleAddImageWithType = (elementType: string) => {
-    if (pendingImageData) {
-      window.dispatchEvent(new CustomEvent('addImageToCanvas', {
-        detail: {
-          imageUrl: pendingImageData.url,
-          name: pendingImageData.name,
-          elementType
-        }
-      }));
-      setPendingImageData(null);
-      setShowElementTypeDialog(false);
-      onActionComplete?.();
-    }
-  };
   const handleGenerateImage = () => {
+    if (!selectedElementType) {
+      toast.error("请先选择元素类型");
+      return;
+    }
+    setShowAddElementDialog(false);
     setShowAiGenerateDialog(true);
   };
 
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) {
       toast.error("请输入提示词");
+      return;
+    }
+
+    if (!selectedElementType) {
+      toast.error("请先选择元素类型");
       return;
     }
 
@@ -151,10 +164,17 @@ export const LeftToolbar = ({
           throw new Error("返回的不是有效的图片格式");
         }
 
-        setPendingImageData({ url: data.imageUrl, name: "AI生成的图片" });
+        window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+          detail: {
+            imageUrl: data.imageUrl,
+            name: "AI生成的图片",
+            elementType: selectedElementType
+          }
+        }));
         setShowAiGenerateDialog(false);
-        setShowElementTypeDialog(true);
+        setSelectedElementType(null);
         setAiPrompt("");
+        onActionComplete?.();
       } else {
         console.error("响应中没有 imageUrl");
         toast.error("未生成图片，请稍后重试");
@@ -195,9 +215,19 @@ export const LeftToolbar = ({
   };
 
   const handleAddHistoryImageToCanvas = (imageUrl: string) => {
-    setPendingImageData({ url: imageUrl, name: "历史图片" });
-    setShowAiGenerateDialog(false);
-    setShowElementTypeDialog(true);
+    if (selectedElementType) {
+      window.dispatchEvent(new CustomEvent('addImageToCanvas', {
+        detail: {
+          imageUrl,
+          name: "历史图片",
+          elementType: selectedElementType
+        }
+      }));
+      setShowAddElementDialog(false);
+      setShowAiGenerateDialog(false);
+      setSelectedElementType(null);
+      onActionComplete?.();
+    }
   };
 
   // Add Text
@@ -914,28 +944,26 @@ export const LeftToolbar = ({
         <Separator />
 
         {/* Add Element */}
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleAddElement} disabled={isGenerating || isTaskProcessing}>
+          <Plus className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">添加元素</span>}
+        </Button>
+
+        {/* Add Text */}
+        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleAddText}>
+          <Type className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">添加文字</span>}
+        </Button>
+
+        {/* Add Shapes */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} disabled={isGenerating || isTaskProcessing}>
-              <Plus className="h-4 w-4" />
-              {!isCollapsed && <span className="ml-2">添加元素</span>}
+            <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`}>
+              <Square className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">添加形状</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuItem onClick={handleUploadImage}>
-              <Upload className="h-4 w-4 mr-2" />
-              上传图片
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleGenerateImage} disabled={isTaskProcessing}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              AI生成图片
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleAddText}>
-              <Type className="h-4 w-4 mr-2" />
-              添加文字
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleAddRectangle}>
               <Square className="h-4 w-4 mr-2" />
               矩形
@@ -948,7 +976,18 @@ export const LeftToolbar = ({
               <Triangle className="h-4 w-4 mr-2" />
               三角形
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Add Speech Bubbles */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`}>
+              <MessageCircle className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">添加对话框</span>}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
             <DropdownMenuItem onClick={handleAddRoundBubble}>
               <MessageCircle className="h-4 w-4 mr-2" />
               圆形对话泡泡
@@ -1421,46 +1460,90 @@ export const LeftToolbar = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Element Type Selection Dialog */}
-      <Dialog open={showElementTypeDialog} onOpenChange={setShowElementTypeDialog}>
-        <DialogContent>
+      {/* Add Element Dialog */}
+      <Dialog open={showAddElementDialog} onOpenChange={(open) => {
+        setShowAddElementDialog(open);
+        if (!open) setSelectedElementType(null);
+      }}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>选择元素类型</DialogTitle>
+            <DialogTitle>
+              {selectedElementType 
+                ? `添加${selectedElementType === 'character' ? '角色' : selectedElementType === 'scene' ? '场景' : selectedElementType === 'prop' ? '道具' : '特效'}`
+                : '选择元素类型'
+              }
+            </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            <Button
-              variant="outline"
-              className="h-24 flex flex-col gap-2"
-              onClick={() => handleAddImageWithType('character')}
-            >
-              <Users className="h-8 w-8" />
-              <span>角色</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-24 flex flex-col gap-2"
-              onClick={() => handleAddImageWithType('scene')}
-            >
-              <ImageIcon className="h-8 w-8" />
-              <span>场景</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-24 flex flex-col gap-2"
-              onClick={() => handleAddImageWithType('prop')}
-            >
-              <Square className="h-8 w-8" />
-              <span>道具</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-24 flex flex-col gap-2"
-              onClick={() => handleAddImageWithType('effect')}
-            >
-              <Sparkles className="h-8 w-8" />
-              <span>特效</span>
-            </Button>
-          </div>
+          
+          {!selectedElementType ? (
+            <div className="grid grid-cols-2 gap-4 py-8">
+              <Button
+                variant="outline"
+                className="h-32 flex flex-col gap-2"
+                onClick={() => handleSelectElementType('character')}
+              >
+                <User className="h-8 w-8" />
+                <span className="text-lg">角色</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-32 flex flex-col gap-2"
+                onClick={() => handleSelectElementType('scene')}
+              >
+                <ImageIcon className="h-8 w-8" />
+                <span className="text-lg">场景</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-32 flex flex-col gap-2"
+                onClick={() => handleSelectElementType('prop')}
+              >
+                <Box className="h-8 w-8" />
+                <span className="text-lg">道具</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-32 flex flex-col gap-2"
+                onClick={() => handleSelectElementType('effect')}
+              >
+                <Sparkles className="h-8 w-8" />
+                <span className="text-lg">特效</span>
+              </Button>
+            </div>
+          ) : (
+            <>
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Show history images - filtered by type if needed */}
+                  <AddElementHistoryGrid onSelectImage={handleAddHistoryImageToCanvas} />
+                </div>
+              </ScrollArea>
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedElementType(null)}
+                  className="flex-1"
+                >
+                  返回
+                </Button>
+                <Button
+                  onClick={handleUploadImage}
+                  className="flex-1"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  上传图片
+                </Button>
+                <Button
+                  onClick={handleGenerateImage}
+                  className="flex-1"
+                  disabled={isTaskProcessing}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  AI生成
+                </Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>;
@@ -1549,5 +1632,70 @@ const ProfessionalGenerateGrid = ({
         )}
       </div>
     </ScrollArea>
+  );
+};
+
+// Add Element History Grid Component
+const AddElementHistoryGrid = ({ 
+  onSelectImage
+}: { 
+  onSelectImage: (url: string) => void;
+}) => {
+  const { data: history, isLoading } = useQuery({
+    queryKey: ["generation-history-add-element"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("generation_history")
+        .select("*")
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="col-span-3 text-center py-8">
+        <p className="text-muted-foreground">加载中...</p>
+      </div>
+    );
+  }
+
+  if (!history || history.length === 0) {
+    return (
+      <div className="col-span-3 text-center py-8">
+        <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+        <p className="text-muted-foreground">还没有历史图片</p>
+        <p className="text-sm text-muted-foreground mt-2">点击下方按钮上传或生成新图片</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {history.map((item) => {
+        const images = (item as any).images || (item.image_url ? [item.image_url] : []);
+        const imageUrl = images[0];
+        
+        if (!imageUrl) return null;
+
+        return (
+          <div
+            key={item.id}
+            className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+            onClick={() => onSelectImage(imageUrl)}
+          >
+            <img
+              src={imageUrl}
+              alt={item.prompt || '历史图片'}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        );
+      })}
+    </>
   );
 };
