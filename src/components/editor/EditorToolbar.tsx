@@ -72,6 +72,18 @@ export const EditorToolbar = ({
       toast.error("未找到工作区域");
       return;
     }
+
+    // 检查是否只有frame类型元素
+    const nonFrameObjects = canvas.getObjects().filter((obj: any) => 
+      obj.name !== 'workframe' && 
+      obj.type === 'image' && 
+      (obj.data?.elementType !== 'frame' || !obj.data)
+    );
+    
+    if (nonFrameObjects.length === 0) {
+      toast.error("画布上需要有角色或场景元素才能使用渲染功能");
+      return;
+    }
     
     toast.info("正在融合图层并重新绘制，请稍候...");
     try {
@@ -131,7 +143,8 @@ export const EditorToolbar = ({
         const fabricImg = new FabricImage(img, {
           left: frame.left,
           top: frame.top,
-          selectable: true
+          selectable: true,
+          data: { elementType: 'frame' } // Mark as frame type
         });
         const scaleX = frame.width! / fabricImg.width!;
         const scaleY = frame.height! / fabricImg.height!;
@@ -191,6 +204,18 @@ export const EditorToolbar = ({
       toast.error("当前有任务正在处理，请等待完成");
       return;
     }
+
+    // 检查是否只有frame类型元素
+    const nonFrameObjects = canvas.getObjects().filter((obj: any) => 
+      obj.name !== 'workframe' && 
+      (obj.type !== 'image' || obj.data?.elementType !== 'frame')
+    );
+    
+    if (nonFrameObjects.length === 0) {
+      toast.error("画布上需要有角色、场景元素或标注才能使用智能合成功能");
+      return;
+    }
+
     setShowSmartComposeDialog(false);
     setIsComposing(true);
     const taskId = startTask(composeMode === "generate" ? "正在生成图像" : "正在编辑图像");
@@ -261,7 +286,8 @@ export const EditorToolbar = ({
             left: baseImage.left,
             top: baseImage.top,
             scaleX: baseImage.scaleX,
-            scaleY: baseImage.scaleY
+            scaleY: baseImage.scaleY,
+            data: { elementType: 'frame' } // Mark as frame type
           });
           objects.forEach(obj => {
             if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
@@ -302,7 +328,8 @@ export const EditorToolbar = ({
           img.scale(scale);
           img.set({
             left: (canvasWidth - imgWidth * scale) / 2,
-            top: (canvasHeight - imgHeight * scale) / 2
+            top: (canvasHeight - imgHeight * scale) / 2,
+            data: { elementType: 'frame' } // Mark as frame type
           });
           objects.forEach(obj => {
             if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
@@ -401,7 +428,8 @@ export const EditorToolbar = ({
         img.scale(scale);
         img.set({
           left: frame.left || 0,
-          top: frame.top || 0
+          top: frame.top || 0,
+          data: { elementType: 'frame' } // Mark as frame type
         });
 
         canvas.add(img);
@@ -453,10 +481,6 @@ export const EditorToolbar = ({
       <Button variant="outline" size="sm" onClick={() => setShowSmartComposeDialog(true)} disabled={isTaskProcessing || isComposing} className="shrink-0 whitespace-nowrap" title="智能合成">
         <Wand2 className="h-4 w-4" />
         <span className="ml-1">{isComposing ? "处理中..." : "智能合成"}</span>
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => setShowRecomposeDialog(true)} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap" title="重新构图">
-        <Camera className="h-4 w-4" />
-        <span className="ml-1">重新构图</span>
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />

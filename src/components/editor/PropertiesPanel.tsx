@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { Type, Bold, Italic, Underline, Square, Image, Upload, Sparkles, Users, PersonStanding, RotateCw, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Cloud, Palette, Check } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Type, Bold, Italic, Underline, Square, Image, Upload, Sparkles, Users, PersonStanding, RotateCw, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Cloud, Palette, Check, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ColorAdjustmentPanel } from "./ColorAdjustmentPanel";
@@ -65,13 +66,18 @@ export const PropertiesPanel = ({
     tags: string[];
   }>>([]);
   
+  // Frame recompose dialog
+  const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
+  const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
+  
   // Element type display names
   const getElementTypeName = (type: string) => {
     const typeMap: Record<string, string> = {
       character: "角色",
       scene: "场景",
       prop: "道具",
-      effect: "特效"
+      effect: "特效",
+      frame: "合成图"
     };
     return typeMap[type] || type;
   };
@@ -599,6 +605,70 @@ export const PropertiesPanel = ({
     handleAdjustPose(customPose, poseReferenceImage || undefined);
   };
 
+  const handleRecompose = async (instruction: string) => {
+    if (!canvas || !selectedObject || selectedObject.type !== 'image') {
+      toast.error("请先选择一张图片");
+      return;
+    }
+    if (isTaskProcessing || !startTask || !completeTask || !cancelTask) {
+      return;
+    }
+
+    const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    if (!frame) {
+      toast.error("未找到工作区域");
+      return;
+    }
+
+    setShowRecomposeDialog(false);
+    const taskId = startTask("正在重新构图");
+
+    try {
+      const imageDataURL = selectedObject.toDataURL({
+        format: 'png',
+        quality: 1
+      });
+
+      const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-edit-image', {
+        body: {
+          imageUrl: imageDataURL,
+          instruction
+        }
+      });
+
+      if (aiError) throw aiError;
+
+      if (aiData?.imageUrl) {
+        const img = await FabricImage.fromURL(aiData.imageUrl, {
+          crossOrigin: 'anonymous'
+        });
+
+        img.set({
+          left: selectedObject.left,
+          top: selectedObject.top,
+          scaleX: selectedObject.scaleX,
+          scaleY: selectedObject.scaleY,
+          data: { elementType: 'frame' } // Keep frame type
+        });
+
+        canvas.remove(selectedObject);
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        saveState();
+        completeTask(taskId);
+        toast.success("重新构图完成");
+        setCustomRecomposePrompt("");
+      } else {
+        throw new Error('AI未返回图片');
+      }
+    } catch (error) {
+      console.error("Recompose error:", error);
+      toast.error("重新构图失败");
+      cancelTask();
+    }
+  };
+
   if (!selectedObject) {
     return <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
         <div className="text-center">
@@ -695,6 +765,7 @@ export const PropertiesPanel = ({
       </div>
     </>;
   const renderImageProperties = () => {
+    const isFrame = elementType === 'frame';
     const canAdjustScene = elementType === 'scene';
     const canAdjustSubject = elementType === 'character' || elementType === 'prop';
     const canAdjustPose = elementType === 'character';
@@ -727,7 +798,16 @@ export const PropertiesPanel = ({
           </Button>
         </div>
 
-        {canAdjustScene && (
+        {isFrame && (
+          <div className="border-t pt-3">
+            <Button variant="outline" className="w-full" onClick={() => setShowRecomposeDialog(true)} disabled={isTaskProcessing}>
+              <Camera className="w-4 h-4 mr-2" />
+              重新构图
+            </Button>
+          </div>
+        )}
+
+        {!isFrame && canAdjustScene && (
           <div className="border-t pt-3">
             <Button variant="outline" className="w-full" onClick={() => setShowCameraDialog(true)} disabled={isTaskProcessing}>
               <RotateCw className="w-4 h-4 mr-2" />
@@ -736,7 +816,7 @@ export const PropertiesPanel = ({
           </div>
         )}
 
-        {canAdjustSubject && (
+        {!isFrame && canAdjustSubject && (
           <div className="border-t pt-3">
             <Button variant="outline" className="w-full" onClick={() => setShowSubjectAngleDialog(true)} disabled={isTaskProcessing}>
               <PersonStanding className="w-4 w-4 mr-2" />
@@ -745,7 +825,7 @@ export const PropertiesPanel = ({
           </div>
         )}
 
-        {canAdjustPose && (
+        {!isFrame && canAdjustPose && (
           <div className="border-t pt-3">
             <Button variant="outline" className="w-full" onClick={() => setShowPoseDialog(true)} disabled={isTaskProcessing}>
               <Users className="w-4 h-4 mr-2" />
@@ -1084,6 +1164,91 @@ export const PropertiesPanel = ({
                   </Button>
                 </>
               )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recompose Dialog for Frame */}
+      <Dialog open={showRecomposeDialog} onOpenChange={setShowRecomposeDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>重新构图</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="preset" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="preset">镜头类型</TabsTrigger>
+              <TabsTrigger value="composition">构图类型</TabsTrigger>
+              <TabsTrigger value="custom">自定义</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="preset" className="space-y-4">
+              <div className="space-y-2">
+                <Label>拍摄距离</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={() => handleRecompose("Transform this image to use an establishing shot showing the full environment and context")} className="w-full">建立镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a full shot showing the entire subject from head to toe")} className="w-full">全景镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a medium shot from waist up")} className="w-full">中景镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a close shot showing head and shoulders")} className="w-full">近景镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use an extreme close-up shot focusing on facial details")} className="w-full">特写镜头</Button>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>镜头角度</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={() => handleRecompose("Transform this image to use an up shot from a low angle looking upward")} className="w-full">仰视镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a down shot from a high angle looking downward")} className="w-full">俯视镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use an eye level shot at the subject's eye level")} className="w-full">平视镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a bird's eye view from directly above")} className="w-full">鸟瞰镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a worm's eye view from ground level looking up")} className="w-full">虫视镜头</Button>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>特殊镜头</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={() => handleRecompose("Transform this image to use an over-the-shoulder shot")} className="w-full">肩上镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a two-shot framing two subjects")} className="w-full">双人镜头</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a POV shot from the subject's perspective")} className="w-full">主观视角</Button>
+                  <Button onClick={() => handleRecompose("Transform this image to use a Dutch angle with tilted camera")} className="w-full">荷兰角度</Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="composition" className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={() => handleRecompose("Recompose this image using the rule of thirds with key elements at intersection points")} className="w-full">三分法构图</Button>
+                <Button onClick={() => handleRecompose("Recompose this image with centered composition placing the main subject in the center")} className="w-full">中心构图</Button>
+                <Button onClick={() => handleRecompose("Recompose this image with symmetrical composition creating perfect balance")} className="w-full">对称构图</Button>
+                <Button onClick={() => handleRecompose("Recompose this image using leading lines to guide the viewer's eye")} className="w-full">引导线构图</Button>
+                <Button onClick={() => handleRecompose("Recompose this image with diagonal composition creating dynamic energy")} className="w-full">对角线构图</Button>
+                <Button onClick={() => handleRecompose("Recompose this image using frame within frame composition")} className="w-full">框架构图</Button>
+                <Button onClick={() => handleRecompose("Recompose this image with golden ratio composition following the spiral")} className="w-full">黄金比例构图</Button>
+                <Button onClick={() => handleRecompose("Recompose this image using negative space for minimalist impact")} className="w-full">留白构图</Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="custom" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="custom-recompose">自定义构图描述</Label>
+                <Textarea
+                  id="custom-recompose"
+                  placeholder="例如：使用低角度仰视拍摄，突出主体的高大感；或使用浅景深模糊背景，突出前景主体..."
+                  value={customRecomposePrompt}
+                  onChange={(e) => setCustomRecomposePrompt(e.target.value)}
+                  rows={4}
+                />
+              </div>
+              <Button onClick={() => {
+                if (customRecomposePrompt.trim()) {
+                  handleRecompose(customRecomposePrompt);
+                } else {
+                  toast.error("请输入构图描述");
+                }
+              }} className="w-full">
+                应用自定义构图
+              </Button>
             </TabsContent>
           </Tabs>
         </DialogContent>
