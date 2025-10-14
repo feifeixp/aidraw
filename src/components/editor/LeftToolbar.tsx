@@ -551,6 +551,14 @@ export const LeftToolbar = ({
       return;
     }
     canvas?.sendObjectToBack(activeObject);
+    
+    // 确保frame始终在最底层
+    const objects = canvas?.getObjects() || [];
+    const frame = objects.find(obj => obj.selectable === false && obj.evented === false);
+    if (frame) {
+      canvas?.sendObjectToBack(frame);
+    }
+    
     canvas?.renderAll();
     saveState();
     toast.success("已置于底层");
@@ -575,6 +583,14 @@ export const LeftToolbar = ({
       return;
     }
     canvas?.sendObjectBackwards(activeObject);
+    
+    // 确保frame始终在最底层
+    const objects = canvas?.getObjects() || [];
+    const frame = objects.find(obj => obj.selectable === false && obj.evented === false);
+    if (frame) {
+      canvas?.sendObjectToBack(frame);
+    }
+    
     canvas?.renderAll();
     saveState();
     toast.success("已下移一层");
