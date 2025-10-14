@@ -475,7 +475,8 @@ export const LeftToolbar = ({
           left: activeObject.left,
           top: activeObject.top,
           scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY
+          scaleY: activeObject.scaleY,
+          data: (activeObject as any).data // Preserve element metadata
         });
         canvas.remove(activeObject);
         canvas.add(img);
