@@ -359,6 +359,17 @@ const Generate = () => {
       return;
     }
 
+    // 检查用户是否登录
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "请先登录",
+        description: "登录后才能使用 AI 对话功能",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // 添加用户消息
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -394,7 +405,7 @@ const Generate = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+          Authorization: `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           messages: [...conversationHistory, {
