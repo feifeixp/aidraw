@@ -753,7 +753,8 @@ export const LeftToolbar = ({
         if (!newImg) return;
         newImg.set({
           left: cropRect.left,
-          top: cropRect.top
+          top: cropRect.top,
+          data: image.data // 保留原始图片的所有 data 属性，包括 elementType
         });
 
         // Remove the crop rect and old image
