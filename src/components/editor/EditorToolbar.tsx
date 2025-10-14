@@ -48,7 +48,8 @@ export const EditorToolbar = ({
   onZoomChange
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
-  const [composeMode, setComposeMode] = useState<"generate" | "edit">("generate");
+  const [composeMode, setComposeMode] = useState<"compose" | "render">("compose");
+  const [replaceOriginal, setReplaceOriginal] = useState(true);
   const [isComposing, setIsComposing] = useState(false);
   const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
@@ -60,7 +61,7 @@ export const EditorToolbar = ({
     redo();
   };
 
-  const handleRedraw = async () => {
+  const handleRedraw = async (shouldReplaceOriginal: boolean = true) => {
     if (!canvas) {
       toast.error("画布未初始化");
       return;
@@ -205,6 +206,14 @@ export const EditorToolbar = ({
       return;
     }
 
+    setShowSmartComposeDialog(false);
+    
+    // If render mode, call handleRedraw
+    if (composeMode === "render") {
+      await handleRedraw(replaceOriginal);
+      return;
+    }
+
     // 检查是否只有frame类型元素
     const nonFrameObjects = canvas.getObjects().filter((obj: any) => 
       obj.name !== 'workframe' && 
@@ -216,9 +225,8 @@ export const EditorToolbar = ({
       return;
     }
 
-    setShowSmartComposeDialog(false);
     setIsComposing(true);
-    const taskId = startTask(composeMode === "generate" ? "正在生成图像" : "正在编辑图像");
+    const taskId = startTask("正在智能合成");
     const objects = canvas.getObjects();
     const textAnnotations: string[] = [];
     const shapes: string[] = [];
@@ -257,7 +265,7 @@ export const EditorToolbar = ({
       cancelTask();
       return;
     }
-    toast.info(`正在使用AI ${composeMode === "generate" ? "生成" : "编辑"}图片，请稍候...`);
+    toast.info("正在使用AI智能合成图片，请稍候...");
     try {
       // If there's a base image, always use edit mode regardless of composeMode
       if (baseImage) {
@@ -289,12 +297,16 @@ export const EditorToolbar = ({
             scaleY: baseImage.scaleY,
             data: { elementType: 'frame' } // Mark as frame type
           });
-          objects.forEach(obj => {
-            if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
-              canvas.remove(obj);
-            }
-          });
-          canvas.remove(baseImage);
+          
+          if (replaceOriginal) {
+            objects.forEach(obj => {
+              if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
+                canvas.remove(obj);
+              }
+            });
+            canvas.remove(baseImage);
+          }
+          
           canvas.add(img);
           canvas.setActiveObject(img);
           canvas.renderAll();
@@ -331,11 +343,15 @@ export const EditorToolbar = ({
             top: (canvasHeight - imgHeight * scale) / 2,
             data: { elementType: 'frame' } // Mark as frame type
           });
-          objects.forEach(obj => {
-            if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
-              canvas.remove(obj);
-            }
-          });
+          
+          if (replaceOriginal) {
+            objects.forEach(obj => {
+              if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
+                canvas.remove(obj);
+              }
+            });
+          }
+          
           canvas.add(img);
           canvas.setActiveObject(img);
           canvas.renderAll();
@@ -474,10 +490,6 @@ export const EditorToolbar = ({
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleRedraw} disabled={isTaskProcessing} className="shrink-0 whitespace-nowrap" title="渲染">
-        <Sparkles className="h-4 w-4" />
-        <span className="ml-1">渲染</span>
-      </Button>
       <Button variant="outline" size="sm" onClick={() => setShowSmartComposeDialog(true)} disabled={isTaskProcessing || isComposing} className="shrink-0 whitespace-nowrap" title="智能合成">
         <Wand2 className="h-4 w-4" />
         <span className="ml-1">{isComposing ? "处理中..." : "智能合成"}</span>
@@ -562,37 +574,65 @@ export const EditorToolbar = ({
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>合成模式</Label>
+              <Label>功能选择</Label>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant={composeMode === "generate" ? "default" : "outline"} onClick={() => setComposeMode("generate")} className="w-full">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  生成新图
-                </Button>
-                <Button variant={composeMode === "edit" ? "default" : "outline"} onClick={() => setComposeMode("edit")} className="w-full">
+                <Button variant={composeMode === "compose" ? "default" : "outline"} onClick={() => setComposeMode("compose")} className="w-full">
                   <Wand2 className="h-4 w-4 mr-2" />
-                  编辑现有图
+                  智能合成
+                </Button>
+                <Button variant={composeMode === "render" ? "default" : "outline"} onClick={() => setComposeMode("render")} className="w-full">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  渲染
                 </Button>
               </div>
             </div>
 
             <div className="space-y-2">
+              <Label>输出选项</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant={replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(true)} className="w-full">
+                  替换原图
+                </Button>
+                <Button variant={!replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(false)} className="w-full">
+                  创建新图层
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
               <Label>功能说明</Label>
               <div className="text-sm text-muted-foreground space-y-2">
-                <p>
-                  <strong>智能合成</strong>会分析画布中的所有文本标注和图形元素：
-                </p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li><strong>生成新图</strong>：根据文本和图形标注生成全新的图片</li>
-                  <li><strong>编辑现有图</strong>：基于画布中的图片，按照标注进行智能修改</li>
-                </ul>
-                <p className="mt-2">
-                  提示：在画布中添加文本描述你想要的效果，添加图形标记重点区域，然后点击开始合成。
-                </p>
+                {composeMode === "compose" ? (
+                  <>
+                    <p>
+                      <strong>智能合成</strong>会分析画布中的所有文本标注和图形元素：
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>根据文本和图形标注生成或编辑图片</li>
+                      <li>支持添加文字描述想要的效果</li>
+                      <li>可以标记重点区域进行智能修改</li>
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      <strong>渲染</strong>会将画布上的所有元素融合并优化：
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>融合所有图层到单一图像</li>
+                      <li>修复图像缺陷和缺失区域</li>
+                      <li>优化光照、阴影和高光效果</li>
+                      <li>保持原有构图和主体不变</li>
+                    </ul>
+                  </>
+                )}
               </div>
             </div>
 
             <Button onClick={handleSmartCompose} className="w-full" disabled={isComposing}>
-              {isComposing ? "处理中..." : "开始合成"}
+              {isComposing ? "处理中..." : composeMode === "compose" ? "开始合成" : "开始渲染"}
             </Button>
           </div>
         </DialogContent>
