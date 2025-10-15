@@ -35,101 +35,49 @@ const RESOLUTIONS = [
 ];
 
 const COMPOSITION_TYPES = [
+  // 镜头距离
   {
     id: "close-up",
-    name: "特写镜头",
-    description: "聚焦角色面部表情或物体细节",
-    prompt: "Minimalist line drawing, close-up frame composition guide, simple horizon line, eye level reference line, basic stick figure outline only"
+    name: "特写",
+    category: "distance",
+    description: "近距离拍摄",
+    prompt: "Apply close-up camera distance. Keep all subjects in the same camera distance, maintaining their exact appearance and composition."
   },
   {
     id: "medium-shot",
-    name: "中景镜头",
-    description: "展示角色上半身",
-    prompt: "Minimalist line drawing, medium shot frame composition guide, simple horizon line, eye level reference line, basic stick figure from waist up outline only"
+    name: "中景",
+    category: "distance",
+    description: "中等距离拍摄",
+    prompt: "Apply medium shot camera distance. Keep all subjects in the same camera distance, maintaining their exact appearance and composition."
   },
   {
     id: "full-shot",
-    name: "全景镜头",
-    description: "展示角色全身及周围环境",
-    prompt: "Minimalist line drawing, full shot frame composition guide, simple horizon line, eye level reference line, basic stick figure full body outline only"
+    name: "全景",
+    category: "distance",
+    description: "完整展示场景",
+    prompt: "Apply full shot camera distance. Keep all subjects in the same camera distance, maintaining their exact appearance and composition."
   },
+  // 镜头角度
   {
-    id: "long-shot",
-    name: "远景镜头",
-    description: "广阔的场景",
-    prompt: "Minimalist line drawing, long shot frame composition guide, simple horizon line, eye level reference line, tiny stick figure outline only"
-  },
-  {
-    id: "over-shoulder",
-    name: "过肩镜头",
-    description: "从一个角色肩膀后方拍摄",
-    prompt: "Minimalist line drawing, over-shoulder frame composition guide, simple horizon line, eye level reference line, basic shoulder outline and subject outline only"
+    id: "eye-level",
+    name: "平视",
+    category: "angle",
+    description: "水平视角",
+    prompt: "Apply eye-level camera angle. Keep all subjects at the same camera angle, maintaining their exact appearance and composition."
   },
   {
     id: "high-angle",
-    name: "俯视镜头",
-    description: "从上方向下拍摄",
-    prompt: "Minimalist line drawing, high angle frame composition guide, simple horizon line, downward viewing angle reference line, basic stick figure outline only"
+    name: "俯视",
+    category: "angle",
+    description: "从上往下看",
+    prompt: "Apply high angle camera view. Keep all subjects at the same camera angle, maintaining their exact appearance and composition."
   },
   {
     id: "low-angle",
-    name: "仰视镜头",
-    description: "从下方向上拍摄",
-    prompt: "Minimalist line drawing, low angle frame composition guide, simple horizon line, upward viewing angle reference line, basic stick figure outline only"
-  },
-  {
-    id: "birds-eye",
-    name: "鸟瞰镜头",
-    description: "完全垂直向下的顶视图",
-    prompt: "Minimalist line drawing, bird's eye view frame composition guide, simple overhead reference lines, basic top-down figure outline only"
-  },
-  {
-    id: "eye-level",
-    name: "平视镜头",
-    description: "与角色视线平齐",
-    prompt: "Minimalist line drawing, eye level frame composition guide, simple horizon line at eye level, basic stick figure front view outline only"
-  },
-  {
-    id: "dutch-angle",
-    name: "荷兰角度",
-    description: "倾斜的相机角度",
-    prompt: "Minimalist line drawing, dutch angle frame composition guide, tilted horizon line, tilted reference lines, basic stick figure outline only"
-  },
-  {
-    id: "two-shot",
-    name: "双人镜头",
-    description: "同时展示两个角色",
-    prompt: "Minimalist line drawing, two shot frame composition guide, simple horizon line, eye level reference line, two basic stick figure outlines only"
-  },
-  {
-    id: "group-shot",
-    name: "群体镜头",
-    description: "多个角色的群组画面",
-    prompt: "Minimalist line drawing, group shot frame composition guide, simple horizon line, eye level reference line, multiple basic stick figure outlines only"
-  },
-  {
-    id: "tracking-shot",
-    name: "移动镜头",
-    description: "跟随移动主体",
-    prompt: "Minimalist line drawing, tracking shot frame composition guide, simple horizon line, movement direction arrow, basic stick figure outline with motion lines only"
-  },
-  {
-    id: "follow-shot",
-    name: "追随镜头",
-    description: "跟随角色移动",
-    prompt: "Minimalist line drawing, follow shot frame composition guide, simple horizon line, movement path line, basic stick figure outline only"
-  },
-  {
-    id: "symmetrical",
-    name: "对称构图",
-    description: "画面左右对称",
-    prompt: "Minimalist line drawing, symmetrical frame composition guide, central vertical reference line, simple horizon line, mirrored basic shapes outline only"
-  },
-  {
-    id: "rule-of-thirds",
-    name: "三分法构图",
-    description: "九宫格经典构图",
-    prompt: "Minimalist line drawing, rule of thirds frame composition guide, grid reference lines (2 horizontal, 2 vertical), basic stick figure at intersection point outline only"
+    name: "仰视",
+    category: "angle",
+    description: "从下往上看",
+    prompt: "Apply low angle camera view. Keep all subjects at the same camera angle, maintaining their exact appearance and composition."
   }
 ];
 
@@ -443,11 +391,11 @@ export const CanvasSizeSettings = ({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>预设构图类型</Label>
-              <ScrollArea className="h-[300px] pr-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {COMPOSITION_TYPES.map((type) => (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>镜头距离</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {COMPOSITION_TYPES.filter(t => t.category === 'distance').map((type) => (
                     <button
                       key={type.id}
                       onClick={() => setSelectedCompositionType(type.id)}
@@ -462,23 +410,42 @@ export const CanvasSizeSettings = ({
                     </button>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
+
+              <div className="space-y-2">
+                <Label>镜头角度</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {COMPOSITION_TYPES.filter(t => t.category === 'angle').map((type) => (
+                    <button
+                      key={type.id}
+                      onClick={() => setSelectedCompositionType(type.id)}
+                      className={`p-3 border rounded-lg text-left transition-all hover:border-primary ${
+                        selectedCompositionType === type.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      }`}
+                    >
+                      <h4 className="font-medium text-sm mb-1">{type.name}</h4>
+                      <p className="text-xs text-muted-foreground">{type.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="composition-prompt">补充描述（可选）</Label>
-              <Textarea
-                id="composition-prompt"
-                placeholder="添加更多细节描述..."
+              <Label>自定义描述（可选）</Label>
+              <Textarea 
                 value={customCompositionPrompt}
                 onChange={(e) => setCustomCompositionPrompt(e.target.value)}
+                placeholder="添加自定义构图描述..."
                 rows={3}
               />
             </div>
 
-            <Button
+            <Button 
               onClick={handleGenerateComposition}
-              disabled={isGenerating || (!selectedCompositionType && !customCompositionPrompt.trim())}
+              disabled={(!selectedCompositionType && !customCompositionPrompt.trim()) || isGenerating}
               className="w-full"
             >
               {isGenerating ? (
