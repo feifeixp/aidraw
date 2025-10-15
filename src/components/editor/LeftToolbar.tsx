@@ -28,8 +28,7 @@ interface LeftToolbarProps {
   onActionComplete?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  onEnterInteractiveMode?: () => void;
-  onExitInteractiveMode?: () => void;
+  onSmartExtract?: () => Promise<void>;
 }
 export const LeftToolbar = ({
   canvas,
@@ -41,8 +40,7 @@ export const LeftToolbar = ({
   onActionComplete,
   isCollapsed = false,
   onToggleCollapse,
-  onEnterInteractiveMode,
-  onExitInteractiveMode
+  onSmartExtract
 }: LeftToolbarProps) => {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);

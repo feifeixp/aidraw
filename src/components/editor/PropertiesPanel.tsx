@@ -21,6 +21,7 @@ interface PropertiesPanelProps {
   startTask?: (taskName: string) => string;
   completeTask?: (taskId: string) => void;
   cancelTask?: () => void;
+  onSmartExtract?: () => Promise<void>;
 }
 export const PropertiesPanel = ({
   canvas,
@@ -28,7 +29,8 @@ export const PropertiesPanel = ({
   isTaskProcessing = false,
   startTask,
   completeTask,
-  cancelTask
+  cancelTask,
+  onSmartExtract
 }: PropertiesPanelProps) => {
   const [selectedObject, setSelectedObject] = useState<any>(null);
 
@@ -482,6 +484,13 @@ export const PropertiesPanel = ({
         saveState();
         completeTask(taskId);
         toast.success("主体角度调整完成");
+        
+        // Auto extract after angle adjustment
+        if (onSmartExtract) {
+          setTimeout(() => {
+            onSmartExtract();
+          }, 500);
+        }
       } else {
         throw new Error('No image returned from AI');
       }
@@ -568,6 +577,13 @@ export const PropertiesPanel = ({
         toast.success("姿势调整完成");
         setPoseReferenceImage(null);
         setCustomPose("");
+        
+        // Auto extract after pose adjustment
+        if (onSmartExtract) {
+          setTimeout(() => {
+            onSmartExtract();
+          }, 500);
+        }
       } else {
         throw new Error('No image returned from AI');
       }

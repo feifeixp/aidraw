@@ -224,6 +224,136 @@ const Editor = () => {
     setMobileMenuOpen(false);
   }, []);
 
+  // Smart extract function
+  const handleSmartExtract = useCallback(async () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!canvas || !activeObject || activeObject.type !== 'image') {
+      return; // Silently return if conditions not met (called automatically)
+    }
+    
+    const taskId = startTask("正在智能提取");
+    try {
+      // Dynamic import helper functions
+      const loadImageFromDataURL = (dataUrl: string): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = dataUrl;
+        });
+      };
+
+      const classifyExtractedObject = async (imageBlob: Blob): Promise<'character' | 'prop' | 'scene'> => {
+        try {
+          const { supabase } = await import("@/integrations/supabase/client");
+          const reader = new FileReader();
+          const imageDataUrl = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(imageBlob);
+          });
+          
+          const { data, error } = await supabase.functions.invoke('classify-object', {
+            body: { imageUrl: imageDataUrl }
+          });
+          
+          if (error) throw error;
+          return data.elementType;
+        } catch (error) {
+          console.error('Classification error:', error);
+          return 'prop';
+        }
+      };
+
+      // Convert image to data URL
+      const imageDataURL = (activeObject as any).toDataURL({
+        format: 'png',
+        quality: 1
+      });
+      
+      // Load image
+      const img = await loadImageFromDataURL(imageDataURL);
+      
+      // Initialize MediaPipe segmenter
+      const { MediaPipeSegmenter } = await import("@/lib/mediapipe/interactiveSegmenter");
+      const segmenter = new MediaPipeSegmenter();
+      await segmenter.initialize();
+      
+      // Use center point for segmentation
+      const centerX = img.width / 2;
+      const centerY = img.height / 2;
+      
+      const result = await segmenter.segmentWithPoint(img, centerX, centerY);
+      
+      if (!result || !result.categoryMask) {
+        toast.info("未检测到需要提取的物体");
+        cancelTask();
+        segmenter.close();
+        return;
+      }
+      
+      // Create source canvas
+      const sourceCanvas = document.createElement('canvas');
+      sourceCanvas.width = img.width;
+      sourceCanvas.height = img.height;
+      const ctx = sourceCanvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      
+      // Extract the masked object
+      const maskData = result.categoryMask.getAsUint8Array();
+      const extractedCanvas = segmenter.extractMaskedImage(
+        sourceCanvas,
+        maskData,
+        result.categoryMask.width,
+        result.categoryMask.height
+      );
+      
+      // Convert to blob for classification
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        extractedCanvas.toBlob(
+          (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
+          'image/png'
+        );
+      });
+      
+      // Classify the object
+      const elementType = await classifyExtractedObject(blob);
+      
+      // Convert extracted canvas to data URL
+      const extractedDataURL = extractedCanvas.toDataURL('image/png');
+      
+      // Create new fabric image
+      const newImg = await FabricImage.fromURL(extractedDataURL, {
+        crossOrigin: 'anonymous'
+      });
+      
+      newImg.set({
+        left: activeObject.left,
+        top: activeObject.top,
+        scaleX: activeObject.scaleX,
+        scaleY: activeObject.scaleY,
+        data: {
+          ...(activeObject as any).data,
+          elementType: elementType
+        }
+      });
+      
+      canvas.remove(activeObject);
+      canvas.add(newImg);
+      canvas.setActiveObject(newImg);
+      canvas.renderAll();
+      saveState();
+      
+      segmenter.close();
+      completeTask(taskId);
+      toast.success(`已自动提取物体 (${elementType})`);
+    } catch (error) {
+      console.error("Smart extract error:", error);
+      toast.error("智能提取失败");
+      cancelTask();
+    }
+  }, [canvas, saveState, startTask, completeTask, cancelTask]);
+
   const handleLoadDraft = useCallback((draftData: string) => {
     if (!canvas) return;
     try {
@@ -249,6 +379,7 @@ const Editor = () => {
         onActionComplete={isMobile ? handleCloseMobileMenu : undefined}
         isCollapsed={isLeftToolbarCollapsed}
         onToggleCollapse={() => setIsLeftToolbarCollapsed(!isLeftToolbarCollapsed)}
+        onSmartExtract={handleSmartExtract}
       />
     </div>
   );
@@ -334,6 +465,7 @@ const Editor = () => {
                 startTask={startTask}
                 completeTask={completeTask}
                 cancelTask={cancelTask}
+                onSmartExtract={handleSmartExtract}
               />
             </div>
           </div>
