@@ -5,11 +5,10 @@ let segmenter: any = null;
 
 export const initializeSegmenter = async () => {
   if (!segmenter) {
-    console.log('Initializing SAM segmenter...');
+    console.log('Initializing DETR segmenter...');
     segmenter = await pipeline(
       'image-segmentation',
-      'Xenova/slimsam-77-uniform',
-      { device: 'webgpu' }
+      'Xenova/detr-resnet-50-panoptic'
     );
     console.log('Segmenter initialized');
   }
@@ -36,11 +35,15 @@ export const segmentImage = async (imageElement: HTMLImageElement): Promise<Arra
     // Get image data URL
     const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
     
-    console.log('Segmenting image...');
+    console.log('Segmenting image with DETR...');
     const results = await segmenterInstance(imageDataUrl);
     console.log('Segmentation results:', results.length, 'objects found');
     
-    return results;
+    // Filter out low confidence results
+    const filteredResults = results.filter((r: any) => r.score > 0.8);
+    console.log('Filtered results:', filteredResults.length, 'high confidence objects');
+    
+    return filteredResults;
   } catch (error) {
     console.error('Error segmenting image:', error);
     throw error;
@@ -65,9 +68,33 @@ export const extractObjectFromMask = async (
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   
-  for (let i = 0; i < mask.data.length; i++) {
-    const alpha = Math.round(mask.data[i] * 255);
-    data[i * 4 + 3] = alpha;
+  // Convert mask to canvas if it's a RawImage
+  let maskData: Uint8ClampedArray;
+  if (mask.data) {
+    // If mask has a data property, use it directly
+    maskData = new Uint8ClampedArray(mask.data.length);
+    for (let i = 0; i < mask.data.length; i++) {
+      maskData[i] = mask.data[i] * 255;
+    }
+  } else if (mask instanceof HTMLCanvasElement || mask instanceof HTMLImageElement) {
+    // If mask is an image, convert it to data
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = canvas.width;
+    maskCanvas.height = canvas.height;
+    const maskCtx = maskCanvas.getContext('2d');
+    if (!maskCtx) throw new Error('Could not get mask canvas context');
+    
+    maskCtx.drawImage(mask, 0, 0, canvas.width, canvas.height);
+    const maskImageData = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
+    maskData = maskImageData.data;
+  } else {
+    throw new Error('Unsupported mask format');
+  }
+  
+  // Apply mask to alpha channel
+  for (let i = 0; i < data.length / 4; i++) {
+    const maskValue = maskData[i * 4] / 255; // Use first channel of mask
+    data[i * 4 + 3] = Math.round(maskValue * 255);
   }
   
   ctx.putImageData(imageData, 0, 0);
