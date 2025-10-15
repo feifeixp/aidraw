@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Lock, Unlock, Scissors } from "lucide-react";
+import { Plus, ImageOff, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Lock, Unlock, Scissors, MousePointer2 } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,8 @@ interface LeftToolbarProps {
   onActionComplete?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onEnterInteractiveMode?: () => void;
+  onExitInteractiveMode?: () => void;
 }
 export const LeftToolbar = ({
   canvas,
@@ -39,7 +41,9 @@ export const LeftToolbar = ({
   cancelTask,
   onActionComplete,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  onEnterInteractiveMode,
+  onExitInteractiveMode
 }: LeftToolbarProps) => {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1012,6 +1016,17 @@ export const LeftToolbar = ({
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={() => setShowExtractObjectDialog(true)} disabled={isTaskProcessing || isExtracting}>
           <Scissors className="h-4 w-4" />
           {!isCollapsed && <span className="ml-2">提取物体</span>}
+        </Button>
+
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} 
+          onClick={onEnterInteractiveMode}
+          disabled={isTaskProcessing}
+        >
+          <MousePointer2 className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">交互式提取</span>}
         </Button>
 
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleFlip}>
