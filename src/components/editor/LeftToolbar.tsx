@@ -47,6 +47,9 @@ export const LeftToolbar = ({
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
   const [featherStrength, setFeatherStrength] = useState(50);
   const [isCropMode, setIsCropMode] = useState(false);
+  const [showExtractDialog, setShowExtractDialog] = useState(false);
+  const [extractDilation, setExtractDilation] = useState(3);
+  const [extractFeather, setExtractFeather] = useState(2);
   const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
@@ -447,6 +450,14 @@ export const LeftToolbar = ({
       return;
     }
     
+    setShowExtractDialog(true);
+  };
+
+  const executeSmartExtract = async () => {
+    const activeObject = canvas?.getActiveObject();
+    if (!canvas || !activeObject || activeObject.type !== 'image') return;
+    
+    setShowExtractDialog(false);
     const taskId = startTask("正在智能提取");
     try {
       // Convert image to data URL
@@ -485,14 +496,18 @@ export const LeftToolbar = ({
       const ctx = sourceCanvas.getContext('2d')!;
       ctx.drawImage(img, 0, 0);
       
-      // Extract the masked object
+      // Extract the masked object with dilation and feathering
       toast.info("正在提取物体...");
       const maskData = result.categoryMask.getAsUint8Array();
       const extractedCanvas = segmenter.extractMaskedImage(
         sourceCanvas,
         maskData,
         result.categoryMask.width,
-        result.categoryMask.height
+        result.categoryMask.height,
+        {
+          dilation: extractDilation,
+          feather: extractFeather
+        }
       );
       
       // Convert to blob for classification
@@ -1067,6 +1082,50 @@ export const LeftToolbar = ({
 
 
       </div>
+
+      {/* Smart Extract Dialog */}
+      <Dialog open={showExtractDialog} onOpenChange={setShowExtractDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>智能提取设置</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="extract-dilation">边缘扩张: {extractDilation} 像素</Label>
+              <Slider 
+                id="extract-dilation" 
+                min={0} 
+                max={10} 
+                step={1} 
+                value={[extractDilation]} 
+                onValueChange={value => setExtractDilation(value[0])} 
+                className="w-full" 
+              />
+              <p className="text-sm text-muted-foreground">
+                增加此值可以包含更多主体边缘区域，避免丢失细节
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="extract-feather">边缘羽化: {extractFeather} 像素</Label>
+              <Slider 
+                id="extract-feather" 
+                min={0} 
+                max={10} 
+                step={1} 
+                value={[extractFeather]} 
+                onValueChange={value => setExtractFeather(value[0])} 
+                className="w-full" 
+              />
+              <p className="text-sm text-muted-foreground">
+                增加此值可以使边缘更加柔和自然
+              </p>
+            </div>
+            <Button onClick={executeSmartExtract} className="w-full">
+              开始提取
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* AI Generate Dialog */}
       <Dialog open={showAiGenerateDialog} onOpenChange={setShowAiGenerateDialog}>

@@ -299,13 +299,17 @@ const Editor = () => {
       const ctx = sourceCanvas.getContext('2d')!;
       ctx.drawImage(img, 0, 0);
       
-      // Extract the masked object
+      // Extract the masked object with dilation and feathering (auto-extract uses defaults)
       const maskData = result.categoryMask.getAsUint8Array();
       const extractedCanvas = segmenter.extractMaskedImage(
         sourceCanvas,
         maskData,
         result.categoryMask.width,
-        result.categoryMask.height
+        result.categoryMask.height,
+        {
+          dilation: 3,  // Default: expand edges by 3 pixels
+          feather: 2    // Default: feather edges by 2 pixels
+        }
       );
       
       // Convert to blob for classification

@@ -54,8 +54,14 @@ export class MediaPipeSegmenter {
     sourceCanvas: HTMLCanvasElement,
     categoryMask: Uint8Array,
     maskWidth: number,
-    maskHeight: number
+    maskHeight: number,
+    options: {
+      dilation?: number;  // 膨胀像素数，扩大选中区域
+      feather?: number;   // 羽化像素数，边缘柔化
+    } = {}
   ): HTMLCanvasElement {
+    const { dilation = 0, feather = 0 } = options;
+    
     const outputCanvas = document.createElement('canvas');
     outputCanvas.width = sourceCanvas.width;
     outputCanvas.height = sourceCanvas.height;
@@ -68,24 +74,119 @@ export class MediaPipeSegmenter {
     const imageData = ctx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
     const data = imageData.data;
 
+    // First pass: Create expanded mask if dilation is enabled
+    let expandedMask: Uint8Array = categoryMask;
+    if (dilation > 0) {
+      expandedMask = this.dilateMask(categoryMask, maskWidth, maskHeight, dilation);
+    }
+
+    // Second pass: Apply mask with optional feathering
     for (let y = 0; y < outputCanvas.height; y++) {
       for (let x = 0; x < outputCanvas.width; x++) {
         const maskX = Math.floor((x / outputCanvas.width) * maskWidth);
         const maskY = Math.floor((y / outputCanvas.height) * maskHeight);
         const maskIdx = maskY * maskWidth + maskX;
         
-        // MediaPipe mask: 0 = object (clicked area), 1+ = background
-        // We want to keep the clicked object, so invert the mask
-        const maskValue = categoryMask[maskIdx];
-
+        const maskValue = expandedMask[maskIdx];
         const idx = (y * outputCanvas.width + x) * 4;
-        // Keep pixels where mask is 0 (the clicked object)
-        data[idx + 3] = maskValue === 0 ? 255 : 0;
+        
+        if (feather > 0 && maskValue === 0) {
+          // Calculate distance to edge for feathering
+          const alpha = this.calculateFeatheredAlpha(
+            expandedMask,
+            maskWidth,
+            maskHeight,
+            maskX,
+            maskY,
+            feather
+          );
+          data[idx + 3] = alpha;
+        } else {
+          // No feathering: binary mask
+          data[idx + 3] = maskValue === 0 ? 255 : 0;
+        }
       }
     }
 
     ctx.putImageData(imageData, 0, 0);
     return outputCanvas;
+  }
+
+  private dilateMask(
+    mask: Uint8Array,
+    width: number,
+    height: number,
+    iterations: number
+  ): Uint8Array {
+    let currentMask = new Uint8Array(mask);
+    
+    for (let iter = 0; iter < iterations; iter++) {
+      const newMask = new Uint8Array(currentMask);
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          
+          // If current pixel is object (0), expand to neighbors
+          if (currentMask[idx] === 0) {
+            // Check 8-connected neighbors
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                  const nidx = ny * width + nx;
+                  newMask[nidx] = 0;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      currentMask = newMask;
+    }
+    
+    return currentMask;
+  }
+
+  private calculateFeatheredAlpha(
+    mask: Uint8Array,
+    width: number,
+    height: number,
+    x: number,
+    y: number,
+    featherRadius: number
+  ): number {
+    // Find distance to nearest background pixel
+    let minDist = featherRadius + 1;
+    
+    for (let dy = -featherRadius; dy <= featherRadius; dy++) {
+      for (let dx = -featherRadius; dx <= featherRadius; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const idx = ny * width + nx;
+          
+          // If neighbor is background
+          if (mask[idx] !== 0) {
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            minDist = Math.min(minDist, dist);
+          }
+        }
+      }
+    }
+    
+    // Calculate alpha based on distance
+    if (minDist >= featherRadius) {
+      return 255; // Fully opaque
+    }
+    
+    // Smooth falloff
+    const ratio = minDist / featherRadius;
+    return Math.floor(ratio * 255);
   }
 
   drawMaskOnCanvas(
