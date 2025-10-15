@@ -108,7 +108,7 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
             maskData,
             result.categoryMask.width,
             result.categoryMask.height,
-            'rgba(58, 189, 255, 0.5)' // Brighter cyan for better visibility
+            'rgba(0, 255, 255, 0.6)' // Increased opacity for better visibility
           );
         }
       } catch (error) {
@@ -246,7 +246,10 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
       <canvas
         ref={overlayCanvasRef}
         className="absolute pointer-events-auto cursor-crosshair"
-        style={{ background: 'transparent' }}
+        style={{ 
+          background: 'transparent',
+          pointerEvents: 'auto'
+        }}
       />
       
       {/* Control Panel */}

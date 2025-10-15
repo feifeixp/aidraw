@@ -74,11 +74,13 @@ export class MediaPipeSegmenter {
         const maskY = Math.floor((y / outputCanvas.height) * maskHeight);
         const maskIdx = maskY * maskWidth + maskX;
         
-        // MediaPipe mask: 0 = background, 1+ = object
+        // MediaPipe mask: 0 = object (clicked area), 1+ = background
+        // We want to keep the clicked object, so invert the mask
         const maskValue = categoryMask[maskIdx];
 
         const idx = (y * outputCanvas.width + x) * 4;
-        data[idx + 3] = maskValue > 0 ? 255 : 0;
+        // Keep pixels where mask is 0 (the clicked object)
+        data[idx + 3] = maskValue === 0 ? 255 : 0;
       }
     }
 
@@ -114,7 +116,8 @@ export class MediaPipeSegmenter {
         const maskIdx = maskY * maskWidth + maskX;
         const maskValue = categoryMask[maskIdx];
 
-        if (maskValue > 0) {
+        // MediaPipe mask: 0 = object (hovered area), highlight it
+        if (maskValue === 0) {
           const idx = (y * canvas.width + x) * 4;
           data[idx] = rgba.r;
           data[idx + 1] = rgba.g;
