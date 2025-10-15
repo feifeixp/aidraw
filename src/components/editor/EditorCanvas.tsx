@@ -193,6 +193,10 @@ export const EditorCanvas = ({
       if (frameRef.current) {
         fabricCanvas.sendObjectToBack(frameRef.current);
       }
+      // Ensure frameBorder always stays on top
+      if (frameBorderRef.current) {
+        fabricCanvas.bringObjectToFront(frameBorderRef.current);
+      }
     };
 
     // Handle double click on text objects
@@ -400,11 +404,14 @@ export const EditorCanvas = ({
       canvas.setActiveObject(img);
       canvas.renderAll();
       
-      // Ensure frame stays at the back
+      // Ensure frame stays at the back and frameBorder on top
       if (frameRef.current) {
         canvas.sendObjectToBack(frameRef.current);
-        canvas.renderAll();
       }
+      if (frameBorderRef.current) {
+        canvas.bringObjectToFront(frameBorderRef.current);
+      }
+      canvas.renderAll();
       
       saveStateRef.current();
       toast.success("图片已添加");
