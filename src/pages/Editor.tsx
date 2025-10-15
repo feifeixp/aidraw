@@ -8,7 +8,6 @@ import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { TaskQueueDisplay } from "@/components/editor/TaskQueueDisplay";
 import { DraftsList } from "@/components/editor/DraftsList";
 import { Tutorial } from "@/components/editor/Tutorial";
-import { InteractiveSAM } from "@/components/editor/InteractiveSAM";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -88,7 +87,6 @@ const Editor = () => {
   const [isPropertiesPanelCollapsed, setIsPropertiesPanelCollapsed] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [isInteractiveMode, setIsInteractiveMode] = useState(false);
   const isMobile = useIsMobile();
 
   // Check if tutorial should be shown
@@ -226,54 +224,6 @@ const Editor = () => {
     setMobileMenuOpen(false);
   }, []);
 
-  const handleEnterInteractiveMode = useCallback(() => {
-    const activeObject = canvas?.getActiveObject();
-    if (!canvas || !activeObject || activeObject.type !== 'image') {
-      toast.error("请先选择画布上的图片");
-      return;
-    }
-    
-    setIsInteractiveMode(true);
-    canvas.selection = false; // Disable selection
-    toast.info("交互模式已启用：鼠标悬停高亮物体，点击提取");
-  }, [canvas]);
-
-  const handleExitInteractiveMode = useCallback(() => {
-    setIsInteractiveMode(false);
-    if (canvas) {
-      canvas.selection = true;
-    }
-    toast.info("已退出交互模式");
-  }, [canvas]);
-
-  const handleExtractObject = useCallback(async (
-    extractedCanvas: HTMLCanvasElement, 
-    elementType: 'character' | 'prop' | 'scene'
-  ) => {
-    if (!canvas) return;
-
-    try {
-      const dataUrl = extractedCanvas.toDataURL('image/png');
-      const newImg = await FabricImage.fromURL(dataUrl, {
-        crossOrigin: 'anonymous'
-      });
-
-      const activeObject = canvas.getActiveObject();
-      newImg.set({
-        left: activeObject ? (activeObject.left || 0) + 20 : 100,
-        top: activeObject ? (activeObject.top || 0) + 20 : 100,
-        data: { elementType }
-      });
-
-      canvas.add(newImg);
-      canvas.renderAll();
-      saveState();
-    } catch (error) {
-      console.error('Error adding extracted object:', error);
-      toast.error('添加提取的物体失败');
-    }
-  }, [canvas, saveState]);
-
   const handleLoadDraft = useCallback((draftData: string) => {
     if (!canvas) return;
     try {
@@ -299,8 +249,6 @@ const Editor = () => {
         onActionComplete={isMobile ? handleCloseMobileMenu : undefined}
         isCollapsed={isLeftToolbarCollapsed}
         onToggleCollapse={() => setIsLeftToolbarCollapsed(!isLeftToolbarCollapsed)}
-        onEnterInteractiveMode={handleEnterInteractiveMode}
-        onExitInteractiveMode={handleExitInteractiveMode}
       />
     </div>
   );
@@ -404,15 +352,6 @@ const Editor = () => {
           </Button>
         )}
       </div>
-
-      {/* Interactive SAM Overlay */}
-      {isInteractiveMode && (
-        <InteractiveSAM
-          canvas={canvas}
-          onExit={handleExitInteractiveMode}
-          onExtract={handleExtractObject}
-        />
-      )}
     </div>;
 };
 export default Editor;

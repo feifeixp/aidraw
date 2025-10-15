@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, ImageOff, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Lock, Unlock, Scissors, MousePointer2 } from "lucide-react";
+import { Plus, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Lock, Unlock, Scissors } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,7 +48,6 @@ export const LeftToolbar = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [originalAiImage, setOriginalAiImage] = useState<string | null>(null);
   const [featherStrength, setFeatherStrength] = useState(50);
-  const [showRemoveBgDialog, setShowRemoveBgDialog] = useState(false);
   const [isCropMode, setIsCropMode] = useState(false);
   const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -438,8 +437,8 @@ export const LeftToolbar = ({
     onActionComplete?.();
   };
 
-  // Remove Background
-  const handleRemoveBackground = async () => {
+  // Smart Extract - 智能提取
+  const handleSmartExtract = async () => {
     const activeObject = canvas?.getActiveObject();
     if (!canvas || !activeObject || activeObject.type !== 'image') {
       toast.error("请先选择画布上的图片");
@@ -449,52 +448,99 @@ export const LeftToolbar = ({
       toast.error("当前有任务正在处理，请等待完成");
       return;
     }
-    setShowRemoveBgDialog(false);
-    const taskId = startTask("正在移除背景");
+    
+    const taskId = startTask("正在智能提取");
     try {
+      // Convert image to data URL
       const imageDataURL = (activeObject as any).toDataURL({
         format: 'png',
         quality: 1
       });
-      const {
-        data: aiData,
-        error: aiError
-      } = await supabase.functions.invoke('ai-remove-background', {
-        body: {
-          imageUrl: imageDataURL
+      
+      // Load image
+      const img = await loadImageFromDataURL(imageDataURL);
+      
+      // Initialize MediaPipe segmenter
+      toast.info("正在加载分割模型...");
+      const { MediaPipeSegmenter } = await import("@/lib/mediapipe/interactiveSegmenter");
+      const segmenter = new MediaPipeSegmenter();
+      await segmenter.initialize();
+      
+      // Use center point for segmentation
+      const centerX = img.width / 2;
+      const centerY = img.height / 2;
+      
+      toast.info("正在分析图片...");
+      const result = await segmenter.segmentWithPoint(img, centerX, centerY);
+      
+      if (!result || !result.categoryMask) {
+        toast.error("未检测到主要物体");
+        cancelTask();
+        segmenter.close();
+        return;
+      }
+      
+      // Create source canvas
+      const sourceCanvas = document.createElement('canvas');
+      sourceCanvas.width = img.width;
+      sourceCanvas.height = img.height;
+      const ctx = sourceCanvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      
+      // Extract the masked object
+      toast.info("正在提取物体...");
+      const maskData = result.categoryMask.getAsUint8Array();
+      const extractedCanvas = segmenter.extractMaskedImage(
+        sourceCanvas,
+        maskData,
+        result.categoryMask.width,
+        result.categoryMask.height
+      );
+      
+      // Convert to blob for classification
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        extractedCanvas.toBlob(
+          (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
+          'image/png'
+        );
+      });
+      
+      // Classify the object
+      toast.info("正在识别物体类型...");
+      const elementType = await classifyExtractedObject(blob);
+      
+      // Convert extracted canvas to data URL
+      const extractedDataURL = extractedCanvas.toDataURL('image/png');
+      
+      // Create new fabric image
+      const { FabricImage } = await import("fabric");
+      const newImg = await FabricImage.fromURL(extractedDataURL, {
+        crossOrigin: 'anonymous'
+      });
+      
+      newImg.set({
+        left: activeObject.left,
+        top: activeObject.top,
+        scaleX: activeObject.scaleX,
+        scaleY: activeObject.scaleY,
+        data: {
+          ...(activeObject as any).data,
+          elementType: elementType
         }
       });
-      if (aiError) throw aiError;
-      if (aiData?.imageUrl) {
-        setOriginalAiImage(aiData.imageUrl);
-        toast.info("正在处理透明通道...");
-        const transparentUrl = await convertMagentaToTransparent(aiData.imageUrl, featherStrength);
-        const {
-          FabricImage
-        } = await import("fabric");
-        const img = await FabricImage.fromURL(transparentUrl, {
-          crossOrigin: 'anonymous'
-        });
-        img.set({
-          left: activeObject.left,
-          top: activeObject.top,
-          scaleX: activeObject.scaleX,
-          scaleY: activeObject.scaleY,
-          data: (activeObject as any).data // Preserve element metadata
-        });
-        canvas.remove(activeObject);
-        canvas.add(img);
-        canvas.setActiveObject(img);
-        canvas.renderAll();
-        saveState();
-        completeTask(taskId);
-        toast.success("背景已去除");
-      } else {
-        throw new Error('No image returned from AI');
-      }
+      
+      canvas.remove(activeObject);
+      canvas.add(newImg);
+      canvas.setActiveObject(newImg);
+      canvas.renderAll();
+      saveState();
+      
+      segmenter.close();
+      completeTask(taskId);
+      toast.success(`已提取物体 (${elementType})`);
     } catch (error) {
-      console.error("Remove background error:", error);
-      toast.error("去除背景失败");
+      console.error("Smart extract error:", error);
+      toast.error("智能提取失败");
       cancelTask();
     }
   };
@@ -656,8 +702,40 @@ export const LeftToolbar = ({
     }
   };
   
+
   const handleColorAdjust = () => {
     toast.info("颜色调整功能开发中");
+  };
+
+  // Helper functions
+  const loadImageFromDataURL = (dataUrl: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  };
+
+  const classifyExtractedObject = async (imageBlob: Blob): Promise<'character' | 'prop' | 'scene'> => {
+    try {
+      const reader = new FileReader();
+      const imageDataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(imageBlob);
+      });
+      
+      const { data, error } = await supabase.functions.invoke('classify-object', {
+        body: { imageUrl: imageDataUrl }
+      });
+      
+      if (error) throw error;
+      return data.elementType;
+    } catch (error) {
+      console.error('Classification error:', error);
+      return 'prop';
+    }
   };
 
   // Crop functionality
@@ -907,20 +985,15 @@ export const LeftToolbar = ({
           </Button>
         )}
 
-        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={() => setShowRemoveBgDialog(true)} disabled={isTaskProcessing}>
-          <ImageOff className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">去背景</span>}
-        </Button>
-
         <Button 
           variant="outline" 
           size="sm" 
           className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} 
-          onClick={onEnterInteractiveMode}
+          onClick={handleSmartExtract}
           disabled={isTaskProcessing}
         >
-          <MousePointer2 className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">交互式提取</span>}
+          <Scissors className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">智能提取</span>}
         </Button>
 
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleFlip}>
@@ -994,28 +1067,8 @@ export const LeftToolbar = ({
           {!isCollapsed && <span className="ml-2">解锁全部</span>}
         </Button>
 
-      </div>
 
-      {/* Remove Background Dialog */}
-      <Dialog open={showRemoveBgDialog} onOpenChange={setShowRemoveBgDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>去除背景设置</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="feather-strength">透明通道羽化强度: {featherStrength}</Label>
-              <Slider id="feather-strength" min={0} max={100} step={1} value={[featherStrength]} onValueChange={value => setFeatherStrength(value[0])} className="w-full" />
-              <p className="text-sm text-muted-foreground">
-                较低的值会产生更锐利的边缘，较高的值会产生更柔和的过渡
-              </p>
-            </div>
-            <Button onClick={handleRemoveBackground} className="w-full">
-              开始去除背景
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      </div>
 
       {/* AI Generate Dialog */}
       <Dialog open={showAiGenerateDialog} onOpenChange={setShowAiGenerateDialog}>
