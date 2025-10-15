@@ -241,19 +241,20 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
   }, [canvas]);
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none">
+    <>
       {/* Overlay Canvas */}
       <canvas
         ref={overlayCanvasRef}
-        className="absolute pointer-events-auto cursor-crosshair"
+        className="fixed pointer-events-auto cursor-crosshair"
         style={{ 
           background: 'transparent',
-          pointerEvents: 'auto'
+          pointerEvents: 'auto',
+          zIndex: 1000
         }}
       />
       
       {/* Control Panel */}
-      <div className="fixed top-4 right-4 flex gap-2 pointer-events-auto">
+      <div className="fixed top-4 right-4 flex gap-2 pointer-events-auto" style={{ zIndex: 1001 }}>
         <div className={`bg-background border rounded-lg px-4 py-2 shadow-lg flex items-center gap-2 transition-all ${
           isExtracting ? 'border-primary' : ''
         }`}>
@@ -272,7 +273,7 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
           退出
         </Button>
       </div>
-    </div>
+    </>
   );
 };
 
