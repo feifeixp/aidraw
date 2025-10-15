@@ -69,6 +69,7 @@ export const EditorToolbar = ({
     
     // 查找frame对象
     const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    const frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
     if (!frame) {
       toast.error("未找到工作区域");
       return;
@@ -94,6 +95,13 @@ export const EditorToolbar = ({
       const originalStroke = frame.stroke;
       const originalStrokeWidth = frame.strokeWidth;
       frame.set({ stroke: 'transparent', strokeWidth: 0 });
+      
+      // 临时隐藏frameBorder
+      const originalBorderVisible = frameBorder?.visible;
+      if (frameBorder) {
+        frameBorder.set({ visible: false });
+      }
+      
       canvas.renderAll();
 
       // 使用Fabric.js的toDataURL导出frame区域
@@ -107,8 +115,11 @@ export const EditorToolbar = ({
         height: frame.height || 768,
       });
 
-      // 恢复frame边框
+      // 恢复frame边框和frameBorder
       frame.set({ stroke: originalStroke, strokeWidth: originalStrokeWidth });
+      if (frameBorder) {
+        frameBorder.set({ visible: originalBorderVisible });
+      }
       canvas.renderAll();
       const instruction = `Redraw this image with professional lighting and shading. Enhance the lighting, add proper shadows and highlights based on the environment and composition. Make it look more polished and professionally lit while keeping all subjects and elements in their exact positions.`;
       const {
@@ -177,12 +188,20 @@ export const EditorToolbar = ({
   const handleExport = () => {
     if (!canvas) return;
     
-    // 查找frame对象
+    // 查找frame对象和frameBorder
     const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    const frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
     if (!frame) {
       toast.error("未找到工作区域");
       return;
     }
+    
+    // 临时隐藏frameBorder
+    const originalBorderVisible = frameBorder?.visible;
+    if (frameBorder) {
+      frameBorder.set({ visible: false });
+    }
+    canvas.renderAll();
     
     // 只导出frame区域内的内容
     const dataURL = canvas.toDataURL({
@@ -194,6 +213,12 @@ export const EditorToolbar = ({
       width: frame.width,
       height: frame.height,
     });
+    
+    // 恢复frameBorder
+    if (frameBorder) {
+      frameBorder.set({ visible: originalBorderVisible });
+    }
+    canvas.renderAll();
     
     const link = document.createElement("a");
     link.download = `artwork-${Date.now()}.png`;
@@ -386,8 +411,9 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 查找frame对象
+    // 查找frame对象和frameBorder
     const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    const frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
     if (!frame) {
       toast.error("未找到工作区域");
       return;
@@ -401,6 +427,13 @@ export const EditorToolbar = ({
       const originalStroke = frame.stroke;
       const originalStrokeWidth = frame.strokeWidth;
       frame.set({ stroke: 'transparent', strokeWidth: 0 });
+      
+      // 临时隐藏frameBorder
+      const originalBorderVisible = frameBorder?.visible;
+      if (frameBorder) {
+        frameBorder.set({ visible: false });
+      }
+      
       canvas.renderAll();
 
       // 使用Fabric.js的toDataURL导出frame区域
@@ -414,8 +447,11 @@ export const EditorToolbar = ({
         height: frame.height || 768,
       });
 
-      // 恢复frame边框
+      // 恢复frame边框和frameBorder
       frame.set({ stroke: originalStroke, strokeWidth: originalStrokeWidth });
+      if (frameBorder) {
+        frameBorder.set({ visible: originalBorderVisible });
+      }
       canvas.renderAll();
 
       const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-edit-image', {
