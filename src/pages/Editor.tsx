@@ -307,7 +307,7 @@ const Editor = () => {
         result.categoryMask.width,
         result.categoryMask.height,
         {
-          dilation: 3,  // Default: expand edges by 3 pixels
+          dilation: 0,  // Default: no expansion
           feather: 2    // Default: feather edges by 2 pixels
         }
       );

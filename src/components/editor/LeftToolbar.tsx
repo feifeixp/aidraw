@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Lock, Unlock, Scissors } from "lucide-react";
+import { Plus, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Lock, Unlock, Scissors, Settings } from "lucide-react";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,7 +48,7 @@ export const LeftToolbar = ({
   const [featherStrength, setFeatherStrength] = useState(50);
   const [isCropMode, setIsCropMode] = useState(false);
   const [showExtractDialog, setShowExtractDialog] = useState(false);
-  const [extractDilation, setExtractDilation] = useState(3);
+  const [extractDilation, setExtractDilation] = useState(0);
   const [extractFeather, setExtractFeather] = useState(2);
   const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -998,16 +998,28 @@ export const LeftToolbar = ({
           </Button>
         )}
 
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} 
-          onClick={handleSmartExtract}
-          disabled={isTaskProcessing}
-        >
-          <Scissors className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">智能提取</span>}
-        </Button>
+        <div className={`flex gap-1 ${isCollapsed ? 'flex-col' : ''}`}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={`${isCollapsed ? 'w-full px-0' : 'flex-1 justify-start'}`} 
+            onClick={executeSmartExtract}
+            disabled={isTaskProcessing}
+          >
+            <Scissors className="h-4 w-4" />
+            {!isCollapsed && <span className="ml-2">智能提取</span>}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={`${isCollapsed ? 'w-full px-0' : ''}`}
+            onClick={() => setShowExtractDialog(true)}
+            disabled={isTaskProcessing}
+            title="提取设置"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
 
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleFlip}>
           <FlipHorizontal className="h-4 w-4" />
