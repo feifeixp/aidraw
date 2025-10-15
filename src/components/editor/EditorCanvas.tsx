@@ -30,6 +30,7 @@ export const EditorCanvas = ({
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const frameRef = useRef<Rect | null>(null);
+  const frameBorderRef = useRef<Rect | null>(null);
   
   const prevZoomRef = useRef(zoom);
   
@@ -105,6 +106,29 @@ export const EditorCanvas = ({
     fabricCanvas.sendObjectToBack(frame);
     frameRef.current = frame;
     
+    // 创建边界线（仅用于视觉参考，不可选择，不会被导出）
+    const frameBorder = new Rect({
+      left: frameLeft,
+      top: frameTop,
+      width: frameWidth,
+      height: frameHeight,
+      fill: 'transparent',
+      stroke: '#3b82f6',
+      strokeWidth: 2,
+      strokeDashArray: [5, 5],
+      selectable: false,
+      evented: false,
+      hasControls: false,
+      hasBorders: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      hoverCursor: 'default',
+      name: 'frameBorder',
+    });
+    
+    fabricCanvas.add(frameBorder);
+    frameBorderRef.current = frameBorder;
+    
     // Store frame reference on canvas for other components to access
     (fabricCanvas as any).workFrame = frame;
     
@@ -147,8 +171,9 @@ export const EditorCanvas = ({
         const activeObjects = fabricCanvas.getActiveObjects();
         if (activeObjects.length > 0) {
           activeObjects.forEach(obj => {
-            // 不删除frame
-            if ((obj as any).name !== 'workframe') {
+            // 不删除frame和边界线
+            const objName = (obj as any).name;
+            if (objName !== 'workframe' && objName !== 'frameBorder') {
               fabricCanvas.remove(obj);
             }
           });
@@ -196,6 +221,7 @@ export const EditorCanvas = ({
       window.removeEventListener('keydown', handleKeyDown);
       fabricCanvas.dispose();
       frameRef.current = null;
+      frameBorderRef.current = null;
     };
   }, [setCanvas]); // Only run once on mount
 
@@ -206,6 +232,8 @@ export const EditorCanvas = ({
     requestAnimationFrame(() => {
       try {
         const frame = frameRef.current;
+        const frameBorder = frameBorderRef.current;
+        
         if (frame) {
           const frameLeft = (INFINITE_CANVAS_SIZE - canvasSize.width) / 2;
           const frameTop = (INFINITE_CANVAS_SIZE - canvasSize.height) / 2;
@@ -216,6 +244,17 @@ export const EditorCanvas = ({
             width: canvasSize.width,
             height: canvasSize.height,
           });
+          
+          // 同时更新边界线
+          if (frameBorder) {
+            frameBorder.set({
+              left: frameLeft,
+              top: frameTop,
+              width: canvasSize.width,
+              height: canvasSize.height,
+            });
+          }
+          
           // Update frame reference on canvas
           (canvas as any).workFrame = frame;
           canvas.renderAll();

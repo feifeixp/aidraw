@@ -75,11 +75,13 @@ export const EditorToolbar = ({
     }
 
     // 检查是否只有frame类型元素
-    const nonFrameObjects = canvas.getObjects().filter((obj: any) => 
-      obj.name !== 'workframe' && 
-      obj.type === 'image' && 
-      (obj.data?.elementType !== 'frame' || !obj.data)
-    );
+    const nonFrameObjects = canvas.getObjects().filter((obj: any) => {
+      const objName = obj.name;
+      return objName !== 'workframe' && 
+             objName !== 'frameBorder' &&
+             obj.type === 'image' && 
+             (obj.data?.elementType !== 'frame' || !obj.data);
+    });
     
     if (nonFrameObjects.length === 0) {
       toast.error("画布上需要有角色或场景元素才能使用渲染功能");
@@ -131,7 +133,8 @@ export const EditorToolbar = ({
         if (shouldReplaceOriginal) {
           const objects = canvas.getObjects();
           objects.forEach(obj => {
-            if ((obj as any).name !== 'workframe') {
+            const objName = (obj as any).name;
+            if (objName !== 'workframe' && objName !== 'frameBorder') {
               canvas.remove(obj);
             }
           });
@@ -217,10 +220,12 @@ export const EditorToolbar = ({
     }
 
     // 检查是否只有frame类型元素
-    const nonFrameObjects = canvas.getObjects().filter((obj: any) => 
-      obj.name !== 'workframe' && 
-      (obj.type !== 'image' || obj.data?.elementType !== 'frame')
-    );
+    const nonFrameObjects = canvas.getObjects().filter((obj: any) => {
+      const objName = obj.name;
+      return objName !== 'workframe' && 
+             objName !== 'frameBorder' &&
+             (obj.type !== 'image' || obj.data?.elementType !== 'frame');
+    });
     
     if (nonFrameObjects.length === 0) {
       toast.error("画布上需要有角色、场景元素或标注才能使用智能合成功能");
@@ -428,7 +433,8 @@ export const EditorToolbar = ({
         // 先移除画布上所有非frame的对象
         const objects = canvas.getObjects();
         objects.forEach(obj => {
-          if ((obj as any).name !== 'workframe') {
+          const objName = (obj as any).name;
+          if (objName !== 'workframe' && objName !== 'frameBorder') {
             canvas.remove(obj);
           }
         });
