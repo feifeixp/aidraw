@@ -15,25 +15,13 @@ export const initializeSegmenter = async () => {
   return segmenter;
 };
 
-export const segmentImage = async (imageElement: HTMLImageElement): Promise<Array<{
+export const segmentImage = async (imageDataUrl: string): Promise<Array<{
   mask: any;
   score: number;
   label: string;
 }>> => {
   try {
     const segmenterInstance = await initializeSegmenter();
-    
-    // Convert image to canvas
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not get canvas context');
-    
-    canvas.width = imageElement.naturalWidth;
-    canvas.height = imageElement.naturalHeight;
-    ctx.drawImage(imageElement, 0, 0);
-    
-    // Get image data URL
-    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
     
     console.log('Segmenting image with DETR...');
     const results = await segmenterInstance(imageDataUrl);
@@ -51,18 +39,26 @@ export const segmentImage = async (imageElement: HTMLImageElement): Promise<Arra
 };
 
 export const extractObjectFromMask = async (
-  originalImage: HTMLImageElement,
+  imageDataUrl: string,
   mask: any
 ): Promise<Blob> => {
+  // Load the image from data URL
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = imageDataUrl;
+  });
+  
   const canvas = document.createElement('canvas');
-  canvas.width = originalImage.naturalWidth;
-  canvas.height = originalImage.naturalHeight;
+  canvas.width = img.width;
+  canvas.height = img.height;
   const ctx = canvas.getContext('2d');
   
   if (!ctx) throw new Error('Could not get canvas context');
   
   // Draw original image
-  ctx.drawImage(originalImage, 0, 0);
+  ctx.drawImage(img, 0, 0);
   
   // Apply mask to alpha channel
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);

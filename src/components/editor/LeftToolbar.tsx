@@ -454,16 +454,20 @@ export const LeftToolbar = ({
     const taskId = startTask("正在提取物体");
 
     try {
-      // Get the image element
-      const imageElement = (activeObject as any)._element as HTMLImageElement;
-      if (!imageElement) {
-        throw new Error("无法获取图片元素");
+      // Export image from Fabric.js as data URL
+      const imageDataURL = (activeObject as any).toDataURL({
+        format: 'png',
+        quality: 1
+      });
+      
+      if (!imageDataURL) {
+        throw new Error("无法导出图片数据");
       }
 
       toast.info("正在分析图片中的物体...");
       
       // Segment the image to find objects
-      const segments = await segmentImage(imageElement);
+      const segments = await segmentImage(imageDataURL);
       
       if (!segments || segments.length === 0) {
         throw new Error("未检测到任何物体");
@@ -478,7 +482,7 @@ export const LeftToolbar = ({
           const segment = segments[i];
           
           // Extract the object with transparent background
-          const objectBlob = await extractObjectFromMask(imageElement, segment.mask);
+          const objectBlob = await extractObjectFromMask(imageDataURL, segment.mask);
           
           // Classify the object type
           const elementType = await classifyObject(objectBlob);
