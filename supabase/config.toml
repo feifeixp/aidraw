@@ -26,3 +26,6 @@ verify_jwt = true
 
 [functions.liblib-model-info]
 verify_jwt = true
+
+[functions.classify-object]
+verify_jwt = true
