@@ -99,6 +99,42 @@ const Editor = () => {
     }
   }, []);
 
+  // Auto-save functionality
+  useEffect(() => {
+    if (!canvas) return;
+
+    let autoSaveTimer: NodeJS.Timeout;
+    
+    const handleCanvasChange = () => {
+      // Clear existing timer
+      clearTimeout(autoSaveTimer);
+      
+      // Set new timer to save after 2 seconds of inactivity
+      autoSaveTimer = setTimeout(() => {
+        try {
+          const canvasJson = JSON.stringify(canvas.toJSON());
+          localStorage.setItem('editor-draft', canvasJson);
+          localStorage.setItem('editor-draft-timestamp', Date.now().toString());
+          console.log("自动保存完成");
+        } catch (error) {
+          console.error("自动保存失败:", error);
+        }
+      }, 2000);
+    };
+
+    // Listen to canvas modification events
+    canvas.on('object:modified', handleCanvasChange);
+    canvas.on('object:added', handleCanvasChange);
+    canvas.on('object:removed', handleCanvasChange);
+
+    return () => {
+      clearTimeout(autoSaveTimer);
+      canvas.off('object:modified', handleCanvasChange);
+      canvas.off('object:added', handleCanvasChange);
+      canvas.off('object:removed', handleCanvasChange);
+    };
+  }, [canvas]);
+
   // Save canvas state to history
   const saveState = useCallback(() => {
     if (!canvas) return;
