@@ -460,10 +460,22 @@ export const LeftToolbar = ({
     setShowExtractDialog(false);
     const taskId = startTask("正在智能提取");
     try {
-      // Convert image to data URL
-      const imageDataURL = (activeObject as any).toDataURL({
+      // Get original image dimensions and calculate multiplier to maintain quality
+      const fabricImage = activeObject as any;
+      const originalWidth = fabricImage.width;
+      const originalHeight = fabricImage.height;
+      const scaleX = fabricImage.scaleX || 1;
+      const scaleY = fabricImage.scaleY || 1;
+      
+      // Calculate multiplier to export at original resolution
+      const multiplier = 1 / Math.min(scaleX, scaleY);
+      
+      // Convert image to data URL at original resolution
+      const imageDataURL = fabricImage.toDataURL({
         format: 'png',
-        quality: 1
+        quality: 1,
+        multiplier: multiplier,
+        enableRetinaScaling: false
       });
       
       // Load image
