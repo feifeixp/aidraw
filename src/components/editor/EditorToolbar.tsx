@@ -127,13 +127,15 @@ export const EditorToolbar = ({
           FabricImage
         } = await import("fabric");
         
-        // 先移除画布上所有非frame的对象
-        const objects = canvas.getObjects();
-        objects.forEach(obj => {
-          if ((obj as any).name !== 'workframe') {
-            canvas.remove(obj);
-          }
-        });
+        // Only remove non-frame objects if shouldReplaceOriginal is true
+        if (shouldReplaceOriginal) {
+          const objects = canvas.getObjects();
+          objects.forEach(obj => {
+            if ((obj as any).name !== 'workframe') {
+              canvas.remove(obj);
+            }
+          });
+        }
         
         const img = new Image();
         await new Promise((resolve, reject) => {
@@ -208,9 +210,9 @@ export const EditorToolbar = ({
 
     setShowSmartComposeDialog(false);
     
-    // If render mode, call handleRedraw
+    // If render mode, call handleRedraw with "create new layer" (false)
     if (composeMode === "render") {
-      await handleRedraw(replaceOriginal);
+      await handleRedraw(false);
       return;
     }
 
@@ -587,17 +589,19 @@ export const EditorToolbar = ({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>输出选项</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant={replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(true)} className="w-full">
-                  替换原图
-                </Button>
-                <Button variant={!replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(false)} className="w-full">
-                  创建新图层
-                </Button>
+            {composeMode === "compose" && (
+              <div className="space-y-2">
+                <Label>输出选项</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant={replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(true)} className="w-full">
+                    替换原图
+                  </Button>
+                  <Button variant={!replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(false)} className="w-full">
+                    创建新图层
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
             <Separator />
 
