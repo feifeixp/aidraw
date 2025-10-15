@@ -320,7 +320,7 @@ const Editor = () => {
         result.categoryMask.height,
         {
           dilation: 0,  // Default: no expansion
-          feather: 2    // Default: feather edges by 2 pixels
+          feather: 0    // Default: no feathering
         }
       );
       
