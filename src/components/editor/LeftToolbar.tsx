@@ -5,7 +5,6 @@ import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as Fabri
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
-import { segmentImage, extractObjectFromMask, classifyObject } from "@/lib/segmentObject";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -57,8 +56,6 @@ export const LeftToolbar = ({
   const [showAddElementDialog, setShowAddElementDialog] = useState(false);
   const [selectedElementType, setSelectedElementType] = useState<'character' | 'scene' | 'prop' | 'effect' | null>(null);
   const [isObjectLocked, setIsObjectLocked] = useState(false);
-  const [showExtractObjectDialog, setShowExtractObjectDialog] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false);
 
   // Update lock state when selection changes
   useEffect(() => {
@@ -439,104 +436,6 @@ export const LeftToolbar = ({
     saveState();
     toast.success("尖角对话泡泡已添加");
     onActionComplete?.();
-  };
-
-  // Extract Objects from Image
-  const handleExtractObjects = async () => {
-    const activeObject = canvas?.getActiveObject();
-    if (!canvas || !activeObject || activeObject.type !== 'image') {
-      toast.error("请先选择画布上的图片");
-      return;
-    }
-    if (isTaskProcessing || isExtracting) {
-      toast.error("当前有任务正在处理，请等待完成");
-      return;
-    }
-
-    setShowExtractObjectDialog(false);
-    setIsExtracting(true);
-    const taskId = startTask("正在提取物体");
-
-    try {
-      // Export image from Fabric.js as data URL
-      const imageDataURL = (activeObject as any).toDataURL({
-        format: 'png',
-        quality: 1
-      });
-      
-      if (!imageDataURL) {
-        throw new Error("无法导出图片数据");
-      }
-
-      toast.info("正在分析图片中的物体...");
-      
-      // Segment the image to find objects
-      const segments = await segmentImage(imageDataURL);
-      
-      if (!segments || segments.length === 0) {
-        throw new Error("未检测到任何物体");
-      }
-
-      toast.info(`检测到 ${segments.length} 个物体，正在提取和分类...`);
-
-      // Process each segment
-      let successCount = 0;
-      for (let i = 0; i < Math.min(segments.length, 5); i++) { // Limit to 5 objects
-        try {
-          const segment = segments[i];
-          
-          // Extract the object with transparent background
-          const objectBlob = await extractObjectFromMask(imageDataURL, segment.mask);
-          
-          // Classify the object type
-          const elementType = await classifyObject(objectBlob);
-          
-          // Convert blob to data URL
-          const reader = new FileReader();
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(objectBlob);
-          });
-
-          // Create new image on canvas
-          const { FabricImage } = await import("fabric");
-          const newImg = await FabricImage.fromURL(dataUrl, {
-            crossOrigin: 'anonymous'
-          });
-
-          // Position the new object offset from the original
-          newImg.set({
-            left: (activeObject.left || 0) + (i * 20),
-            top: (activeObject.top || 0) + (i * 20),
-            data: { elementType }
-          });
-
-          canvas.add(newImg);
-          successCount++;
-          
-          toast.info(`提取物体 ${i + 1}/${Math.min(segments.length, 5)} (${elementType})`);
-        } catch (error) {
-          console.error(`Error processing segment ${i}:`, error);
-        }
-      }
-
-      canvas.renderAll();
-      saveState();
-      completeTask(taskId);
-      
-      if (successCount > 0) {
-        toast.success(`成功提取 ${successCount} 个物体并自动分类`);
-      } else {
-        toast.error("未能成功提取任何物体");
-      }
-    } catch (error) {
-      console.error("Extract objects error:", error);
-      toast.error(error instanceof Error ? error.message : "提取物体失败");
-      cancelTask();
-    } finally {
-      setIsExtracting(false);
-    }
   };
 
   // Remove Background
@@ -1013,11 +912,6 @@ export const LeftToolbar = ({
           {!isCollapsed && <span className="ml-2">去背景</span>}
         </Button>
 
-        <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={() => setShowExtractObjectDialog(true)} disabled={isTaskProcessing || isExtracting}>
-          <Scissors className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">提取物体</span>}
-        </Button>
-
         <Button 
           variant="outline" 
           size="sm" 
@@ -1118,33 +1012,6 @@ export const LeftToolbar = ({
             </div>
             <Button onClick={handleRemoveBackground} className="w-full">
               开始去除背景
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Extract Objects Dialog */}
-      <Dialog open={showExtractObjectDialog} onOpenChange={setShowExtractObjectDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>提取图片中的物体</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                此功能将自动检测并提取图片中的物体，为每个物体创建新的图层，并使用 AI 自动判断物体类型：
-              </p>
-              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                <li>角色 (Character) - 人物、动物等有生命的对象</li>
-                <li>道具 (Prop) - 工具、物品等无生命的对象</li>
-                <li>场景 (Scene) - 背景、环境等场景元素</li>
-              </ul>
-              <p className="text-sm text-muted-foreground mt-2">
-                提示：为获得最佳效果，请使用背景简单、物体清晰的图片。最多提取前 5 个检测到的物体。
-              </p>
-            </div>
-            <Button onClick={handleExtractObjects} className="w-full" disabled={isExtracting}>
-              {isExtracting ? "正在提取..." : "开始提取物体"}
             </Button>
           </div>
         </DialogContent>

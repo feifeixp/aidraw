@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Canvas as FabricCanvas } from 'fabric';
-import { InteractiveSAM2, SAM2Point } from '@/lib/sam2/interactive';
+import { MediaPipeSegmenter } from '@/lib/mediapipe/interactiveSegmenter';
 import { Button } from '@/components/ui/button';
 import { X, MousePointer2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,22 +14,22 @@ interface InteractiveSAMProps {
 
 export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProps) => {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [sam, setSam] = useState<InteractiveSAM2 | null>(null);
+  const sourceImageRef = useRef<HTMLImageElement | null>(null);
+  const [segmenter, setSegmenter] = useState<MediaPipeSegmenter | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [currentPoints, setCurrentPoints] = useState<SAM2Point[]>([]);
   const [isHovering, setIsHovering] = useState(false);
   const hoverTimeoutRef = useRef<number | null>(null);
 
-  // Initialize SAM2
+  // Initialize MediaPipe
   useEffect(() => {
     const init = async () => {
       try {
-        toast.info('正在加载 SAM2 模型...');
-        const samInstance = new InteractiveSAM2();
-        await samInstance.initialize();
-        setSam(samInstance);
+        toast.info('正在加载分割模型...');
+        const segmenterInstance = new MediaPipeSegmenter();
+        await segmenterInstance.initialize();
+        setSegmenter(segmenterInstance);
         
-        // Encode the selected image
+        // Load the selected image
         const activeObject = canvas?.getActiveObject();
         if (activeObject && activeObject.type === 'image') {
           const imageDataURL = (activeObject as any).toDataURL({
@@ -37,38 +37,41 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
             quality: 1
           });
           
-          // Load image and get ImageData
           const img = await loadImage(imageDataURL);
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = img.width;
-          tempCanvas.height = img.height;
-          const ctx = tempCanvas.getContext('2d')!;
-          ctx.drawImage(img, 0, 0);
-          const imageData = ctx.getImageData(0, 0, img.width, img.height);
+          sourceImageRef.current = img;
           
-          await samInstance.encodeImage(imageData);
           setIsInitialized(true);
-          toast.success('模型已加载，点击图片提取物体');
+          toast.success('模型已加载，鼠标移动高亮物体，点击提取');
         }
       } catch (error) {
-        console.error('Failed to initialize SAM:', error);
+        console.error('Failed to initialize segmenter:', error);
         toast.error('模型加载失败');
+        onExit();
       }
     };
 
     init();
-  }, [canvas]);
+
+    return () => {
+      if (segmenter) {
+        segmenter.close();
+      }
+    };
+  }, [canvas, onExit]);
 
   // Handle mouse move for hover highlight
   const handleMouseMove = useCallback(async (e: MouseEvent) => {
-    if (!sam || !isInitialized || !overlayCanvasRef.current || !canvas) return;
-    
-    const activeObject = canvas.getActiveObject();
-    if (!activeObject) return;
+    if (!segmenter || !isInitialized || !overlayCanvasRef.current || !sourceImageRef.current) return;
 
     const rect = overlayCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    // Scale coordinates to source image size
+    const scaleX = sourceImageRef.current.width / rect.width;
+    const scaleY = sourceImageRef.current.height / rect.height;
+    const imageX = x * scaleX;
+    const imageY = y * scaleY;
 
     // Clear previous timeout
     if (hoverTimeoutRef.current) {
@@ -79,16 +82,20 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
     hoverTimeoutRef.current = window.setTimeout(async () => {
       try {
         setIsHovering(true);
-        const points: SAM2Point[] = [{ x, y, type: 1 }];
-        const result = await sam.predictMask(points);
+        const result = await segmenter.segmentWithPoint(
+          sourceImageRef.current!,
+          imageX,
+          imageY
+        );
         
-        if (result && overlayCanvasRef.current) {
-          sam.drawMaskOnCanvas(
+        if (result && result.categoryMask && overlayCanvasRef.current) {
+          const maskData = result.categoryMask.getAsUint8Array();
+          segmenter.drawMaskOnCanvas(
             overlayCanvasRef.current,
-            result.masks,
-            result.width,
-            result.height,
-            'rgba(0, 255, 255, 0.3)'
+            maskData,
+            result.categoryMask.width,
+            result.categoryMask.height,
+            'rgba(0, 255, 255, 0.4)'
           );
         }
       } catch (error) {
@@ -96,49 +103,52 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
       } finally {
         setIsHovering(false);
       }
-    }, 300); // 300ms debounce
-  }, [sam, isInitialized, canvas]);
+    }, 200); // 200ms debounce
+  }, [segmenter, isInitialized]);
 
   // Handle click to extract object
   const handleClick = useCallback(async (e: MouseEvent) => {
-    if (!sam || !isInitialized || !overlayCanvasRef.current || !canvas) return;
-    
-    const activeObject = canvas.getActiveObject();
-    if (!activeObject) return;
+    if (!segmenter || !isInitialized || !overlayCanvasRef.current || !sourceImageRef.current) return;
 
     const rect = overlayCanvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Scale coordinates to source image size
+    const scaleX = sourceImageRef.current.width / rect.width;
+    const scaleY = sourceImageRef.current.height / rect.height;
+    const imageX = x * scaleX;
+    const imageY = y * scaleY;
+
     try {
       toast.info('正在提取物体...');
       
       // Get mask for clicked point
-      const points: SAM2Point[] = [{ x, y, type: 1 }];
-      const result = await sam.predictMask(points);
+      const result = await segmenter.segmentWithPoint(
+        sourceImageRef.current,
+        imageX,
+        imageY
+      );
       
-      if (!result) {
+      if (!result || !result.categoryMask) {
         toast.error('未检测到物体');
         return;
       }
 
-      // Extract the masked object
-      const imageDataURL = (activeObject as any).toDataURL({
-        format: 'png',
-        quality: 1
-      });
-      const img = await loadImage(imageDataURL);
+      // Create source canvas
       const sourceCanvas = document.createElement('canvas');
-      sourceCanvas.width = img.width;
-      sourceCanvas.height = img.height;
+      sourceCanvas.width = sourceImageRef.current.width;
+      sourceCanvas.height = sourceImageRef.current.height;
       const ctx = sourceCanvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(sourceImageRef.current, 0, 0);
       
-      const extractedCanvas = sam.extractMaskedImage(
+      // Extract the masked object
+      const maskData = result.categoryMask.getAsUint8Array();
+      const extractedCanvas = segmenter.extractMaskedImage(
         sourceCanvas,
-        result.masks,
-        result.width,
-        result.height
+        maskData,
+        result.categoryMask.width,
+        result.categoryMask.height
       );
 
       // Convert to blob for classification
@@ -161,7 +171,7 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
       console.error('Extract error:', error);
       toast.error('提取失败');
     }
-  }, [sam, isInitialized, canvas, onExtract]);
+  }, [segmenter, isInitialized, onExtract]);
 
   // Set up event listeners
   useEffect(() => {
