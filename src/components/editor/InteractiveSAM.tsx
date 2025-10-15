@@ -18,7 +18,9 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
   const [segmenter, setSegmenter] = useState<MediaPipeSegmenter | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const hoverTimeoutRef = useRef<number | null>(null);
+  const canvasBoundsRef = useRef<DOMRect | null>(null);
 
   // Initialize MediaPipe
   useEffect(() => {
@@ -61,15 +63,26 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
 
   // Handle mouse move for hover highlight
   const handleMouseMove = useCallback(async (e: MouseEvent) => {
-    if (!segmenter || !isInitialized || !overlayCanvasRef.current || !sourceImageRef.current) return;
+    if (!segmenter || !isInitialized || !overlayCanvasRef.current || !sourceImageRef.current || isExtracting) return;
 
-    const rect = overlayCanvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    if (!canvasBoundsRef.current) return;
+
+    const x = e.clientX - canvasBoundsRef.current.left;
+    const y = e.clientY - canvasBoundsRef.current.top;
+
+    // Check if mouse is within canvas bounds
+    if (x < 0 || y < 0 || x > canvasBoundsRef.current.width || y > canvasBoundsRef.current.height) {
+      // Clear mask when mouse leaves canvas
+      const ctx = overlayCanvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+      }
+      return;
+    }
 
     // Scale coordinates to source image size
-    const scaleX = sourceImageRef.current.width / rect.width;
-    const scaleY = sourceImageRef.current.height / rect.height;
+    const scaleX = sourceImageRef.current.width / canvasBoundsRef.current.width;
+    const scaleY = sourceImageRef.current.height / canvasBoundsRef.current.height;
     const imageX = x * scaleX;
     const imageY = y * scaleY;
 
@@ -95,7 +108,7 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
             maskData,
             result.categoryMask.width,
             result.categoryMask.height,
-            'rgba(0, 255, 255, 0.4)'
+            'rgba(58, 189, 255, 0.5)' // Brighter cyan for better visibility
           );
         }
       } catch (error) {
@@ -103,25 +116,30 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
       } finally {
         setIsHovering(false);
       }
-    }, 200); // 200ms debounce
-  }, [segmenter, isInitialized]);
+    }, 150); // Reduced debounce for faster response
+  }, [segmenter, isInitialized, isExtracting]);
 
   // Handle click to extract object
   const handleClick = useCallback(async (e: MouseEvent) => {
-    if (!segmenter || !isInitialized || !overlayCanvasRef.current || !sourceImageRef.current) return;
+    if (!segmenter || !isInitialized || !overlayCanvasRef.current || !sourceImageRef.current || isExtracting) return;
 
-    const rect = overlayCanvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    if (!canvasBoundsRef.current) return;
+
+    const x = e.clientX - canvasBoundsRef.current.left;
+    const y = e.clientY - canvasBoundsRef.current.top;
+
+    // Check if click is within canvas bounds
+    if (x < 0 || y < 0 || x > canvasBoundsRef.current.width || y > canvasBoundsRef.current.height) return;
 
     // Scale coordinates to source image size
-    const scaleX = sourceImageRef.current.width / rect.width;
-    const scaleY = sourceImageRef.current.height / rect.height;
+    const scaleX = sourceImageRef.current.width / canvasBoundsRef.current.width;
+    const scaleY = sourceImageRef.current.height / canvasBoundsRef.current.height;
     const imageX = x * scaleX;
     const imageY = y * scaleY;
 
     try {
-      toast.info('正在提取物体...');
+      setIsExtracting(true);
+      toast.loading('正在提取物体...', { id: 'extracting' });
       
       // Get mask for clicked point
       const result = await segmenter.segmentWithPoint(
@@ -131,7 +149,7 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
       );
       
       if (!result || !result.categoryMask) {
-        toast.error('未检测到物体');
+        toast.error('未检测到物体', { id: 'extracting' });
         return;
       }
 
@@ -152,6 +170,7 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
       );
 
       // Convert to blob for classification
+      toast.loading('正在识别物体类型...', { id: 'extracting' });
       const blob = await new Promise<Blob>((resolve, reject) => {
         extractedCanvas.toBlob(
           (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
@@ -160,18 +179,19 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
       });
 
       // Classify the object
-      toast.info('正在识别物体类型...');
       const elementType = await classifyObject(blob);
       
       // Pass extracted canvas to parent
       onExtract(extractedCanvas, elementType);
       
-      toast.success(`已提取物体 (${elementType})`);
+      toast.success(`已提取物体 (${elementType})`, { id: 'extracting' });
     } catch (error) {
       console.error('Extract error:', error);
-      toast.error('提取失败');
+      toast.error('提取失败', { id: 'extracting' });
+    } finally {
+      setIsExtracting(false);
     }
-  }, [segmenter, isInitialized, onExtract]);
+  }, [segmenter, isInitialized, onExtract, isExtracting]);
 
   // Set up event listeners
   useEffect(() => {
@@ -194,16 +214,30 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
   useEffect(() => {
     if (!canvas || !overlayCanvasRef.current) return;
 
-    const activeObject = canvas.getActiveObject();
-    if (!activeObject) return;
+    const updateCanvasPosition = () => {
+      const activeObject = canvas.getActiveObject();
+      if (!activeObject) return;
 
-    const canvasElement = canvas.getElement();
-    const rect = canvasElement.getBoundingClientRect();
+      const canvasElement = canvas.getElement();
+      const rect = canvasElement.getBoundingClientRect();
+      
+      canvasBoundsRef.current = rect;
+      overlayCanvasRef.current!.width = rect.width;
+      overlayCanvasRef.current!.height = rect.height;
+      overlayCanvasRef.current!.style.left = `${rect.left}px`;
+      overlayCanvasRef.current!.style.top = `${rect.top}px`;
+      overlayCanvasRef.current!.style.width = `${rect.width}px`;
+      overlayCanvasRef.current!.style.height = `${rect.height}px`;
+    };
+
+    updateCanvasPosition();
     
-    overlayCanvasRef.current.width = rect.width;
-    overlayCanvasRef.current.height = rect.height;
-    overlayCanvasRef.current.style.left = `${rect.left}px`;
-    overlayCanvasRef.current.style.top = `${rect.top}px`;
+    // Update on window resize
+    window.addEventListener('resize', updateCanvasPosition);
+    
+    return () => {
+      window.removeEventListener('resize', updateCanvasPosition);
+    };
   }, [canvas]);
 
   return (
@@ -217,16 +251,19 @@ export const InteractiveSAM = ({ canvas, onExit, onExtract }: InteractiveSAMProp
       
       {/* Control Panel */}
       <div className="fixed top-4 right-4 flex gap-2 pointer-events-auto">
-        <div className="bg-background border rounded-lg px-4 py-2 shadow-lg flex items-center gap-2">
-          <MousePointer2 className="h-4 w-4" />
+        <div className={`bg-background border rounded-lg px-4 py-2 shadow-lg flex items-center gap-2 transition-all ${
+          isExtracting ? 'border-primary' : ''
+        }`}>
+          <MousePointer2 className={`h-4 w-4 ${isExtracting ? 'animate-pulse' : ''}`} />
           <span className="text-sm font-medium">
-            {isHovering ? '检测中...' : '点击提取物体'}
+            {isExtracting ? '提取中，请稍候...' : isHovering ? '检测中...' : '鼠标悬停高亮，点击提取'}
           </span>
         </div>
         <Button
           variant="destructive"
           size="sm"
           onClick={onExit}
+          disabled={isExtracting}
         >
           <X className="h-4 w-4 mr-2" />
           退出
