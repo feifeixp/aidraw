@@ -391,7 +391,11 @@ const Editor = () => {
       });
       
       canvas.remove(activeObject);
-      canvas.add(newImg);
+      
+      // Insert at correct layer position
+      const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+      insertObjectWithLayerType(canvas, newImg, elementType);
+      
       canvas.setActiveObject(newImg);
       canvas.renderAll();
       saveState();

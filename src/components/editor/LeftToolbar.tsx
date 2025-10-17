@@ -609,64 +609,48 @@ export const LeftToolbar = ({
   // Layer order functions
   const handleBringToFront = () => {
     const activeObject = canvas?.getActiveObject();
-    if (!activeObject) {
+    if (!activeObject || !canvas) {
       toast.error("请先选择一个对象");
       return;
     }
-    canvas?.bringObjectToFront(activeObject);
-    canvas?.renderAll();
+    const { moveObjectToEdgeInLayer } = require("@/lib/layerSorting");
+    moveObjectToEdgeInLayer(canvas, activeObject, 'top');
     saveState();
-    toast.success("已置于顶层");
+    toast.success("已置于同类型顶层");
   };
 
   const handleSendToBack = () => {
     const activeObject = canvas?.getActiveObject();
-    if (!activeObject) {
+    if (!activeObject || !canvas) {
       toast.error("请先选择一个对象");
       return;
     }
-    canvas?.sendObjectToBack(activeObject);
-    
-    // 确保frame始终在最底层
-    const objects = canvas?.getObjects() || [];
-    const frame = objects.find(obj => obj.selectable === false && obj.evented === false);
-    if (frame) {
-      canvas?.sendObjectToBack(frame);
-    }
-    
-    canvas?.renderAll();
+    const { moveObjectToEdgeInLayer } = require("@/lib/layerSorting");
+    moveObjectToEdgeInLayer(canvas, activeObject, 'bottom');
     saveState();
-    toast.success("已置于底层");
+    toast.success("已置于同类型底层");
   };
 
   const handleBringForward = () => {
     const activeObject = canvas?.getActiveObject();
-    if (!activeObject) {
+    if (!activeObject || !canvas) {
       toast.error("请先选择一个对象");
       return;
     }
-    canvas?.bringObjectForward(activeObject);
-    canvas?.renderAll();
+    const { moveObjectInLayer } = require("@/lib/layerSorting");
+    moveObjectInLayer(canvas, activeObject, 'up');
     saveState();
     toast.success("已上移一层");
   };
 
   const handleSendBackwards = () => {
     const activeObject = canvas?.getActiveObject();
-    if (!activeObject) {
+    if (!activeObject || !canvas) {
       toast.error("请先选择一个对象");
       return;
     }
-    canvas?.sendObjectBackwards(activeObject);
-    
-    // 确保frame始终在最底层
-    const objects = canvas?.getObjects() || [];
-    const frame = objects.find(obj => obj.selectable === false && obj.evented === false);
-    if (frame) {
-      canvas?.sendObjectToBack(frame);
-    }
-    
-    canvas?.renderAll();
+    const { moveObjectInLayer } = require("@/lib/layerSorting");
+    moveObjectInLayer(canvas, activeObject, 'down');
     saveState();
     toast.success("已下移一层");
   };
