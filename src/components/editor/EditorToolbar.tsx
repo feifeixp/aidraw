@@ -161,13 +161,16 @@ export const EditorToolbar = ({
           left: frame.left,
           top: frame.top,
           selectable: true,
-          data: { elementType: 'frame' } // Mark as frame type
+          data: { elementType: 'composite' }
         });
         const scaleX = frame.width! / fabricImg.width!;
         const scaleY = frame.height! / fabricImg.height!;
         const scale = Math.min(scaleX, scaleY);
         fabricImg.scale(scale);
-        canvas.add(fabricImg);
+        
+        // Use layer sorting system
+        const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+        insertObjectWithLayerType(canvas, fabricImg, 'composite');
         
         // 确保frame保持在底层
         canvas.sendObjectToBack(frame as any);
@@ -327,7 +330,7 @@ export const EditorToolbar = ({
             top: baseImage.top,
             scaleX: baseImage.scaleX,
             scaleY: baseImage.scaleY,
-            data: { elementType: 'frame' } // Mark as frame type
+            data: { elementType: 'composite' }
           });
           
           if (replaceOriginal) {
@@ -339,7 +342,9 @@ export const EditorToolbar = ({
             canvas.remove(baseImage);
           }
           
-          canvas.add(img);
+          // Use layer sorting system
+          const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+          insertObjectWithLayerType(canvas, img, 'composite');
           canvas.setActiveObject(img);
           canvas.renderAll();
           saveState();
@@ -373,7 +378,7 @@ export const EditorToolbar = ({
           img.set({
             left: (canvasWidth - imgWidth * scale) / 2,
             top: (canvasHeight - imgHeight * scale) / 2,
-            data: { elementType: 'frame' } // Mark as frame type
+            data: { elementType: 'composite' }
           });
           
           if (replaceOriginal) {
@@ -384,7 +389,9 @@ export const EditorToolbar = ({
             });
           }
           
-          canvas.add(img);
+          // Use layer sorting system
+          const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+          insertObjectWithLayerType(canvas, img, 'composite');
           canvas.setActiveObject(img);
           canvas.renderAll();
           saveState();
@@ -489,10 +496,12 @@ export const EditorToolbar = ({
         img.set({
           left: frame.left || 0,
           top: frame.top || 0,
-          data: { elementType: 'frame' } // Mark as frame type
+          data: { elementType: 'composite' }
         });
 
-        canvas.add(img);
+        // Use layer sorting system
+        const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+        insertObjectWithLayerType(canvas, img, 'composite');
         
         // 确保frame保持在底层
         canvas.sendObjectToBack(frame as any);

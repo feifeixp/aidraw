@@ -378,10 +378,10 @@ export const EditorCanvas = ({
     };
   }, [canvas]);
 
-  const loadImageToCanvas = (imageUrl: string, name: string = "图片", elementType?: string) => {
+  const loadImageToCanvas = async (imageUrl: string, name: string = "图片", elementType?: string) => {
     if (!canvas || !frameRef.current) return;
 
-    FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then(img => {
+    FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then(async img => {
       if (!img) return;
       
       const frame = frameRef.current!;
@@ -400,7 +400,10 @@ export const EditorCanvas = ({
         data: { elementType: elementType || 'character' }
       });
       
-      canvas.add(img);
+      // Use layer sorting system to insert at correct position
+      const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+      insertObjectWithLayerType(canvas, img, (elementType || 'character') as any);
+      
       canvas.setActiveObject(img);
       canvas.renderAll();
       
