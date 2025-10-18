@@ -79,7 +79,7 @@ export const PropertiesPanel = ({
       scene: "场景",
       prop: "道具",
       effect: "特效",
-      frame: "合成图"
+      composite: "合成图"
     };
     return typeMap[type] || type;
   };
@@ -664,7 +664,7 @@ export const PropertiesPanel = ({
           top: selectedObject.top,
           scaleX: selectedObject.scaleX,
           scaleY: selectedObject.scaleY,
-          data: { elementType: 'frame' } // Keep frame type
+          data: { elementType: 'composite' }
         });
 
         canvas.remove(selectedObject);
@@ -781,7 +781,7 @@ export const PropertiesPanel = ({
       </div>
     </>;
   const renderImageProperties = () => {
-    const isFrame = elementType === 'frame';
+    const isComposite = elementType === 'composite';
     const canAdjustScene = elementType === 'scene';
     const canAdjustSubject = elementType === 'character' || elementType === 'prop';
     const canAdjustPose = elementType === 'character';
@@ -814,7 +814,7 @@ export const PropertiesPanel = ({
           </Button>
         </div>
 
-        {isFrame && (
+        {isComposite && (
           <div className="border-t pt-3">
             <Button variant="outline" className="w-full" onClick={() => setShowRecomposeDialog(true)} disabled={isTaskProcessing}>
               <Camera className="w-4 h-4 mr-2" />
@@ -823,7 +823,7 @@ export const PropertiesPanel = ({
           </div>
         )}
 
-        {!isFrame && canAdjustScene && (
+        {!isComposite && canAdjustScene && (
           <div className="border-t pt-3">
             <Button variant="outline" className="w-full" onClick={() => setShowCameraDialog(true)} disabled={isTaskProcessing}>
               <RotateCw className="w-4 h-4 mr-2" />
@@ -832,7 +832,7 @@ export const PropertiesPanel = ({
           </div>
         )}
 
-        {!isFrame && canAdjustSubject && (
+        {!isComposite && canAdjustSubject && (
           <div className="border-t pt-3">
             <Button variant="outline" className="w-full" onClick={() => setShowSubjectAngleDialog(true)} disabled={isTaskProcessing}>
               <PersonStanding className="w-4 w-4 mr-2" />
@@ -841,7 +841,7 @@ export const PropertiesPanel = ({
           </div>
         )}
 
-        {!isFrame && canAdjustPose && (
+        {!isComposite && canAdjustPose && (
           <div className="border-t pt-3">
             <Button variant="outline" className="w-full" onClick={() => setShowPoseDialog(true)} disabled={isTaskProcessing}>
               <Users className="w-4 h-4 mr-2" />

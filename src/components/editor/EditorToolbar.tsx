@@ -75,16 +75,16 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 检查是否只有frame类型元素
-    const nonFrameObjects = canvas.getObjects().filter((obj: any) => {
+    // 检查是否只有composite类型元素
+    const nonCompositeObjects = canvas.getObjects().filter((obj: any) => {
       const objName = obj.name;
       return objName !== 'workframe' && 
              objName !== 'frameBorder' &&
              obj.type === 'image' && 
-             (obj.data?.elementType !== 'frame' || !obj.data);
+             (obj.data?.elementType !== 'composite' || !obj.data);
     });
     
-    if (nonFrameObjects.length === 0) {
+    if (nonCompositeObjects.length === 0) {
       toast.error("画布上需要有角色或场景元素才能使用渲染功能");
       return;
     }
@@ -247,15 +247,15 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 检查是否只有frame类型元素
-    const nonFrameObjects = canvas.getObjects().filter((obj: any) => {
+    // 检查是否只有composite类型元素
+    const nonCompositeObjects = canvas.getObjects().filter((obj: any) => {
       const objName = obj.name;
       return objName !== 'workframe' && 
              objName !== 'frameBorder' &&
-             (obj.type !== 'image' || obj.data?.elementType !== 'frame');
+             (obj.type !== 'image' || obj.data?.elementType !== 'composite');
     });
     
-    if (nonFrameObjects.length === 0) {
+    if (nonCompositeObjects.length === 0) {
       toast.error("画布上需要有角色、场景元素或标注才能使用智能合成功能");
       return;
     }
