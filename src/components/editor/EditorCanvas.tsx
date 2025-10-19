@@ -1,5 +1,5 @@
 import { useEffect, useRef, useLayoutEffect } from "react";
-import { Canvas as FabricCanvas, FabricImage, Rect } from "fabric";
+import { Canvas as FabricCanvas, FabricImage, Rect, PencilBrush } from "fabric";
 import { toast } from "sonner";
 
 // 无限画布的实际尺寸
@@ -13,6 +13,7 @@ interface EditorCanvasProps {
   canvasSize: { width: number; height: number };
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  eraserBrushSize?: number;
 }
 
 export const EditorCanvas = ({
@@ -22,7 +23,8 @@ export const EditorCanvas = ({
   saveState,
   canvasSize,
   zoom,
-  onZoomChange
+  onZoomChange,
+  eraserBrushSize = 20
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -272,14 +274,28 @@ export const EditorCanvas = ({
   useEffect(() => {
     if (!canvas) return;
 
-    canvas.isDrawingMode = activeTool === "draw";
+    canvas.isDrawingMode = activeTool === "draw" || activeTool === "eraser";
     canvas.selection = activeTool === "select";
 
-    if (activeTool === "draw" && canvas.freeDrawingBrush) {
+    if (activeTool === "draw") {
+      if (!canvas.freeDrawingBrush || canvas.freeDrawingBrush.constructor.name !== 'PencilBrush') {
+        canvas.freeDrawingBrush = new PencilBrush(canvas);
+      }
       canvas.freeDrawingBrush.color = "#000000";
       canvas.freeDrawingBrush.width = 2;
+      // @ts-ignore
+      canvas.freeDrawingBrush.globalCompositeOperation = "source-over";
+    } else if (activeTool === "eraser") {
+      if (!canvas.freeDrawingBrush || canvas.freeDrawingBrush.constructor.name !== 'PencilBrush') {
+        canvas.freeDrawingBrush = new PencilBrush(canvas);
+      }
+      canvas.freeDrawingBrush.width = eraserBrushSize;
+      // 设置擦除模式
+      // @ts-ignore
+      canvas.freeDrawingBrush.globalCompositeOperation = "destination-out";
+      canvas.isDrawingMode = true;
     }
-  }, [activeTool, canvas]);
+  }, [activeTool, canvas, eraserBrushSize]);
 
   // 修正 Fabric.js 的鼠标坐标以匹配 CSS 缩放
   useEffect(() => {

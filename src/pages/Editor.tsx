@@ -73,6 +73,7 @@ const Editor = () => {
   const [activeTool, setActiveTool] = useState<string>("select");
   const [canvasSize, setCanvasSize] = useState({ width: 1024, height: 768 });
   const [zoom, setZoom] = useState<number>(100);
+  const [eraserBrushSize, setEraserBrushSize] = useState<number>(20);
   const [{
     history,
     historyIndex
@@ -436,6 +437,10 @@ const Editor = () => {
         isCollapsed={isLeftToolbarCollapsed}
         onToggleCollapse={() => setIsLeftToolbarCollapsed(!isLeftToolbarCollapsed)}
         onSmartExtract={handleSmartExtract}
+        activeTool={activeTool}
+        setActiveTool={setActiveTool}
+        eraserBrushSize={eraserBrushSize}
+        setEraserBrushSize={setEraserBrushSize}
       />
     </div>
   );
@@ -492,6 +497,7 @@ const Editor = () => {
           canvasSize={canvasSize}
           zoom={zoom}
           onZoomChange={setZoom}
+          eraserBrushSize={eraserBrushSize}
         />
         {!isMobile && (
           <div className={`absolute left-4 top-4 ${isLeftToolbarCollapsed ? 'w-16' : 'w-48'} h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden transition-all duration-300 left-toolbar`}>
