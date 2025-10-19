@@ -304,12 +304,12 @@ export const EditorCanvas = ({
       // @ts-ignore
       canvas.freeDrawingBrush.globalCompositeOperation = "source-over";
     } else if (activeTool === "eraser") {
-      if (!canvas.freeDrawingBrush || canvas.freeDrawingBrush.constructor.name !== 'PencilBrush') {
-        canvas.freeDrawingBrush = new PencilBrush(canvas);
-      }
+      // 强制重新创建brush以确保擦除模式正确
+      canvas.freeDrawingBrush = new PencilBrush(canvas);
+      // 设置擦除参数
+      canvas.freeDrawingBrush.color = "rgba(0,0,0,1)"; // 颜色在destination-out模式下不重要，但需要设置
       canvas.freeDrawingBrush.width = eraserBrushSize;
-      // 设置擦除模式
-      // @ts-ignore
+      // @ts-ignore - 设置为destination-out以实现真正的擦除（在透明通道绘制）
       canvas.freeDrawingBrush.globalCompositeOperation = "destination-out";
       canvas.isDrawingMode = true;
     }
