@@ -72,11 +72,20 @@ export const EditorToolbar = ({
     // 分镜布局配置
     const COLS = 5; // 5列
     const ROWS = 8; // 8行
-    const FRAME_WIDTH = 200;
-    const FRAME_HEIGHT = 150;
-    const SPACING = 30; // 间距
-    const START_X = 100; // 起始X位置
-    const START_Y = 100; // 起始Y位置
+    const INFINITE_CANVAS_SIZE = 10000;
+    
+    // 720p 16:9 比例，缩小到合适的尺寸
+    const FRAME_WIDTH = 256;
+    const FRAME_HEIGHT = 144; // 16:9 比例
+    const SPACING = 50; // 间距
+    
+    // 计算整个网格的尺寸
+    const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
+    const totalHeight = ROWS * FRAME_HEIGHT + (ROWS - 1) * SPACING;
+    
+    // 计算起始位置（居中）
+    const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
+    const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
 
     // 计算当前frame在网格中的位置
     const frameIndex = storyboardFrameCount;
@@ -93,35 +102,76 @@ export const EditorToolbar = ({
     const x = START_X + col * (FRAME_WIDTH + SPACING);
     const y = START_Y + row * (FRAME_HEIGHT + SPACING);
 
-    // 创建frame矩形
+    // 创建frame矩形（类似workframe，不可选择，放在底层）
     const frame = new FabricRect({
       left: x,
       top: y,
       width: FRAME_WIDTH,
       height: FRAME_HEIGHT,
       fill: 'white',
-      stroke: '#333333',
-      strokeWidth: 2,
-      selectable: true,
-      hasControls: true,
-      hasBorders: true,
+      stroke: '#d1d5db',
+      strokeWidth: 1,
+      selectable: false,
+      evented: false,
+      hasControls: false,
+      hasBorders: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      hoverCursor: 'default',
       name: `storyboard-frame-${frameIndex + 1}`
+    });
+
+    // 创建frame边界线（始终显示，类似frameBorder）
+    const frameBorder = new FabricRect({
+      left: x,
+      top: y,
+      width: FRAME_WIDTH,
+      height: FRAME_HEIGHT,
+      fill: 'transparent',
+      stroke: '#3b82f6',
+      strokeWidth: 2,
+      strokeDashArray: [5, 5],
+      selectable: false,
+      evented: false,
+      hasControls: false,
+      hasBorders: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      hoverCursor: 'default',
+      name: `storyboard-border-${frameIndex + 1}`
     });
 
     // 创建frame编号文本
     const frameNumber = new FabricText(`${frameIndex + 1}`, {
       left: x + 10,
       top: y + 10,
-      fontSize: 16,
+      fontSize: 14,
       fill: '#666666',
       selectable: false,
       evented: false,
       name: `storyboard-number-${frameIndex + 1}`
     });
 
-    // 添加到画布
+    // 添加到画布，确保frame在底层
     canvas.add(frame);
+    canvas.add(frameBorder);
     canvas.add(frameNumber);
+    
+    // 确保frame和边框在正确的层级
+    canvas.sendObjectToBack(frame);
+    
+    // 确保主workframe和frameBorder保持在正确位置
+    const workFrame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    const mainFrameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+    if (workFrame) {
+      canvas.sendObjectToBack(workFrame);
+    }
+    if (mainFrameBorder) {
+      canvas.bringObjectToFront(mainFrameBorder);
+    }
+    // 将所有分镜边框也置于顶层
+    canvas.bringObjectToFront(frameBorder);
+    
     canvas.renderAll();
     saveState();
 

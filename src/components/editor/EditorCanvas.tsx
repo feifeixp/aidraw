@@ -173,9 +173,12 @@ export const EditorCanvas = ({
         const activeObjects = fabricCanvas.getActiveObjects();
         if (activeObjects.length > 0) {
           activeObjects.forEach(obj => {
-            // 不删除frame和边界线
-            const objName = (obj as any).name;
-            if (objName !== 'workframe' && objName !== 'frameBorder') {
+            // 不删除frame、边界线和分镜相关对象
+            const objName = (obj as any).name || '';
+            const isProtected = objName === 'workframe' || 
+                              objName === 'frameBorder' ||
+                              objName.startsWith('storyboard-');
+            if (!isProtected) {
               fabricCanvas.remove(obj);
             }
           });
@@ -195,10 +198,25 @@ export const EditorCanvas = ({
       if (frameRef.current) {
         fabricCanvas.sendObjectToBack(frameRef.current);
       }
-      // Ensure frameBorder always stays on top
+      
+      // 确保所有分镜frame也在底层
+      fabricCanvas.getObjects().forEach(obj => {
+        const objName = (obj as any).name || '';
+        if (objName.startsWith('storyboard-frame-')) {
+          fabricCanvas.sendObjectToBack(obj);
+        }
+      });
+      
+      // Ensure all borders stay on top (main frame border and storyboard borders)
       if (frameBorderRef.current) {
         fabricCanvas.bringObjectToFront(frameBorderRef.current);
       }
+      fabricCanvas.getObjects().forEach(obj => {
+        const objName = (obj as any).name || '';
+        if (objName.startsWith('storyboard-border-')) {
+          fabricCanvas.bringObjectToFront(obj);
+        }
+      });
     };
 
     // Handle double click on text objects
