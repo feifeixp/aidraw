@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand } from "lucide-react";
+import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand, Grid3x3 } from "lucide-react";
 import { CanvasSizeSettings } from "./CanvasSizeSettings";
-import { Canvas as FabricCanvas, FabricImage } from "fabric";
+import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -54,11 +54,81 @@ export const EditorToolbar = ({
   const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
   const [showCanvasSizeDialog, setShowCanvasSizeDialog] = useState(false);
+  const [storyboardFrameCount, setStoryboardFrameCount] = useState(0);
   const handleUndo = () => {
     undo();
   };
   const handleRedo = () => {
     redo();
+  };
+
+  // 创建分镜frame的函数
+  const handleCreateStoryboardFrame = () => {
+    if (!canvas) {
+      toast.error("画布未初始化");
+      return;
+    }
+
+    // 分镜布局配置
+    const COLS = 5; // 5列
+    const ROWS = 8; // 8行
+    const FRAME_WIDTH = 200;
+    const FRAME_HEIGHT = 150;
+    const SPACING = 30; // 间距
+    const START_X = 100; // 起始X位置
+    const START_Y = 100; // 起始Y位置
+
+    // 计算当前frame在网格中的位置
+    const frameIndex = storyboardFrameCount;
+    const col = frameIndex % COLS;
+    const row = Math.floor(frameIndex / COLS);
+
+    // 检查是否超过最大frame数量
+    if (frameIndex >= COLS * ROWS) {
+      toast.error(`已达到最大分镜数量 (${COLS * ROWS})`);
+      return;
+    }
+
+    // 计算frame位置
+    const x = START_X + col * (FRAME_WIDTH + SPACING);
+    const y = START_Y + row * (FRAME_HEIGHT + SPACING);
+
+    // 创建frame矩形
+    const frame = new FabricRect({
+      left: x,
+      top: y,
+      width: FRAME_WIDTH,
+      height: FRAME_HEIGHT,
+      fill: 'white',
+      stroke: '#333333',
+      strokeWidth: 2,
+      selectable: true,
+      hasControls: true,
+      hasBorders: true,
+      name: `storyboard-frame-${frameIndex + 1}`
+    });
+
+    // 创建frame编号文本
+    const frameNumber = new FabricText(`${frameIndex + 1}`, {
+      left: x + 10,
+      top: y + 10,
+      fontSize: 16,
+      fill: '#666666',
+      selectable: false,
+      evented: false,
+      name: `storyboard-number-${frameIndex + 1}`
+    });
+
+    // 添加到画布
+    canvas.add(frame);
+    canvas.add(frameNumber);
+    canvas.renderAll();
+    saveState();
+
+    // 更新frame计数
+    setStoryboardFrameCount(frameIndex + 1);
+
+    toast.success(`已创建分镜 ${frameIndex + 1}/${COLS * ROWS}`);
   };
 
   const handleRedraw = async (shouldReplaceOriginal: boolean = true) => {
@@ -553,6 +623,13 @@ export const EditorToolbar = ({
       <Button variant="outline" size="sm" onClick={() => setShowCanvasSizeDialog(true)} className="shrink-0 whitespace-nowrap" title="画布尺寸">
         <Maximize2 className="h-4 w-4" />
         <span className="ml-1">画布尺寸</span>
+      </Button>
+
+      <Separator orientation="vertical" className="h-6 shrink-0" />
+
+      <Button variant="outline" size="sm" onClick={handleCreateStoryboardFrame} className="shrink-0 whitespace-nowrap" title="创建分镜">
+        <Grid3x3 className="h-4 w-4" />
+        <span className="ml-1">创建分镜</span>
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
