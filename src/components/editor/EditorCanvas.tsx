@@ -29,6 +29,7 @@ export const EditorCanvas = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveStateRef = useRef(saveState);
+  const activeToolRef = useRef(activeTool);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const frameRef = useRef<Rect | null>(null);
@@ -36,10 +37,14 @@ export const EditorCanvas = ({
   
   const prevZoomRef = useRef(zoom);
   
-  // Keep saveStateRef up to date
+  // Keep saveStateRef and activeToolRef up to date
   useEffect(() => {
     saveStateRef.current = saveState;
   }, [saveState]);
+
+  useEffect(() => {
+    activeToolRef.current = activeTool;
+  }, [activeTool]);
 
   useEffect(() => {
     if (!canvasRef.current) {
@@ -219,6 +224,20 @@ export const EditorCanvas = ({
       });
     };
 
+    // Handle path created for eraser tool
+    const handlePathCreated = (e: any) => {
+      const path = e.path;
+      if (path) {
+        // Set globalCompositeOperation on the path object itself
+        // This is crucial for eraser to work properly
+        if (activeToolRef.current === 'eraser') {
+          (path as any).globalCompositeOperation = 'destination-out';
+        } else {
+          (path as any).globalCompositeOperation = 'source-over';
+        }
+      }
+    };
+
     // Handle double click on text objects
     const canvasElement = canvasRef.current;
     const handleCanvasDoubleClick = () => {
@@ -232,6 +251,7 @@ export const EditorCanvas = ({
     
     fabricCanvas.on('object:modified', handleObjectModified);
     fabricCanvas.on('object:added', handleObjectAdded);
+    fabricCanvas.on('path:created', handlePathCreated);
     canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
@@ -239,6 +259,7 @@ export const EditorCanvas = ({
     return () => {
       fabricCanvas.off('object:modified', handleObjectModified);
       fabricCanvas.off('object:added', handleObjectAdded);
+      fabricCanvas.off('path:created', handlePathCreated);
       if (canvasElement) {
         canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
       }
