@@ -143,10 +143,10 @@ export const EditorToolbar = ({
       name: `storyboard-border-${frameIndex + 1}`
     });
 
-    // 创建frame编号文本
+    // 创建frame编号文本（显示在分镜外右上方）
     const frameNumber = new FabricText(`${frameIndex + 1}`, {
-      left: x + 10,
-      top: y + 10,
+      left: x + frameSize.width + 10,
+      top: y - 20,
       fontSize: 14,
       fill: '#666666',
       selectable: false,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useLayoutEffect } from "react";
-import { Canvas as FabricCanvas, FabricImage, Rect, PencilBrush } from "fabric";
+import { Canvas as FabricCanvas, FabricImage, Rect, PencilBrush, FabricText } from "fabric";
 import { toast } from "sonner";
 
 // 无限画布的实际尺寸
@@ -142,6 +142,19 @@ export const EditorCanvas = ({
     
     fabricCanvas.add(frameBorder);
     frameBorderRef.current = frameBorder;
+    
+    // 创建第一个分镜的编号（显示在分镜外右上方）
+    const frameNumber = new FabricText('1', {
+      left: frameLeft + DEFAULT_FRAME_WIDTH + 10,
+      top: frameTop - 20,
+      fontSize: 14,
+      fill: '#666666',
+      selectable: false,
+      evented: false,
+      name: 'storyboard-number-1'
+    });
+    
+    fabricCanvas.add(frameNumber);
     
     // Force immediate render
     fabricCanvas.renderAll();
