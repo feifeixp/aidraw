@@ -55,7 +55,7 @@ export const EditorToolbar = ({
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
   const [showStoryboardSettings, setShowStoryboardSettings] = useState(false);
   const [storyboardFrameCount, setStoryboardFrameCount] = useState(0);
-  const [frameSize, setFrameSize] = useState({ width: 256, height: 144 });
+  const [frameSize, setFrameSize] = useState({ width: 1024, height: 768 });
   const handleUndo = () => {
     undo();
   };
@@ -159,20 +159,20 @@ export const EditorToolbar = ({
     canvas.add(frameBorder);
     canvas.add(frameNumber);
     
-    // 确保frame和边框在正确的层级
-    canvas.sendObjectToBack(frame);
+    // 确保所有分镜frame在底层，所有border和number在顶层
+    canvas.getObjects().forEach(obj => {
+      const objName = (obj as any).name || '';
+      if (objName.startsWith('storyboard-frame-')) {
+        canvas.sendObjectToBack(obj);
+      }
+    });
     
-    // 确保主workframe和frameBorder保持在正确位置
-    const workFrame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
-    const mainFrameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
-    if (workFrame) {
-      canvas.sendObjectToBack(workFrame);
-    }
-    if (mainFrameBorder) {
-      canvas.bringObjectToFront(mainFrameBorder);
-    }
-    // 将所有分镜边框也置于顶层
-    canvas.bringObjectToFront(frameBorder);
+    canvas.getObjects().forEach(obj => {
+      const objName = (obj as any).name || '';
+      if (objName.startsWith('storyboard-border-') || objName.startsWith('storyboard-number-')) {
+        canvas.bringObjectToFront(obj);
+      }
+    });
     
     canvas.renderAll();
     saveState();
@@ -195,8 +195,9 @@ export const EditorToolbar = ({
       frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
       frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId}`);
     } else {
-      frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
-      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+      // 如果没有激活的分镜，使用第一个分镜
+      frame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
     }
     
     if (!frame) {
@@ -207,8 +208,7 @@ export const EditorToolbar = ({
     // 检查是否只有composite类型元素
     const nonCompositeObjects = canvas.getObjects().filter((obj: any) => {
       const objName = obj.name;
-      return objName !== 'workframe' && 
-             objName !== 'frameBorder' &&
+      return !objName?.startsWith('storyboard-') && 
              obj.type === 'image' && 
              (obj.data?.elementType !== 'composite' || !obj.data);
     });
@@ -271,13 +271,13 @@ export const EditorToolbar = ({
         
         // Only remove non-frame objects if shouldReplaceOriginal is true
         if (shouldReplaceOriginal) {
-          const objects = canvas.getObjects();
-          objects.forEach(obj => {
-            const objName = (obj as any).name;
-            if (objName !== 'workframe' && objName !== 'frameBorder') {
-              canvas.remove(obj);
-            }
-          });
+        const objects = canvas.getObjects();
+        objects.forEach(obj => {
+          const objName = (obj as any).name;
+          if (!objName?.startsWith('storyboard-')) {
+            canvas.remove(obj);
+          }
+        });
         }
         
         const img = new Image();
@@ -326,8 +326,9 @@ export const EditorToolbar = ({
       frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
       frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId}`);
     } else {
-      frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
-      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+      // 如果没有激活的分镜，使用第一个分镜
+      frame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
     }
     
     if (!frame) {
@@ -388,7 +389,7 @@ export const EditorToolbar = ({
     if (activeFrameId) {
       frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
     } else {
-      frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+      frame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
     }
     
     if (!frame) {
@@ -404,7 +405,7 @@ export const EditorToolbar = ({
     // 检查frame区域内是否有非composite类型元素
     const nonCompositeObjects = canvas.getObjects().filter((obj: any) => {
       const objName = obj.name;
-      const isFrameObject = objName === 'workframe' || objName === 'frameBorder' ||
+      const isFrameObject = objName?.startsWith('storyboard-') ||
                            objName.startsWith('storyboard-frame-') || 
                            objName.startsWith('storyboard-border-') ||
                            objName.startsWith('storyboard-number-');
@@ -605,8 +606,9 @@ export const EditorToolbar = ({
       frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
       frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId}`);
     } else {
-      frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
-      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+      // 如果没有激活的分镜，使用第一个分镜
+      frame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
     }
     
     if (!frame) {
@@ -665,7 +667,7 @@ export const EditorToolbar = ({
         const objects = canvas.getObjects();
         objects.forEach(obj => {
           const objName = (obj as any).name;
-          if (objName !== 'workframe' && objName !== 'frameBorder') {
+          if (!objName?.startsWith('storyboard-')) {
             canvas.remove(obj);
           }
         });

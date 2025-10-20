@@ -630,7 +630,12 @@ export const PropertiesPanel = ({
       return;
     }
 
-    const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    // 获取当前激活的frame或第一个分镜
+    let frame;
+    if (canvas) {
+      const activeFrameId = '1'; // 默认使用第一个分镜
+      frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
+    }
     if (!frame) {
       toast.error("未找到工作区域");
       return;

@@ -279,12 +279,7 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
     const objects = canvas.getObjects();
     objects.forEach(obj => {
       const objName = (obj as any).name || '';
-      const isProtected = objName === 'workframe' || 
-                         objName === 'frameBorder' ||
-                         objName.startsWith('storyboard-frame-') ||
-                         objName.startsWith('storyboard-border-') ||
-                         objName.startsWith('storyboard-number-');
-      if (!isProtected) {
+      if (!objName?.startsWith('storyboard-')) {
         canvas.remove(obj);
       }
     });

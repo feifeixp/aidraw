@@ -719,7 +719,7 @@ export const LeftToolbar = ({
     
     objects.forEach(obj => {
       // 跳过工作区域frame
-      if ((obj as any).name === 'workframe') return;
+      if ((obj as any).name?.startsWith('storyboard-frame-')) return;
       
       // 如果对象被锁定，则解锁
       if (!obj.selectable || !obj.evented) {
