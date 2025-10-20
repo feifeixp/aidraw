@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand, Grid3x3 } from "lucide-react";
-import { CanvasSizeSettings } from "./CanvasSizeSettings";
+import { StoryboardFrameSettings } from "./StoryboardFrameSettings";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,8 +53,9 @@ export const EditorToolbar = ({
   const [isComposing, setIsComposing] = useState(false);
   const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
-  const [showCanvasSizeDialog, setShowCanvasSizeDialog] = useState(false);
+  const [showStoryboardSettings, setShowStoryboardSettings] = useState(false);
   const [storyboardFrameCount, setStoryboardFrameCount] = useState(0);
+  const [frameSize, setFrameSize] = useState({ width: 256, height: 144 });
   const handleUndo = () => {
     undo();
   };
@@ -74,9 +75,9 @@ export const EditorToolbar = ({
     const ROWS = 8; // 8行
     const INFINITE_CANVAS_SIZE = 10000;
     
-    // 720p 16:9 比例，缩小到合适的尺寸
-    const FRAME_WIDTH = 256;
-    const FRAME_HEIGHT = 144; // 16:9 比例
+    // 使用可配置的分镜尺寸
+    const FRAME_WIDTH = frameSize.width;
+    const FRAME_HEIGHT = frameSize.height;
     const SPACING = 50; // 间距
     
     // 计算整个网格的尺寸
@@ -670,17 +671,15 @@ export const EditorToolbar = ({
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={() => setShowCanvasSizeDialog(true)} className="shrink-0 whitespace-nowrap" title="画布尺寸">
-        <Maximize2 className="h-4 w-4" />
-        <span className="ml-1">画布尺寸</span>
-      </Button>
-
-      <Separator orientation="vertical" className="h-6 shrink-0" />
-
-      <Button variant="outline" size="sm" onClick={handleCreateStoryboardFrame} className="shrink-0 whitespace-nowrap" title="创建分镜">
-        <Grid3x3 className="h-4 w-4" />
-        <span className="ml-1">创建分镜</span>
-      </Button>
+      <div className="flex items-center gap-1 shrink-0">
+        <Button variant="outline" size="sm" onClick={handleCreateStoryboardFrame} className="whitespace-nowrap" title="创建分镜">
+          <Grid3x3 className="h-4 w-4" />
+          <span className="ml-1">创建分镜</span>
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setShowStoryboardSettings(true)} className="px-2" title="分镜设置">
+          <Maximize2 className="h-4 w-4" />
+        </Button>
+      </div>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
@@ -704,46 +703,16 @@ export const EditorToolbar = ({
         <span className="ml-1">导出</span>
       </Button>
 
-      {/* Canvas Size Settings Dialog */}
-      <CanvasSizeSettings
-        open={showCanvasSizeDialog}
-        onOpenChange={setShowCanvasSizeDialog}
-        onApply={(width, height) => onCanvasSizeChange({ width, height })}
-        currentWidth={canvasSize?.width || 1024}
-        currentHeight={canvasSize?.height || 768}
-        onGenerateComposition={async (imageUrl) => {
-          if (!canvas) return;
-          
-          const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
-          if (!frame) return;
-
-          try {
-            const { FabricImage } = await import("fabric");
-            const img = await FabricImage.fromURL(imageUrl, {
-              crossOrigin: 'anonymous'
-            });
-
-            img.set({
-              left: frame.left || 0,
-              top: frame.top || 0,
-              selectable: true
-            });
-
-            const scaleX = (frame.width || 1024) / (img.width || 1);
-            const scaleY = (frame.height || 768) / (img.height || 1);
-            const scale = Math.min(scaleX, scaleY);
-            img.scale(scale);
-
-            canvas.add(img);
-            canvas.sendObjectToBack(frame as any);
-            canvas.setActiveObject(img);
-            canvas.renderAll();
-            saveState();
-          } catch (error) {
-            console.error("Add composition image error:", error);
-            toast.error("添加构图参考失败");
-          }
-        }}
+      {/* Storyboard Frame Settings Dialog */}
+      <StoryboardFrameSettings
+        open={showStoryboardSettings}
+        onOpenChange={setShowStoryboardSettings}
+        onApplyCanvasSize={(width, height) => onCanvasSizeChange({ width, height })}
+        currentCanvasWidth={canvasSize?.width || 1024}
+        currentCanvasHeight={canvasSize?.height || 768}
+        onApplyFrameSize={(width, height) => setFrameSize({ width, height })}
+        currentFrameWidth={frameSize.width}
+        currentFrameHeight={frameSize.height}
       />
 
       {/* Smart Compose Dialog */}
