@@ -33,6 +33,7 @@ interface LeftToolbarProps {
   setActiveTool?: (tool: string) => void;
   eraserBrushSize?: number;
   setEraserBrushSize?: (size: number) => void;
+  activeFrameId?: string | null;
 }
 export const LeftToolbar = ({
   canvas,
@@ -48,7 +49,8 @@ export const LeftToolbar = ({
   activeTool,
   setActiveTool,
   eraserBrushSize = 20,
-  setEraserBrushSize
+  setEraserBrushSize,
+  activeFrameId
 }: LeftToolbarProps) => {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -90,6 +92,21 @@ export const LeftToolbar = ({
     };
   }, [canvas]);
 
+
+  // Helper function to get the active frame (storyboard or default canvas)
+  const getActiveFrame = () => {
+    if (!canvas) return null;
+    
+    if (activeFrameId) {
+      const storyboardFrame = canvas.getObjects().find(
+        obj => (obj as any).name === activeFrameId
+      );
+      if (storyboardFrame) return storyboardFrame;
+    }
+    
+    // Fall back to default workframe
+    return (canvas as any).workFrame;
+  };
 
   const handleAddElement = () => {
     setSelectedElementType(null);
@@ -240,7 +257,7 @@ export const LeftToolbar = ({
   // Add Text
   const handleAddText = () => {
     if (!canvas) return;
-    const frame = (canvas as any).workFrame;
+    const frame = getActiveFrame();
     const frameLeft = frame?.left || 0;
     const frameTop = frame?.top || 0;
     const frameWidth = frame?.width || 1024;
@@ -264,7 +281,7 @@ export const LeftToolbar = ({
   // Add Shapes
   const handleAddRectangle = () => {
     if (!canvas) return;
-    const frame = (canvas as any).workFrame;
+    const frame = getActiveFrame();
     const frameLeft = frame?.left || 0;
     const frameTop = frame?.top || 0;
     const frameWidth = frame?.width || 1024;
@@ -287,7 +304,7 @@ export const LeftToolbar = ({
   };
   const handleAddCircle = () => {
     if (!canvas) return;
-    const frame = (canvas as any).workFrame;
+    const frame = getActiveFrame();
     const frameLeft = frame?.left || 0;
     const frameTop = frame?.top || 0;
     const frameWidth = frame?.width || 1024;
@@ -309,7 +326,7 @@ export const LeftToolbar = ({
   };
   const handleAddTriangle = () => {
     if (!canvas) return;
-    const frame = (canvas as any).workFrame;
+    const frame = getActiveFrame();
     const frameLeft = frame?.left || 0;
     const frameTop = frame?.top || 0;
     const frameWidth = frame?.width || 1024;
@@ -334,7 +351,7 @@ export const LeftToolbar = ({
   // Add Speech Bubbles
   const handleAddRoundBubble = () => {
     if (!canvas) return;
-    const frame = (canvas as any).workFrame;
+    const frame = getActiveFrame();
     const frameLeft = frame?.left || 0;
     const frameTop = frame?.top || 0;
     const frameWidth = frame?.width || 1024;
@@ -359,7 +376,7 @@ export const LeftToolbar = ({
   };
   const handleAddSquareBubble = () => {
     if (!canvas) return;
-    const frame = (canvas as any).workFrame;
+    const frame = getActiveFrame();
     const frameLeft = frame?.left || 0;
     const frameTop = frame?.top || 0;
     const frameWidth = frame?.width || 1024;
@@ -384,7 +401,7 @@ export const LeftToolbar = ({
   };
   const handleAddThoughtBubble = () => {
     if (!canvas) return;
-    const frame = (canvas as any).workFrame;
+    const frame = getActiveFrame();
     const frameLeft = frame?.left || 0;
     const frameTop = frame?.top || 0;
     const frameWidth = frame?.width || 1024;
@@ -423,7 +440,7 @@ export const LeftToolbar = ({
   };
   const handleAddSharpBubble = () => {
     if (!canvas) return;
-    const frame = (canvas as any).workFrame;
+    const frame = getActiveFrame();
     const frameLeft = frame?.left || 0;
     const frameTop = frame?.top || 0;
     const frameWidth = frame?.width || 1024;

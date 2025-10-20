@@ -442,6 +442,7 @@ const Editor = () => {
         setActiveTool={setActiveTool}
         eraserBrushSize={eraserBrushSize}
         setEraserBrushSize={setEraserBrushSize}
+        activeFrameId={activeFrameId}
       />
     </div>
   );
