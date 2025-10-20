@@ -270,8 +270,31 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
   };
 
   const createNewDraft = () => {
+    if (!canvas) {
+      toast.error("画布未初始化");
+      return;
+    }
+    
+    // 清空画布内容（保留frame和分镜相关对象）
+    const objects = canvas.getObjects();
+    objects.forEach(obj => {
+      const objName = (obj as any).name || '';
+      const isProtected = objName === 'workframe' || 
+                         objName === 'frameBorder' ||
+                         objName.startsWith('storyboard-frame-') ||
+                         objName.startsWith('storyboard-border-') ||
+                         objName.startsWith('storyboard-number-');
+      if (!isProtected) {
+        canvas.remove(obj);
+      }
+    });
+    
+    canvas.discardActiveObject();
+    canvas.renderAll();
+    
     onDraftIdChange?.(undefined);
-    toast.success("已切换到新草稿模式");
+    setOpen(false);
+    toast.success("已创建新草稿");
   };
 
   const handleLoadDraft = (draft: Draft) => {
