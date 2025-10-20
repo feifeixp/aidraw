@@ -34,6 +34,7 @@ export const EditorCanvas = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const saveStateRef = useRef(saveState);
   const activeToolRef = useRef(activeTool);
+  const activeFrameIdRef = useRef(activeFrameId);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const frameRef = useRef<Rect | null>(null);
@@ -49,6 +50,10 @@ export const EditorCanvas = ({
   useEffect(() => {
     activeToolRef.current = activeTool;
   }, [activeTool]);
+
+  useEffect(() => {
+    activeFrameIdRef.current = activeFrameId;
+  }, [activeFrameId]);
 
   useEffect(() => {
     if (!canvasRef.current) {
@@ -500,11 +505,11 @@ export const EditorCanvas = ({
     FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then(async img => {
       if (!img) return;
       
-      // 根据activeFrameId查找目标frame
+      // 根据activeFrameIdRef查找目标frame
       let targetFrame = frameRef.current!;
-      if (activeFrameId) {
+      if (activeFrameIdRef.current) {
         const storyboardFrame = canvas.getObjects().find(
-          obj => (obj as any).name === `storyboard-frame-${activeFrameId}`
+          obj => (obj as any).name === `storyboard-frame-${activeFrameIdRef.current}`
         );
         if (storyboardFrame) {
           targetFrame = storyboardFrame as any;
