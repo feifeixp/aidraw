@@ -405,10 +405,7 @@ export const EditorToolbar = ({
     // 检查frame区域内是否有非composite类型元素
     const nonCompositeObjects = canvas.getObjects().filter((obj: any) => {
       const objName = obj.name;
-      const isFrameObject = objName?.startsWith('storyboard-') ||
-                           objName.startsWith('storyboard-frame-') || 
-                           objName.startsWith('storyboard-border-') ||
-                           objName.startsWith('storyboard-number-');
+      const isFrameObject = objName?.startsWith('storyboard-');
       
       if (isFrameObject) return false;
       if (obj.type === 'image' && obj.data?.elementType === 'composite') return false;
