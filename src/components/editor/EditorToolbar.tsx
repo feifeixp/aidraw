@@ -464,9 +464,23 @@ export const EditorToolbar = ({
         frameBorder.set({ visible: false });
       }
       
+      // 临时隐藏所有文字标注
+      const hiddenTexts: any[] = [];
+      objects.forEach(obj => {
+        const objLeft = obj.left || 0;
+        const objTop = obj.top || 0;
+        const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+                         objTop >= frameTop && objTop < frameTop + frameHeight;
+        
+        if (isInFrame && obj.type === 'text') {
+          hiddenTexts.push({ obj, visible: obj.visible });
+          obj.set({ visible: false });
+        }
+      });
+      
       canvas.renderAll();
       
-      // 将frame区域的所有内容（图像+文字+形状）导出为一张完整图像
+      // 将frame区域的所有内容（图像+形状）导出为一张完整图像
       const imageDataURL = canvas.toDataURL({
         format: 'png',
         quality: 1,
@@ -477,10 +491,14 @@ export const EditorToolbar = ({
         height: frameHeight,
       });
       
-      // 恢复frameBorder
+      // 恢复frameBorder和文字
       if (frameBorder) {
         frameBorder.set({ visible: originalBorderVisible });
       }
+      hiddenTexts.forEach(({ obj, visible }) => {
+        obj.set({ visible });
+      });
+      canvas.renderAll();
       
       const {
         data: aiData,
