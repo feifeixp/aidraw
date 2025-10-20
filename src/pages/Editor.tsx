@@ -88,6 +88,7 @@ const Editor = () => {
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
   const [showTutorial, setShowTutorial] = useState(false);
   const [activeFrameId, setActiveFrameId] = useState<string | null>("1");
+  const [storyboardFrameCount, setStoryboardFrameCount] = useState(1);
   const isMobile = useIsMobile();
 
   // Check if tutorial should be shown
@@ -460,12 +461,13 @@ const Editor = () => {
             </SheetContent>
           </Sheet>}
         <div className="drafts-list">
-          <DraftsList 
-            canvas={canvas} 
+          <DraftsList
+            canvas={canvas}
             onLoadDraft={handleLoadDraft}
             currentDraftId={currentDraftId}
             onDraftIdChange={setCurrentDraftId}
             onActiveFrameIdChange={setActiveFrameId}
+            onFrameCountChange={setStoryboardFrameCount}
           />
         </div>
         <div className="flex-1 min-w-0 overflow-x-auto">
@@ -486,6 +488,8 @@ const Editor = () => {
             onZoomChange={setZoom}
             activeFrameId={activeFrameId}
             onActiveFrameChange={setActiveFrameId}
+            storyboardFrameCount={storyboardFrameCount}
+            setStoryboardFrameCount={setStoryboardFrameCount}
           />
         </div>
       </div>

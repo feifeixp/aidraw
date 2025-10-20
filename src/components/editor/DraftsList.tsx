@@ -23,9 +23,10 @@ interface DraftsListProps {
   currentDraftId?: string;
   onDraftIdChange?: (draftId: string | undefined) => void;
   onActiveFrameIdChange?: (frameId: string | null) => void;
+  onFrameCountChange?: (count: number) => void;
 }
 
-export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChange, onActiveFrameIdChange }: DraftsListProps) => {
+export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChange, onActiveFrameIdChange, onFrameCountChange }: DraftsListProps) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
@@ -349,6 +350,7 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
     
     onDraftIdChange?.(undefined);
     onActiveFrameIdChange?.("1");
+    onFrameCountChange?.(1);
     setOpen(false);
     toast.success("已创建新草稿");
   };

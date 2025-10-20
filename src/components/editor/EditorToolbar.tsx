@@ -28,6 +28,8 @@ interface EditorToolbarProps {
   onZoomChange: (zoom: number) => void;
   activeFrameId: string | null;
   onActiveFrameChange: (frameId: string | null) => void;
+  storyboardFrameCount: number;
+  setStoryboardFrameCount: (count: number) => void;
 }
 export const EditorToolbar = ({
   canvas,
@@ -45,7 +47,9 @@ export const EditorToolbar = ({
   zoom,
   onZoomChange,
   activeFrameId,
-  onActiveFrameChange
+  onActiveFrameChange,
+  storyboardFrameCount,
+  setStoryboardFrameCount
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"compose" | "render">("compose");
@@ -54,7 +58,6 @@ export const EditorToolbar = ({
   const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
   const [showStoryboardSettings, setShowStoryboardSettings] = useState(false);
-  const [storyboardFrameCount, setStoryboardFrameCount] = useState(0);
   const [frameSize, setFrameSize] = useState({ width: 1024, height: 768 });
   const handleUndo = () => {
     undo();
