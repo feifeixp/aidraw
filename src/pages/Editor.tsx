@@ -196,7 +196,7 @@ const Editor = () => {
     if (canvas && history.length === 0) {
       // Small delay to ensure canvas is fully initialized
       const timer = setTimeout(() => {
-        const state = JSON.stringify(canvas.toJSON());
+        const state = JSON.stringify((canvas as any).toJSON(['data']));
         dispatchHistory({
           type: "SAVE_STATE",
           payload: state
