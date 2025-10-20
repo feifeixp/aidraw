@@ -346,7 +346,7 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
     canvas.add(frameBorder);
     
     // 创建第一个分镜的编号
-    const frameNumber = new FabricText('1', {
+    const frameNumber = new FabricText('Shot-01', {
       left: frameLeft,
       top: frameTop - 20,
       fontSize: 14,

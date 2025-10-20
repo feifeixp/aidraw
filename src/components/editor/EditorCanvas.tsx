@@ -157,7 +157,7 @@ export const EditorCanvas = ({
     frameBorderRef.current = frameBorder;
     
     // 创建第一个分镜的编号（显示在分镜外左上方，与分镜左边对齐）
-    const frameNumber = new FabricText('1', {
+    const frameNumber = new FabricText('Shot-01', {
       left: frameLeft,
       top: frameTop - 20,
       fontSize: 14,

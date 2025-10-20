@@ -147,7 +147,7 @@ export const EditorToolbar = ({
     });
 
     // 创建frame编号文本（显示在分镜外左上方，与分镜左边对齐）
-    const frameNumber = new FabricText(`${frameIndex + 1}`, {
+    const frameNumber = new FabricText(`Shot-${String(frameIndex + 1).padStart(2, '0')}`, {
       left: x,
       top: y - 20,
       fontSize: 14,
