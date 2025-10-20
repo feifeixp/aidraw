@@ -114,7 +114,7 @@ const Editor = () => {
       // Set new timer to save after 2 seconds of inactivity
       autoSaveTimer = setTimeout(() => {
         try {
-          const canvasJson = JSON.stringify(canvas.toJSON());
+          const canvasJson = JSON.stringify((canvas as any).toJSON(['data']));
           localStorage.setItem('editor-draft', canvasJson);
           localStorage.setItem('editor-draft-timestamp', Date.now().toString());
           console.log("自动保存完成");
