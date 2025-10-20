@@ -447,7 +447,10 @@ export const EditorToolbar = ({
           textAnnotations.push(text);
         }
       } else if (['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
-        const shapeDesc = `${obj.type} at position (${Math.round(objLeft || 0)}, ${Math.round(objTop || 0)})`;
+        // 只描述形状类型和颜色，不包含坐标
+        const shapeType = obj.type === 'rect' ? 'rectangle' : obj.type;
+        const fill = (obj as any).fill;
+        const shapeDesc = fill ? `${fill} ${shapeType}` : shapeType || 'shape';
         shapes.push(shapeDesc);
       } else if (obj.type === 'image') {
         hasImageLayers = true;
