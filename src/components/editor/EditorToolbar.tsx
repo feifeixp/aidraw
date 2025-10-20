@@ -429,10 +429,8 @@ export const EditorToolbar = ({
     const taskId = startTask("正在智能合成");
     const objects = canvas.getObjects();
     const textAnnotations: string[] = [];
-    const shapes: string[] = [];
-    let hasImageLayers = false;
     
-    // Only consider objects within the active frame
+    // 收集frame区域内的文字标注作为提示词
     objects.forEach(obj => {
       const objLeft = obj.left || 0;
       const objTop = obj.top || 0;
@@ -446,178 +444,106 @@ export const EditorToolbar = ({
         if (text && text !== '双击编辑文字') {
           textAnnotations.push(text);
         }
-      } else if (['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
-        // 只描述形状类型和颜色，不包含坐标
-        const shapeType = obj.type === 'rect' ? 'rectangle' : obj.type;
-        const fill = (obj as any).fill;
-        const shapeDesc = fill ? `${fill} ${shapeType}` : shapeType || 'shape';
-        shapes.push(shapeDesc);
-      } else if (obj.type === 'image') {
-        hasImageLayers = true;
       }
     });
-    let instruction = "";
     
-    // Build instruction based on available content
-    if (textAnnotations.length === 0 && shapes.length === 0) {
-      // No annotations or shapes - use default enhancement mode
-      instruction = "Enhance this image with professional lighting and shading. Fix any defects or missing areas in the image. Adjust the camera angle to make the composition more reasonable and visually appealing. Add proper shadows and highlights based on the environment.";
-    } else if (textAnnotations.length > 0) {
-      // Has text annotations - use them as main prompt
-      instruction = textAnnotations.join(". ") + ".";
-      if (shapes.length > 0) {
-        instruction += ` Visual markers: ${shapes.join(", ")}.`;
-      }
-    } else if (shapes.length > 0) {
-      // Only has shapes, no text - need a base prompt
-      toast.error("请添加文字描述来指导AI生成图片，仅标记形状位置是不够的");
-      setIsComposing(false);
-      cancelTask();
-      return;
+    // 构建AI指令：文字标注作为提示词，形状通过图像传递
+    let instruction = "";
+    if (textAnnotations.length > 0) {
+      instruction = textAnnotations.join(". ") + ". Generate an image based on the visual content and this description.";
+    } else {
+      instruction = "Generate an image based on the visual elements shown, enhancing with professional lighting, shading, and composition.";
     }
+    
     toast.info("正在使用AI智能合成图片，请稍候...");
     try {
-      // If there are image layers, capture all layers in the frame
-      if (hasImageLayers) {
-        // 临时隐藏frame边框
-        const frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId || '1'}`);
-        const originalBorderVisible = frameBorder?.visible;
-        if (frameBorder) {
-          frameBorder.set({ visible: false });
+      // 临时隐藏frame边框
+      const frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId || '1'}`);
+      const originalBorderVisible = frameBorder?.visible;
+      if (frameBorder) {
+        frameBorder.set({ visible: false });
+      }
+      
+      canvas.renderAll();
+      
+      // 将frame区域的所有内容（图像+文字+形状）导出为一张完整图像
+      const imageDataURL = canvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 1,
+        left: frameLeft,
+        top: frameTop,
+        width: frameWidth,
+        height: frameHeight,
+      });
+      
+      // 恢复frameBorder
+      if (frameBorder) {
+        frameBorder.set({ visible: originalBorderVisible });
+      }
+      
+      const {
+        data: aiData,
+        error: aiError
+      } = await supabase.functions.invoke('ai-edit-image', {
+        body: {
+          imageUrl: imageDataURL,
+          instruction
         }
+      });
+      if (aiError) throw aiError;
+      if (aiData?.imageUrl) {
+        const {
+          FabricImage
+        } = await import("fabric");
+        const img = await FabricImage.fromURL(aiData.imageUrl, {
+          crossOrigin: 'anonymous'
+        });
         
-        canvas.renderAll();
+        const imgWidth = img.width || 1;
+        const imgHeight = img.height || 1;
+        const scale = Math.min(frameWidth / imgWidth, frameHeight / imgHeight, 1);
         
-        // 导出frame区域的所有图层内容
-        const imageDataURL = canvas.toDataURL({
-          format: 'png',
-          quality: 1,
-          multiplier: 1,
+        img.scale(scale);
+        img.set({
           left: frameLeft,
           top: frameTop,
-          width: frameWidth,
-          height: frameHeight,
+          data: { elementType: 'composite' }
         });
         
-        // 恢复frameBorder
-        if (frameBorder) {
-          frameBorder.set({ visible: originalBorderVisible });
+        if (replaceOriginal) {
+          objects.forEach(obj => {
+            const objLeft = obj.left || 0;
+            const objTop = obj.top || 0;
+            const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+                             objTop >= frameTop && objTop < frameTop + frameHeight;
+            
+            if (isInFrame && !((obj as any).name?.startsWith('storyboard-'))) {
+              canvas.remove(obj);
+            }
+          });
+        } else {
+          // 只移除文本和形状标注
+          objects.forEach(obj => {
+            const objLeft = obj.left || 0;
+            const objTop = obj.top || 0;
+            const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+                             objTop >= frameTop && objTop < frameTop + frameHeight;
+            
+            if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
+              canvas.remove(obj);
+            }
+          });
         }
+        
+        // Use layer sorting system
+        const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+        insertObjectWithLayerType(canvas, img, 'composite');
+        canvas.setActiveObject(img);
         canvas.renderAll();
-        
-        const {
-          data: aiData,
-          error: aiError
-        } = await supabase.functions.invoke('ai-edit-image', {
-          body: {
-            imageUrl: imageDataURL,
-            instruction
-          }
-        });
-        if (aiError) throw aiError;
-        if (aiData?.imageUrl) {
-          const {
-            FabricImage
-          } = await import("fabric");
-          const img = await FabricImage.fromURL(aiData.imageUrl, {
-            crossOrigin: 'anonymous'
-          });
-          
-          const imgWidth = img.width || 1;
-          const imgHeight = img.height || 1;
-          const scale = Math.min(frameWidth / imgWidth, frameHeight / imgHeight, 1);
-          
-          img.scale(scale);
-          img.set({
-            left: frameLeft,
-            top: frameTop,
-            data: { elementType: 'composite' }
-          });
-          
-          if (replaceOriginal) {
-            objects.forEach(obj => {
-              const objLeft = obj.left || 0;
-              const objTop = obj.top || 0;
-              const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-                               objTop >= frameTop && objTop < frameTop + frameHeight;
-              
-              if (isInFrame && !((obj as any).name?.startsWith('storyboard-'))) {
-                canvas.remove(obj);
-              }
-            });
-          } else {
-            // 只移除文本和形状标注
-            objects.forEach(obj => {
-              const objLeft = obj.left || 0;
-              const objTop = obj.top || 0;
-              const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-                               objTop >= frameTop && objTop < frameTop + frameHeight;
-              
-              if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
-                canvas.remove(obj);
-              }
-            });
-          }
-          
-          // Use layer sorting system
-          const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
-          insertObjectWithLayerType(canvas, img, 'composite');
-          canvas.setActiveObject(img);
-          canvas.renderAll();
-          saveState();
-          completeTask(taskId);
-          toast.success("图片已生成");
-        }
-      } else {
-        // No base image - use pure generation mode
-        const {
-          data,
-          error
-        } = await supabase.functions.invoke('ai-generate-image', {
-          body: {
-            prompt: instruction
-          }
-        });
-        if (error) throw error;
-        if (data?.imageUrl) {
-          const {
-            FabricImage
-          } = await import("fabric");
-          const img = await FabricImage.fromURL(data.imageUrl, {
-            crossOrigin: 'anonymous'
-          });
-          const imgWidth = img.width || 1;
-          const imgHeight = img.height || 1;
-          const scale = Math.min(frameWidth / imgWidth, frameHeight / imgHeight, 1);
-          img.scale(scale);
-          img.set({
-            left: frameLeft + (frameWidth - imgWidth * scale) / 2,
-            top: frameTop + (frameHeight - imgHeight * scale) / 2,
-            data: { elementType: 'composite' }
-          });
-          
-          if (replaceOriginal) {
-            objects.forEach(obj => {
-              const objLeft = obj.left || 0;
-              const objTop = obj.top || 0;
-              const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-                               objTop >= frameTop && objTop < frameTop + frameHeight;
-              
-              if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
-                canvas.remove(obj);
-              }
-            });
-          }
-          
-          // Use layer sorting system
-          const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
-          insertObjectWithLayerType(canvas, img, 'composite');
-          canvas.setActiveObject(img);
-          canvas.renderAll();
-          saveState();
-          completeTask(taskId);
-          toast.success("图片已生成");
-        }
+        saveState();
+        completeTask(taskId);
+        toast.success("图片已生成");
       }
     } catch (error) {
       console.error("Smart compose error:", error);
