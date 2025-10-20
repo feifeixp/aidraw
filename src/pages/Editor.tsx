@@ -140,7 +140,7 @@ const Editor = () => {
   // Save canvas state to history
   const saveState = useCallback(() => {
     if (!canvas) return;
-    const state = JSON.stringify(canvas.toJSON());
+    const state = JSON.stringify((canvas as any).toJSON(['data']));
     dispatchHistory({
       type: "SAVE_STATE",
       payload: state
