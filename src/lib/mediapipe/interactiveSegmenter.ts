@@ -92,8 +92,12 @@ export class MediaPipeSegmenter {
         const maskValue = expandedMask[maskIdx];
         const idx = (y * outputCanvas.width + x) * 4;
         
-        if (feather > 0 && maskValue === 0) {
-          // Calculate distance to edge for feathering
+        // MediaPipe mask: 0 = foreground (object), non-0 = background
+        if (maskValue === 0) {
+          // Foreground: keep fully opaque
+          data[idx + 3] = 255;
+        } else if (feather > 0) {
+          // Background with feathering: calculate edge softness
           const alpha = this.calculateFeatheredAlpha(
             expandedMask,
             maskWidth,
@@ -104,8 +108,8 @@ export class MediaPipeSegmenter {
           );
           data[idx + 3] = alpha;
         } else {
-          // No feathering: binary mask
-          data[idx + 3] = maskValue === 0 ? 255 : 0;
+          // Background without feathering: fully transparent
+          data[idx + 3] = 0;
         }
       }
     }
@@ -217,7 +221,8 @@ export class MediaPipeSegmenter {
     y: number,
     featherRadius: number
   ): number {
-    // Find distance to nearest background pixel
+    // Current pixel should be background (maskValue != 0)
+    // Find distance to nearest foreground pixel (maskValue = 0)
     let minDist = featherRadius + 1;
     
     for (let dy = -featherRadius; dy <= featherRadius; dy++) {
@@ -228,8 +233,8 @@ export class MediaPipeSegmenter {
         if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
           const idx = ny * width + nx;
           
-          // If neighbor is background
-          if (mask[idx] !== 0) {
+          // If neighbor is foreground (maskValue = 0)
+          if (mask[idx] === 0) {
             const dist = Math.sqrt(dx * dx + dy * dy);
             minDist = Math.min(minDist, dist);
           }
@@ -239,11 +244,11 @@ export class MediaPipeSegmenter {
     
     // Calculate alpha based on distance
     if (minDist >= featherRadius) {
-      return 255; // Fully opaque
+      return 0; // Fully transparent (far from edge)
     }
     
-    // Smooth falloff
-    const ratio = minDist / featherRadius;
+    // Smooth falloff: closer to edge = more opaque
+    const ratio = 1 - (minDist / featherRadius);
     return Math.floor(ratio * 255);
   }
 
