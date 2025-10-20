@@ -99,7 +99,7 @@ export const LeftToolbar = ({
     
     if (activeFrameId) {
       const storyboardFrame = canvas.getObjects().find(
-        obj => (obj as any).name === activeFrameId
+        obj => (obj as any).name === `storyboard-frame-${activeFrameId}`
       );
       if (storyboardFrame) return storyboardFrame;
     }
