@@ -400,28 +400,46 @@ export const EditorCanvas = ({
     };
   }, [canvas, zoom]);
 
-  // Center view to frame on initial load only
+  // Center view to Shot-01 at 80% zoom on initial load only
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !canvas) return;
 
     const centerView = () => {
-      const scale = zoom / 100;
-      // 计算缩放后的画布中心点位置
-      const scaledCanvasSize = INFINITE_CANVAS_SIZE * scale;
-      const centerX = scaledCanvasSize / 2;
-      const centerY = scaledCanvasSize / 2;
+      // 使用80%的固定缩放
+      const scale = 0.8;
       
-      // 将容器滚动到中心点
-      container.scrollLeft = centerX - container.clientWidth / 2;
-      container.scrollTop = centerY - container.clientHeight / 2;
+      // 计算Shot-01的中心位置（与创建分镜时的计算逻辑一致）
+      const COLS = 5;
+      const ROWS = 8;
+      const DEFAULT_FRAME_WIDTH = 1024;
+      const DEFAULT_FRAME_HEIGHT = 768;
+      const SPACING = 50;
       
-      console.log('Centering view:', {
-        zoom,
+      const totalWidth = COLS * DEFAULT_FRAME_WIDTH + (COLS - 1) * SPACING;
+      const totalHeight = ROWS * DEFAULT_FRAME_HEIGHT + (ROWS - 1) * SPACING;
+      
+      const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
+      const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
+      
+      // Shot-01的中心坐标
+      const shot01CenterX = START_X + DEFAULT_FRAME_WIDTH / 2;
+      const shot01CenterY = START_Y + DEFAULT_FRAME_HEIGHT / 2;
+      
+      // 计算缩放后Shot-01中心的位置
+      const scaledCenterX = shot01CenterX * scale;
+      const scaledCenterY = shot01CenterY * scale;
+      
+      // 将容器滚动到Shot-01的中心
+      container.scrollLeft = scaledCenterX - container.clientWidth / 2;
+      container.scrollTop = scaledCenterY - container.clientHeight / 2;
+      
+      console.log('Centering view to Shot-01:', {
         scale,
-        scaledCanvasSize,
-        centerX,
-        centerY,
+        shot01CenterX,
+        shot01CenterY,
+        scaledCenterX,
+        scaledCenterY,
         scrollLeft: container.scrollLeft,
         scrollTop: container.scrollTop,
         containerWidth: container.clientWidth,

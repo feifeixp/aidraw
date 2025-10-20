@@ -71,7 +71,7 @@ const historyReducer = (state: HistoryState, action: HistoryAction): HistoryStat
 const Editor = () => {
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
   const [activeTool, setActiveTool] = useState<string>("select");
-  const [zoom, setZoom] = useState<number>(100);
+  const [zoom, setZoom] = useState<number>(80);
   const [eraserBrushSize, setEraserBrushSize] = useState<number>(20);
   const [{
     history,
