@@ -28,6 +28,8 @@ interface EditorToolbarProps {
   onCanvasSizeChange: (size: { width: number; height: number }) => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  activeFrameId: string | null;
+  onActiveFrameChange: (frameId: string | null) => void;
 }
 export const EditorToolbar = ({
   canvas,
@@ -45,7 +47,9 @@ export const EditorToolbar = ({
   canvasSize,
   onCanvasSizeChange,
   zoom,
-  onZoomChange
+  onZoomChange,
+  activeFrameId,
+  onActiveFrameChange
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"compose" | "render">("compose");
@@ -122,7 +126,7 @@ export const EditorToolbar = ({
       name: `storyboard-frame-${frameIndex + 1}`
     });
 
-    // 创建frame边界线（始终显示，类似frameBorder）
+    // 创建frame边界线（默认不显示，只有激活时才显示）
     const frameBorder = new FabricRect({
       left: x,
       top: y,
@@ -138,7 +142,8 @@ export const EditorToolbar = ({
       hasBorders: false,
       lockMovementX: true,
       lockMovementY: true,
-      hoverCursor: 'default',
+      hoverCursor: 'pointer',
+      visible: false,
       name: `storyboard-border-${frameIndex + 1}`
     });
 
@@ -188,9 +193,16 @@ export const EditorToolbar = ({
       return;
     }
     
-    // 查找frame对象
-    const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
-    const frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+    // 根据activeFrameId查找对应的frame
+    let frame, frameBorder;
+    if (activeFrameId) {
+      frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId}`);
+    } else {
+      frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+    }
+    
     if (!frame) {
       toast.error("未找到工作区域");
       return;
@@ -312,9 +324,16 @@ export const EditorToolbar = ({
   const handleExport = () => {
     if (!canvas) return;
     
-    // 查找frame对象和frameBorder
-    const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
-    const frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+    // 根据activeFrameId查找对应的frame
+    let frame, frameBorder;
+    if (activeFrameId) {
+      frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId}`);
+    } else {
+      frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+    }
+    
     if (!frame) {
       toast.error("未找到工作区域");
       return;
@@ -368,12 +387,40 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 检查是否只有composite类型元素
+    // 根据activeFrameId查找对应的frame
+    let frame;
+    if (activeFrameId) {
+      frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
+    } else {
+      frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+    }
+    
+    if (!frame) {
+      toast.error("未找到工作区域");
+      return;
+    }
+
+    const frameLeft = frame.left || 0;
+    const frameTop = frame.top || 0;
+    const frameWidth = frame.width || 1024;
+    const frameHeight = frame.height || 768;
+
+    // 检查frame区域内是否有非composite类型元素
     const nonCompositeObjects = canvas.getObjects().filter((obj: any) => {
       const objName = obj.name;
-      return objName !== 'workframe' && 
-             objName !== 'frameBorder' &&
-             (obj.type !== 'image' || obj.data?.elementType !== 'composite');
+      const isFrameObject = objName === 'workframe' || objName === 'frameBorder' ||
+                           objName.startsWith('storyboard-frame-') || 
+                           objName.startsWith('storyboard-border-') ||
+                           objName.startsWith('storyboard-number-');
+      
+      if (isFrameObject) return false;
+      if (obj.type === 'image' && obj.data?.elementType === 'composite') return false;
+      
+      // Check if object is within frame bounds
+      const objLeft = obj.left || 0;
+      const objTop = obj.top || 0;
+      return objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+             objTop >= frameTop && objTop < frameTop + frameHeight;
     });
     
     if (nonCompositeObjects.length === 0) {
@@ -387,14 +434,23 @@ export const EditorToolbar = ({
     const textAnnotations: string[] = [];
     const shapes: string[] = [];
     let baseImage: any = null;
+    
+    // Only consider objects within the active frame
     objects.forEach(obj => {
+      const objLeft = obj.left || 0;
+      const objTop = obj.top || 0;
+      const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+                       objTop >= frameTop && objTop < frameTop + frameHeight;
+      
+      if (!isInFrame) return;
+      
       if (obj.type === 'text') {
         const text = (obj as any).text;
         if (text && text !== '双击编辑文字') {
           textAnnotations.push(text);
         }
       } else if (['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
-        const shapeDesc = `${obj.type} at position (${Math.round(obj.left || 0)}, ${Math.round(obj.top || 0)})`;
+        const shapeDesc = `${obj.type} at position (${Math.round(objLeft || 0)}, ${Math.round(objTop || 0)})`;
         shapes.push(shapeDesc);
       } else if (obj.type === 'image') {
         if (!baseImage) {
@@ -456,7 +512,12 @@ export const EditorToolbar = ({
           
           if (replaceOriginal) {
             objects.forEach(obj => {
-              if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
+              const objLeft = obj.left || 0;
+              const objTop = obj.top || 0;
+              const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+                               objTop >= frameTop && objTop < frameTop + frameHeight;
+              
+              if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
                 canvas.remove(obj);
               }
             });
@@ -490,21 +551,24 @@ export const EditorToolbar = ({
           const img = await FabricImage.fromURL(data.imageUrl, {
             crossOrigin: 'anonymous'
           });
-          const canvasWidth = canvas.width || 1024;
-          const canvasHeight = canvas.height || 768;
           const imgWidth = img.width || 1;
           const imgHeight = img.height || 1;
-          const scale = Math.min(canvasWidth / imgWidth, canvasHeight / imgHeight, 1);
+          const scale = Math.min(frameWidth / imgWidth, frameHeight / imgHeight, 1);
           img.scale(scale);
           img.set({
-            left: (canvasWidth - imgWidth * scale) / 2,
-            top: (canvasHeight - imgHeight * scale) / 2,
+            left: frameLeft + (frameWidth - imgWidth * scale) / 2,
+            top: frameTop + (frameHeight - imgHeight * scale) / 2,
             data: { elementType: 'composite' }
           });
           
           if (replaceOriginal) {
             objects.forEach(obj => {
-              if (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || '')) {
+              const objLeft = obj.left || 0;
+              const objTop = obj.top || 0;
+              const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+                               objTop >= frameTop && objTop < frameTop + frameHeight;
+              
+              if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
                 canvas.remove(obj);
               }
             });
@@ -539,9 +603,16 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 查找frame对象和frameBorder
-    const frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
-    const frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+    // 根据activeFrameId查找对应的frame
+    let frame, frameBorder;
+    if (activeFrameId) {
+      frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId}`);
+    } else {
+      frame = canvas.getObjects().find((obj: any) => obj.name === 'workframe');
+      frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'frameBorder');
+    }
+    
     if (!frame) {
       toast.error("未找到工作区域");
       return;

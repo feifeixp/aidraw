@@ -14,6 +14,8 @@ interface EditorCanvasProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
   eraserBrushSize?: number;
+  activeFrameId: string | null;
+  onActiveFrameChange: (frameId: string | null) => void;
 }
 
 export const EditorCanvas = ({
@@ -24,7 +26,9 @@ export const EditorCanvas = ({
   canvasSize,
   zoom,
   onZoomChange,
-  eraserBrushSize = 20
+  eraserBrushSize = 20,
+  activeFrameId,
+  onActiveFrameChange
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -198,6 +202,61 @@ export const EditorCanvas = ({
       saveStateRef.current();
     };
 
+    // Handle mouse down to detect storyboard frame clicks
+    const handleMouseDown = (e: any) => {
+      const pointer = fabricCanvas.getPointer(e.e);
+      const clickedObjects = fabricCanvas.getObjects().filter((obj: any) => {
+        const objName = obj.name || '';
+        if (objName.startsWith('storyboard-frame-')) {
+          const objLeft = obj.left || 0;
+          const objTop = obj.top || 0;
+          const objWidth = obj.width || 0;
+          const objHeight = obj.height || 0;
+          return pointer.x >= objLeft && pointer.x <= objLeft + objWidth &&
+                 pointer.y >= objTop && pointer.y <= objTop + objHeight;
+        }
+        return false;
+      });
+
+      if (clickedObjects.length > 0) {
+        const clickedFrame = clickedObjects[0];
+        const frameName = (clickedFrame as any).name;
+        const frameNumber = frameName.replace('storyboard-frame-', '');
+        onActiveFrameChange(frameNumber);
+        
+        // Update all storyboard borders visibility
+        fabricCanvas.getObjects().forEach((obj: any) => {
+          const objName = obj.name || '';
+          if (objName.startsWith('storyboard-border-')) {
+            const borderNumber = objName.replace('storyboard-border-', '');
+            obj.set({ visible: borderNumber === frameNumber });
+          }
+        });
+        fabricCanvas.renderAll();
+      } else {
+        // Check if clicked on main workframe
+        const workframe = fabricCanvas.getObjects().find((obj: any) => obj.name === 'workframe');
+        if (workframe) {
+          const objLeft = workframe.left || 0;
+          const objTop = workframe.top || 0;
+          const objWidth = workframe.width || 0;
+          const objHeight = workframe.height || 0;
+          if (pointer.x >= objLeft && pointer.x <= objLeft + objWidth &&
+              pointer.y >= objTop && pointer.y <= objTop + objHeight) {
+            onActiveFrameChange(null);
+            // Hide all storyboard borders
+            fabricCanvas.getObjects().forEach((obj: any) => {
+              const objName = obj.name || '';
+              if (objName.startsWith('storyboard-border-')) {
+                obj.set({ visible: false });
+              }
+            });
+            fabricCanvas.renderAll();
+          }
+        }
+      }
+    };
+
     const handleObjectAdded = () => {
       // Ensure frame always stays at the back when new objects are added
       if (frameRef.current) {
@@ -252,6 +311,7 @@ export const EditorCanvas = ({
     fabricCanvas.on('object:modified', handleObjectModified);
     fabricCanvas.on('object:added', handleObjectAdded);
     fabricCanvas.on('path:created', handlePathCreated);
+    fabricCanvas.on('mouse:down', handleMouseDown);
     canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
     setCanvas(fabricCanvas);
@@ -260,6 +320,7 @@ export const EditorCanvas = ({
       fabricCanvas.off('object:modified', handleObjectModified);
       fabricCanvas.off('object:added', handleObjectAdded);
       fabricCanvas.off('path:created', handlePathCreated);
+      fabricCanvas.off('mouse:down', handleMouseDown);
       if (canvasElement) {
         canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
       }

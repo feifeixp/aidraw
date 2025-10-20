@@ -88,6 +88,7 @@ const Editor = () => {
   const [isPropertiesPanelCollapsed, setIsPropertiesPanelCollapsed] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   // Check if tutorial should be shown
@@ -484,6 +485,8 @@ const Editor = () => {
             onCanvasSizeChange={setCanvasSize}
             zoom={zoom}
             onZoomChange={setZoom}
+            activeFrameId={activeFrameId}
+            onActiveFrameChange={setActiveFrameId}
           />
         </div>
       </div>
@@ -498,6 +501,8 @@ const Editor = () => {
           zoom={zoom}
           onZoomChange={setZoom}
           eraserBrushSize={eraserBrushSize}
+          activeFrameId={activeFrameId}
+          onActiveFrameChange={setActiveFrameId}
         />
         {!isMobile && (
           <div className={`absolute left-4 top-4 ${isLeftToolbarCollapsed ? 'w-16' : 'w-48'} h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden transition-all duration-300 left-toolbar`}>
