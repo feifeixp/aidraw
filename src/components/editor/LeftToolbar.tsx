@@ -237,7 +237,7 @@ export const LeftToolbar = ({
   const handleConfirmNavigate = () => {
     // Save canvas state
     if (canvas) {
-      const canvasJson = JSON.stringify(canvas.toJSON());
+      const canvasJson = JSON.stringify((canvas as any).toJSON(['data']));
       localStorage.setItem('editor-draft', canvasJson);
       localStorage.setItem('editor-draft-timestamp', Date.now().toString());
       toast.success("草稿已保存");
