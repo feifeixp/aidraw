@@ -143,9 +143,9 @@ export const EditorToolbar = ({
       name: `storyboard-border-${frameIndex + 1}`
     });
 
-    // 创建frame编号文本（显示在分镜外右上方）
+    // 创建frame编号文本（显示在分镜外左上方，与分镜左边对齐）
     const frameNumber = new FabricText(`${frameIndex + 1}`, {
-      left: x + frameSize.width + 10,
+      left: x,
       top: y - 20,
       fontSize: 14,
       fill: '#666666',

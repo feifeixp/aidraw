@@ -143,9 +143,9 @@ export const EditorCanvas = ({
     fabricCanvas.add(frameBorder);
     frameBorderRef.current = frameBorder;
     
-    // 创建第一个分镜的编号（显示在分镜外右上方）
+    // 创建第一个分镜的编号（显示在分镜外左上方，与分镜左边对齐）
     const frameNumber = new FabricText('1', {
-      left: frameLeft + DEFAULT_FRAME_WIDTH + 10,
+      left: frameLeft,
       top: frameTop - 20,
       fontSize: 14,
       fill: '#666666',
