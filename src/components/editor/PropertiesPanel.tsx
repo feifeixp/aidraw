@@ -272,6 +272,17 @@ export const PropertiesPanel = ({
     canvas.renderAll();
     saveState();
   };
+
+  const updateElementType = (value: string) => {
+    if (!selectedObject || !canvas) return;
+    setElementType(value);
+    if (!selectedObject.data) {
+      selectedObject.data = {};
+    }
+    selectedObject.data.elementType = value;
+    canvas.renderAll();
+    saveState();
+  };
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !canvas || !selectedObject) return;
@@ -798,9 +809,20 @@ export const PropertiesPanel = ({
       </div>
 
       <div className="space-y-3">
-        <div className="p-3 bg-muted rounded-lg">
-          <Label className="text-sm text-muted-foreground">元素类型</Label>
-          <p className="text-base font-medium mt-1">{getElementTypeName(elementType)}</p>
+        <div>
+          <Label htmlFor="element-type">元素类型</Label>
+          <Select value={elementType} onValueChange={updateElementType}>
+            <SelectTrigger id="element-type" className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="character">角色</SelectItem>
+              <SelectItem value="scene">场景</SelectItem>
+              <SelectItem value="prop">道具</SelectItem>
+              <SelectItem value="effect">特效</SelectItem>
+              <SelectItem value="composite">合成图</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
