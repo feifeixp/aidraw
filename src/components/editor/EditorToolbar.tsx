@@ -483,20 +483,6 @@ export const EditorToolbar = ({
           frameBorder.set({ visible: false });
         }
         
-        // 临时隐藏所有文本和形状标注
-        const annotationsToHide: any[] = [];
-        objects.forEach(obj => {
-          const objLeft = obj.left || 0;
-          const objTop = obj.top || 0;
-          const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-                           objTop >= frameTop && objTop < frameTop + frameHeight;
-          
-          if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
-            annotationsToHide.push({ obj, visible: obj.visible });
-            obj.set({ visible: false });
-          }
-        });
-        
         canvas.renderAll();
         
         // 导出frame区域的所有图层内容
@@ -510,13 +496,10 @@ export const EditorToolbar = ({
           height: frameHeight,
         });
         
-        // 恢复frameBorder和标注
+        // 恢复frameBorder
         if (frameBorder) {
           frameBorder.set({ visible: originalBorderVisible });
         }
-        annotationsToHide.forEach(({ obj, visible }) => {
-          obj.set({ visible });
-        });
         canvas.renderAll();
         
         const {
