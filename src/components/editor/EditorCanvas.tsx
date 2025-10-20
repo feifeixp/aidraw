@@ -88,11 +88,24 @@ export const EditorCanvas = ({
       console.log('Canvas dimensions after reset:', canvasRef.current.width, canvasRef.current.height);
     }
 
-    // 创建默认第一个分镜
+    // 创建默认第一个分镜（使用统一的网格布局规则）
+    const COLS = 5; // 5列
+    const ROWS = 8; // 8行
     const DEFAULT_FRAME_WIDTH = 1024;
     const DEFAULT_FRAME_HEIGHT = 768;
-    const frameLeft = (INFINITE_CANVAS_SIZE - DEFAULT_FRAME_WIDTH) / 2;
-    const frameTop = (INFINITE_CANVAS_SIZE - DEFAULT_FRAME_HEIGHT) / 2;
+    const SPACING = 50; // 间距
+    
+    // 计算整个网格的尺寸
+    const totalWidth = COLS * DEFAULT_FRAME_WIDTH + (COLS - 1) * SPACING;
+    const totalHeight = ROWS * DEFAULT_FRAME_HEIGHT + (ROWS - 1) * SPACING;
+    
+    // 计算起始位置（居中）
+    const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
+    const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
+    
+    // 第一个分镜在网格的(0,0)位置
+    const frameLeft = START_X;
+    const frameTop = START_Y;
 
     console.log('Creating default storyboard frame 1:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT });
 
