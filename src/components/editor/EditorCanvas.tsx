@@ -10,7 +10,6 @@ interface EditorCanvasProps {
   setCanvas: (canvas: FabricCanvas) => void;
   activeTool: string;
   saveState: () => void;
-  canvasSize: { width: number; height: number };
   zoom: number;
   onZoomChange: (zoom: number) => void;
   eraserBrushSize?: number;
@@ -23,7 +22,6 @@ export const EditorCanvas = ({
   setCanvas,
   activeTool,
   saveState,
-  canvasSize,
   zoom,
   onZoomChange,
   eraserBrushSize = 20,
@@ -65,7 +63,6 @@ export const EditorCanvas = ({
     console.log('Canvas element:', canvasRef.current);
     console.log('Canvas element width attr:', canvasRef.current.width);
     console.log('Canvas element height attr:', canvasRef.current.height);
-    console.log('Canvas size:', canvasSize);
     console.log('Infinite canvas size:', INFINITE_CANVAS_SIZE);
 
     const fabricCanvas = new FabricCanvas(canvasRef.current, {
@@ -91,43 +88,43 @@ export const EditorCanvas = ({
       console.log('Canvas dimensions after reset:', canvasRef.current.width, canvasRef.current.height);
     }
 
+    // 创建默认第一个分镜
+    const DEFAULT_FRAME_WIDTH = 1024;
+    const DEFAULT_FRAME_HEIGHT = 768;
+    const frameLeft = (INFINITE_CANVAS_SIZE - DEFAULT_FRAME_WIDTH) / 2;
+    const frameTop = (INFINITE_CANVAS_SIZE - DEFAULT_FRAME_HEIGHT) / 2;
 
-    // 创建frame（工作区域）
-    const frameWidth = canvasSize?.width || 1024;
-    const frameHeight = canvasSize?.height || 768;
-    const frameLeft = (INFINITE_CANVAS_SIZE - frameWidth) / 2;
-    const frameTop = (INFINITE_CANVAS_SIZE - frameHeight) / 2;
+    console.log('Creating default storyboard frame 1:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT });
 
-    console.log('Creating frame:', { frameWidth, frameHeight, frameLeft, frameTop });
-
+    // 创建第一个分镜frame
     const frame = new Rect({
       left: frameLeft,
       top: frameTop,
-      width: frameWidth,
-      height: frameHeight,
+      width: DEFAULT_FRAME_WIDTH,
+      height: DEFAULT_FRAME_HEIGHT,
       fill: "#ffffff",
       stroke: "#d1d5db",
       strokeWidth: 1,
       selectable: false,
-      evented: false,
+      evented: true,
       hasControls: false,
       hasBorders: false,
       lockMovementX: true,
       lockMovementY: true,
-      hoverCursor: 'default',
-      name: 'workframe',
+      hoverCursor: 'pointer',
+      name: 'storyboard-frame-1',
     });
 
     fabricCanvas.add(frame);
     fabricCanvas.sendObjectToBack(frame);
     frameRef.current = frame;
     
-    // 创建边界线（仅用于视觉参考，不可选择，不会被导出）
+    // 创建第一个分镜的边界线
     const frameBorder = new Rect({
       left: frameLeft,
       top: frameTop,
-      width: frameWidth,
-      height: frameHeight,
+      width: DEFAULT_FRAME_WIDTH,
+      height: DEFAULT_FRAME_HEIGHT,
       fill: 'transparent',
       stroke: '#3b82f6',
       strokeWidth: 2,
@@ -139,32 +136,18 @@ export const EditorCanvas = ({
       lockMovementX: true,
       lockMovementY: true,
       hoverCursor: 'default',
-      name: 'frameBorder',
+      name: 'storyboard-border-1',
+      visible: true, // 默认显示第一个分镜边框
     });
     
     fabricCanvas.add(frameBorder);
     frameBorderRef.current = frameBorder;
     
-    // Store frame reference on canvas for other components to access
-    (fabricCanvas as any).workFrame = frame;
-    
     // Force immediate render
     fabricCanvas.renderAll();
     
-    console.log('Frame added to canvas');
+    console.log('Default storyboard frame 1 created');
     console.log('Canvas objects count:', fabricCanvas.getObjects().length);
-    console.log('Canvas objects:', fabricCanvas.getObjects());
-    console.log('Frame visibility check:', {
-      frameLeft,
-      frameTop,
-      frameWidth,
-      frameHeight,
-      canvasWidth: fabricCanvas.width,
-      canvasHeight: fabricCanvas.height,
-      frameVisible: frame.visible,
-      frameFill: frame.fill,
-      frameStroke: frame.stroke
-    });
     
     // Force another render after a delay to ensure visibility
     setTimeout(() => {
@@ -189,9 +172,7 @@ export const EditorCanvas = ({
           activeObjects.forEach(obj => {
             // 不删除frame、边界线和分镜相关对象
             const objName = (obj as any).name || '';
-            const isProtected = objName === 'workframe' || 
-                              objName === 'frameBorder' ||
-                              objName.startsWith('storyboard-');
+            const isProtected = objName.startsWith('storyboard-');
             if (!isProtected) {
               fabricCanvas.remove(obj);
             }
@@ -239,25 +220,30 @@ export const EditorCanvas = ({
         });
         fabricCanvas.renderAll();
       } else {
-        // Check if clicked on main workframe
-        const workframe = fabricCanvas.getObjects().find((obj: any) => obj.name === 'workframe');
-        if (workframe) {
-          const objLeft = workframe.left || 0;
-          const objTop = workframe.top || 0;
-          const objWidth = workframe.width || 0;
-          const objHeight = workframe.height || 0;
-          if (pointer.x >= objLeft && pointer.x <= objLeft + objWidth &&
-              pointer.y >= objTop && pointer.y <= objTop + objHeight) {
-            onActiveFrameChange(null);
-            // Hide all storyboard borders
-            fabricCanvas.getObjects().forEach((obj: any) => {
-              const objName = obj.name || '';
-              if (objName.startsWith('storyboard-border-')) {
-                obj.set({ visible: false });
-              }
-            });
-            fabricCanvas.renderAll();
+        // Check if clicked on any storyboard frame
+        const clickedOnFrame = fabricCanvas.getObjects().find((obj: any) => {
+          const objName = obj.name || '';
+          if (objName.startsWith('storyboard-frame-')) {
+            const objLeft = obj.left || 0;
+            const objTop = obj.top || 0;
+            const objWidth = obj.width || 0;
+            const objHeight = obj.height || 0;
+            return pointer.x >= objLeft && pointer.x <= objLeft + objWidth &&
+                   pointer.y >= objTop && pointer.y <= objTop + objHeight;
           }
+          return false;
+        });
+
+        if (!clickedOnFrame) {
+          onActiveFrameChange(null);
+          // Hide all storyboard borders
+          fabricCanvas.getObjects().forEach((obj: any) => {
+            const objName = obj.name || '';
+            if (objName.startsWith('storyboard-border-')) {
+              obj.set({ visible: false });
+            }
+          });
+          fabricCanvas.renderAll();
         }
       }
     };
@@ -335,46 +321,6 @@ export const EditorCanvas = ({
       frameBorderRef.current = null;
     };
   }, [setCanvas]); // Only run once on mount
-
-  // Update frame size when canvasSize prop changes
-  useEffect(() => {
-    if (!canvas || !canvasSize || !frameRef.current) return;
-    
-    requestAnimationFrame(() => {
-      try {
-        const frame = frameRef.current;
-        const frameBorder = frameBorderRef.current;
-        
-        if (frame) {
-          const frameLeft = (INFINITE_CANVAS_SIZE - canvasSize.width) / 2;
-          const frameTop = (INFINITE_CANVAS_SIZE - canvasSize.height) / 2;
-          
-          frame.set({
-            left: frameLeft,
-            top: frameTop,
-            width: canvasSize.width,
-            height: canvasSize.height,
-          });
-          
-          // 同时更新边界线
-          if (frameBorder) {
-            frameBorder.set({
-              left: frameLeft,
-              top: frameTop,
-              width: canvasSize.width,
-              height: canvasSize.height,
-            });
-          }
-          
-          // Update frame reference on canvas
-          (canvas as any).workFrame = frame;
-          canvas.renderAll();
-        }
-      } catch (error) {
-        console.error('Error setting frame size:', error);
-      }
-    });
-  }, [canvas, canvasSize]);
 
   useEffect(() => {
     if (!canvas) return;

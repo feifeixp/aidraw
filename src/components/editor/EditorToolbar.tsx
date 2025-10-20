@@ -24,8 +24,6 @@ interface EditorToolbarProps {
   startTask: (taskName: string) => string;
   completeTask: (taskId: string) => void;
   cancelTask: () => void;
-  canvasSize: { width: number; height: number };
-  onCanvasSizeChange: (size: { width: number; height: number }) => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   activeFrameId: string | null;
@@ -44,8 +42,6 @@ export const EditorToolbar = ({
   startTask,
   completeTask,
   cancelTask,
-  canvasSize,
-  onCanvasSizeChange,
   zoom,
   onZoomChange,
   activeFrameId,
@@ -778,9 +774,6 @@ export const EditorToolbar = ({
       <StoryboardFrameSettings
         open={showStoryboardSettings}
         onOpenChange={setShowStoryboardSettings}
-        onApplyCanvasSize={(width, height) => onCanvasSizeChange({ width, height })}
-        currentCanvasWidth={canvasSize?.width || 1024}
-        currentCanvasHeight={canvasSize?.height || 768}
         onApplyFrameSize={(width, height) => setFrameSize({ width, height })}
         currentFrameWidth={frameSize.width}
         currentFrameHeight={frameSize.height}

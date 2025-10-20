@@ -5,7 +5,7 @@ import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as Fabri
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -67,6 +67,12 @@ export const LeftToolbar = ({
   const [selectedElementType, setSelectedElementType] = useState<'character' | 'scene' | 'prop' | 'effect' | null>(null);
   const [isObjectLocked, setIsObjectLocked] = useState(false);
   const [showEraserSettings, setShowEraserSettings] = useState(false);
+  const activeFrameIdRef = useRef(activeFrameId);
+
+  // Update activeFrameIdRef when activeFrameId changes
+  useEffect(() => {
+    activeFrameIdRef.current = activeFrameId;
+  }, [activeFrameId]);
 
   // Update lock state when selection changes
   useEffect(() => {
@@ -97,15 +103,18 @@ export const LeftToolbar = ({
   const getActiveFrame = () => {
     if (!canvas) return null;
     
-    if (activeFrameId) {
+    if (activeFrameIdRef.current) {
       const storyboardFrame = canvas.getObjects().find(
-        obj => (obj as any).name === `storyboard-frame-${activeFrameId}`
+        obj => (obj as any).name === `storyboard-frame-${activeFrameIdRef.current}`
       );
       if (storyboardFrame) return storyboardFrame;
     }
     
-    // Fall back to default workframe
-    return (canvas as any).workFrame;
+    // Fall back to first storyboard frame
+    const firstFrame = canvas.getObjects().find(
+      obj => (obj as any).name === 'storyboard-frame-1'
+    );
+    return firstFrame || null;
   };
 
   const handleAddElement = () => {

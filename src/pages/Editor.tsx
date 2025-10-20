@@ -71,7 +71,6 @@ const historyReducer = (state: HistoryState, action: HistoryAction): HistoryStat
 const Editor = () => {
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
   const [activeTool, setActiveTool] = useState<string>("select");
-  const [canvasSize, setCanvasSize] = useState({ width: 1024, height: 768 });
   const [zoom, setZoom] = useState<number>(100);
   const [eraserBrushSize, setEraserBrushSize] = useState<number>(20);
   const [{
@@ -88,7 +87,7 @@ const Editor = () => {
   const [isPropertiesPanelCollapsed, setIsPropertiesPanelCollapsed] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
+  const [activeFrameId, setActiveFrameId] = useState<string | null>("1");
   const isMobile = useIsMobile();
 
   // Check if tutorial should be shown
@@ -482,8 +481,6 @@ const Editor = () => {
             startTask={startTask} 
             completeTask={completeTask} 
             cancelTask={cancelTask}
-            canvasSize={canvasSize}
-            onCanvasSizeChange={setCanvasSize}
             zoom={zoom}
             onZoomChange={setZoom}
             activeFrameId={activeFrameId}
@@ -498,7 +495,6 @@ const Editor = () => {
           setCanvas={setCanvas} 
           activeTool={activeTool} 
           saveState={saveState}
-          canvasSize={canvasSize}
           zoom={zoom}
           onZoomChange={setZoom}
           eraserBrushSize={eraserBrushSize}
