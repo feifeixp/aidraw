@@ -500,9 +500,19 @@ export const EditorCanvas = ({
     FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then(async img => {
       if (!img) return;
       
-      const frame = frameRef.current!;
-      const frameWidth = frame.width || 1024;
-      const frameHeight = frame.height || 768;
+      // 根据activeFrameId查找目标frame
+      let targetFrame = frameRef.current!;
+      if (activeFrameId) {
+        const storyboardFrame = canvas.getObjects().find(
+          obj => (obj as any).name === `storyboard-frame-${activeFrameId}`
+        );
+        if (storyboardFrame) {
+          targetFrame = storyboardFrame as any;
+        }
+      }
+      
+      const frameWidth = targetFrame.width || 1024;
+      const frameHeight = targetFrame.height || 768;
       const imgWidth = img.width || 1;
       const imgHeight = img.height || 1;
       const scaleX = frameWidth / imgWidth;
@@ -511,8 +521,8 @@ export const EditorCanvas = ({
       
       img.scale(scale);
       img.set({
-        left: (frame.left || 0) + (frameWidth - imgWidth * scale) / 2,
-        top: (frame.top || 0) + (frameHeight - imgHeight * scale) / 2,
+        left: (targetFrame.left || 0) + (frameWidth - imgWidth * scale) / 2,
+        top: (targetFrame.top || 0) + (frameHeight - imgHeight * scale) / 2,
         data: { elementType: elementType || 'character' }
       });
       
@@ -527,9 +537,27 @@ export const EditorCanvas = ({
       if (frameRef.current) {
         canvas.sendObjectToBack(frameRef.current);
       }
+      
+      // 确保所有分镜frame也在底层
+      canvas.getObjects().forEach(obj => {
+        const objName = (obj as any).name || '';
+        if (objName.startsWith('storyboard-frame-')) {
+          canvas.sendObjectToBack(obj);
+        }
+      });
+      
       if (frameBorderRef.current) {
         canvas.bringObjectToFront(frameBorderRef.current);
       }
+      
+      // 确保所有分镜border在顶层
+      canvas.getObjects().forEach(obj => {
+        const objName = (obj as any).name || '';
+        if (objName.startsWith('storyboard-border-')) {
+          canvas.bringObjectToFront(obj);
+        }
+      });
+      
       canvas.renderAll();
       
       saveStateRef.current();
