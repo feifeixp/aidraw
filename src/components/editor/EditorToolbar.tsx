@@ -430,7 +430,7 @@ export const EditorToolbar = ({
     const objects = canvas.getObjects();
     const textAnnotations: string[] = [];
     const shapes: string[] = [];
-    let baseImage: any = null;
+    let hasImageLayers = false;
     
     // Only consider objects within the active frame
     objects.forEach(obj => {
@@ -450,9 +450,7 @@ export const EditorToolbar = ({
         const shapeDesc = `${obj.type} at position (${Math.round(objLeft || 0)}, ${Math.round(objTop || 0)})`;
         shapes.push(shapeDesc);
       } else if (obj.type === 'image') {
-        if (!baseImage) {
-          baseImage = obj;
-        }
+        hasImageLayers = true;
       }
     });
     let instruction = "";
@@ -476,12 +474,51 @@ export const EditorToolbar = ({
     }
     toast.info("正在使用AI智能合成图片，请稍候...");
     try {
-      // If there's a base image, always use edit mode regardless of composeMode
-      if (baseImage) {
-        const imageDataURL = baseImage.toDataURL({
-          format: 'png',
-          quality: 1
+      // If there are image layers, capture all layers in the frame
+      if (hasImageLayers) {
+        // 临时隐藏frame边框
+        const frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId || '1'}`);
+        const originalBorderVisible = frameBorder?.visible;
+        if (frameBorder) {
+          frameBorder.set({ visible: false });
+        }
+        
+        // 临时隐藏所有文本和形状标注
+        const annotationsToHide: any[] = [];
+        objects.forEach(obj => {
+          const objLeft = obj.left || 0;
+          const objTop = obj.top || 0;
+          const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+                           objTop >= frameTop && objTop < frameTop + frameHeight;
+          
+          if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
+            annotationsToHide.push({ obj, visible: obj.visible });
+            obj.set({ visible: false });
+          }
         });
+        
+        canvas.renderAll();
+        
+        // 导出frame区域的所有图层内容
+        const imageDataURL = canvas.toDataURL({
+          format: 'png',
+          quality: 1,
+          multiplier: 1,
+          left: frameLeft,
+          top: frameTop,
+          width: frameWidth,
+          height: frameHeight,
+        });
+        
+        // 恢复frameBorder和标注
+        if (frameBorder) {
+          frameBorder.set({ visible: originalBorderVisible });
+        }
+        annotationsToHide.forEach(({ obj, visible }) => {
+          obj.set({ visible });
+        });
+        canvas.renderAll();
+        
         const {
           data: aiData,
           error: aiError
@@ -499,11 +536,15 @@ export const EditorToolbar = ({
           const img = await FabricImage.fromURL(aiData.imageUrl, {
             crossOrigin: 'anonymous'
           });
+          
+          const imgWidth = img.width || 1;
+          const imgHeight = img.height || 1;
+          const scale = Math.min(frameWidth / imgWidth, frameHeight / imgHeight, 1);
+          
+          img.scale(scale);
           img.set({
-            left: baseImage.left,
-            top: baseImage.top,
-            scaleX: baseImage.scaleX,
-            scaleY: baseImage.scaleY,
+            left: frameLeft,
+            top: frameTop,
             data: { elementType: 'composite' }
           });
           
@@ -514,11 +555,22 @@ export const EditorToolbar = ({
               const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
                                objTop >= frameTop && objTop < frameTop + frameHeight;
               
+              if (isInFrame && !((obj as any).name?.startsWith('storyboard-'))) {
+                canvas.remove(obj);
+              }
+            });
+          } else {
+            // 只移除文本和形状标注
+            objects.forEach(obj => {
+              const objLeft = obj.left || 0;
+              const objTop = obj.top || 0;
+              const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
+                               objTop >= frameTop && objTop < frameTop + frameHeight;
+              
               if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
                 canvas.remove(obj);
               }
             });
-            canvas.remove(baseImage);
           }
           
           // Use layer sorting system
