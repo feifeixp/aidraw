@@ -60,6 +60,7 @@ export const LeftToolbar = ({
   const [showExtractDialog, setShowExtractDialog] = useState(false);
   const [extractDilation, setExtractDilation] = useState(0);
   const [extractFeather, setExtractFeather] = useState(0);
+  const [extractPadding, setExtractPadding] = useState(10);
   const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
@@ -553,7 +554,9 @@ export const LeftToolbar = ({
         result.categoryMask.height,
         {
           dilation: extractDilation,
-          feather: extractFeather
+          feather: extractFeather,
+          padding: extractPadding,
+          crop: true
         }
       );
       
@@ -1155,6 +1158,21 @@ export const LeftToolbar = ({
             <DialogTitle>智能提取设置</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="extract-padding">裁剪边距: {extractPadding} 像素</Label>
+              <Slider 
+                id="extract-padding" 
+                min={0} 
+                max={50} 
+                step={5} 
+                value={[extractPadding]} 
+                onValueChange={value => setExtractPadding(value[0])} 
+                className="w-full" 
+              />
+              <p className="text-sm text-muted-foreground">
+                减小此值可以让裁剪更紧凑，增加此值可以保留更多边距空间
+              </p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="extract-dilation">边缘扩张: {extractDilation} 像素</Label>
               <Slider 

@@ -58,9 +58,11 @@ export class MediaPipeSegmenter {
     options: {
       dilation?: number;  // 膨胀像素数，扩大选中区域
       feather?: number;   // 羽化像素数，边缘柔化
+      padding?: number;   // 裁剪边距（像素），控制物体周围保留的空白
+      crop?: boolean;     // 是否裁剪到物体边界框
     } = {}
   ): HTMLCanvasElement {
-    const { dilation = 0, feather = 0 } = options;
+    const { dilation = 0, feather = 0, padding = 20, crop = true } = options;
     
     const outputCanvas = document.createElement('canvas');
     outputCanvas.width = sourceCanvas.width;
@@ -109,7 +111,63 @@ export class MediaPipeSegmenter {
     }
 
     ctx.putImageData(imageData, 0, 0);
+    
+    // Crop to bounding box if enabled
+    if (crop) {
+      return this.cropToBoundingBox(outputCanvas, padding);
+    }
+    
     return outputCanvas;
+  }
+  
+  private cropToBoundingBox(canvas: HTMLCanvasElement, padding: number): HTMLCanvasElement {
+    const ctx = canvas.getContext('2d')!;
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Find bounding box of non-transparent pixels
+    let minX = canvas.width;
+    let minY = canvas.height;
+    let maxX = 0;
+    let maxY = 0;
+    
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const idx = (y * canvas.width + x) * 4;
+        const alpha = data[idx + 3];
+        
+        if (alpha > 0) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+    
+    // Apply padding (with bounds checking)
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(canvas.width - 1, maxX + padding);
+    maxY = Math.min(canvas.height - 1, maxY + padding);
+    
+    const cropWidth = maxX - minX + 1;
+    const cropHeight = maxY - minY + 1;
+    
+    // Create cropped canvas
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = cropWidth;
+    croppedCanvas.height = cropHeight;
+    const croppedCtx = croppedCanvas.getContext('2d')!;
+    
+    // Copy cropped region
+    croppedCtx.drawImage(
+      canvas,
+      minX, minY, cropWidth, cropHeight,
+      0, 0, cropWidth, cropHeight
+    );
+    
+    return croppedCanvas;
   }
 
   private dilateMask(

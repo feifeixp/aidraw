@@ -357,8 +357,10 @@ const Editor = () => {
         result.categoryMask.width,
         result.categoryMask.height,
         {
-          dilation: 0,  // Default: no expansion
-          feather: 0    // Default: no feathering
+          dilation: 0,   // 遮罩膨胀：0 = 不扩大
+          feather: 0,    // 边缘羽化：0 = 硬边缘
+          padding: 10,   // 裁剪边距：10像素（减小这个值可以让裁剪更紧凑）
+          crop: true     // 启用智能裁剪
         }
       );
       
