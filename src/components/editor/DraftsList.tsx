@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileText, Clock, Trash2, Download, Cloud, HardDrive, HardDriveDownload } from "lucide-react";
 import { toast } from "sonner";
-import { Canvas as FabricCanvas } from "fabric";
+import { Canvas as FabricCanvas, Rect, FabricText } from "fabric";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Progress } from "@/components/ui/progress";
@@ -22,9 +22,10 @@ interface DraftsListProps {
   onLoadDraft: (draftData: string) => void;
   currentDraftId?: string;
   onDraftIdChange?: (draftId: string | undefined) => void;
+  onActiveFrameIdChange?: (frameId: string | null) => void;
 }
 
-export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChange }: DraftsListProps) => {
+export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChange, onActiveFrameIdChange }: DraftsListProps) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
@@ -275,19 +276,79 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
       return;
     }
     
-    // 清空画布内容（保留frame和分镜相关对象）
-    const objects = canvas.getObjects();
-    objects.forEach(obj => {
-      const objName = (obj as any).name || '';
-      if (!objName?.startsWith('storyboard-')) {
-        canvas.remove(obj);
-      }
+    // 清空所有画布内容（包括分镜）
+    canvas.clear();
+    
+    // 重新创建默认第一个分镜
+    const INFINITE_CANVAS_SIZE = 10000;
+    const DEFAULT_FRAME_WIDTH = 1024;
+    const DEFAULT_FRAME_HEIGHT = 768;
+    const frameLeft = (INFINITE_CANVAS_SIZE - DEFAULT_FRAME_WIDTH) / 2;
+    const frameTop = (INFINITE_CANVAS_SIZE - DEFAULT_FRAME_HEIGHT) / 2;
+
+    // 创建第一个分镜frame
+    const frame = new Rect({
+      left: frameLeft,
+      top: frameTop,
+      width: DEFAULT_FRAME_WIDTH,
+      height: DEFAULT_FRAME_HEIGHT,
+      fill: "#ffffff",
+      stroke: "#d1d5db",
+      strokeWidth: 1,
+      selectable: false,
+      evented: true,
+      hasControls: false,
+      hasBorders: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      hoverCursor: 'pointer',
+      name: 'storyboard-frame-1',
     });
+
+    canvas.add(frame);
+    canvas.sendObjectToBack(frame);
+    
+    // 创建第一个分镜的边界线
+    const frameBorder = new Rect({
+      left: frameLeft,
+      top: frameTop,
+      width: DEFAULT_FRAME_WIDTH,
+      height: DEFAULT_FRAME_HEIGHT,
+      fill: 'transparent',
+      stroke: '#3b82f6',
+      strokeWidth: 2,
+      strokeDashArray: [5, 5],
+      selectable: false,
+      evented: false,
+      hasControls: false,
+      hasBorders: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      hoverCursor: 'default',
+      name: 'storyboard-border-1',
+      visible: true,
+    });
+    
+    canvas.add(frameBorder);
+    
+    // 创建第一个分镜的编号
+    const frameNumber = new FabricText('1', {
+      left: frameLeft,
+      top: frameTop - 20,
+      fontSize: 14,
+      fill: '#666666',
+      selectable: false,
+      evented: false,
+      name: 'storyboard-number-1'
+    });
+    
+    canvas.add(frameNumber);
     
     canvas.discardActiveObject();
     canvas.renderAll();
     
     onDraftIdChange?.(undefined);
+    onActiveFrameIdChange?.("1");
     setOpen(false);
     toast.success("已创建新草稿");
   };

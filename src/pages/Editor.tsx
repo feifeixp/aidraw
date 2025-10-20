@@ -465,6 +465,7 @@ const Editor = () => {
             onLoadDraft={handleLoadDraft}
             currentDraftId={currentDraftId}
             onDraftIdChange={setCurrentDraftId}
+            onActiveFrameIdChange={setActiveFrameId}
           />
         </div>
         <div className="flex-1 min-w-0 overflow-x-auto">
