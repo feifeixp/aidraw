@@ -157,7 +157,7 @@ const Editor = () => {
       payload: state
     });
   }, [canvas]);
-  const undo = useCallback(() => {
+  const undo = useCallback(async () => {
     if (historyIndex <= 0 || !canvas) return;
     console.log('[Editor] 执行撤销操作，当前历史索引:', historyIndex);
     console.log('[Editor] 撤销前画布对象数量:', canvas.getObjects().length);
@@ -175,20 +175,20 @@ const Editor = () => {
     canvas.clear();
     console.log('[Editor] 画布已清空，当前对象数量:', canvas.getObjects().length);
     
-    // 使用 loadFromJSON 的回调方式，避免事件问题
-    canvas.loadFromJSON(previousState, () => {
-      console.log('[Editor] loadFromJSON 完成');
-      // 通知EditorCanvas恢复事件监听器并更新refs
-      window.dispatchEvent(new CustomEvent('canvasStateRestored'));
-      // 多次强制渲染确保视图更新
-      canvas.renderAll();
-      requestAnimationFrame(() => {
-        canvas.requestRenderAll();
-        console.log('[Editor] 撤销操作完成，当前画布对象数量:', canvas.getObjects().length);
-      });
-    });
+    // 等待loadFromJSON的Promise完全解决
+    await canvas.loadFromJSON(previousState);
+    console.log('[Editor] loadFromJSON Promise完成，当前对象数量:', canvas.getObjects().length);
+    
+    // 通知EditorCanvas恢复事件监听器并更新refs
+    window.dispatchEvent(new CustomEvent('canvasStateRestored'));
+    
+    // 多次强制渲染确保视图更新
+    canvas.renderAll();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    canvas.requestRenderAll();
+    console.log('[Editor] 撤销操作完成，当前画布对象数量:', canvas.getObjects().length);
   }, [canvas, historyIndex, history]);
-  const redo = useCallback(() => {
+  const redo = useCallback(async () => {
     if (historyIndex >= history.length - 1 || !canvas) return;
     console.log('[Editor] 执行重做操作，当前历史索引:', historyIndex);
     console.log('[Editor] 重做前画布对象数量:', canvas.getObjects().length);
@@ -206,18 +206,18 @@ const Editor = () => {
     canvas.clear();
     console.log('[Editor] 画布已清空，当前对象数量:', canvas.getObjects().length);
     
-    // 使用 loadFromJSON 的回调方式，避免事件问题
-    canvas.loadFromJSON(nextState, () => {
-      console.log('[Editor] loadFromJSON 完成');
-      // 通知EditorCanvas恢复事件监听器并更新refs
-      window.dispatchEvent(new CustomEvent('canvasStateRestored'));
-      // 多次强制渲染确保视图更新
-      canvas.renderAll();
-      requestAnimationFrame(() => {
-        canvas.requestRenderAll();
-        console.log('[Editor] 重做操作完成，当前画布对象数量:', canvas.getObjects().length);
-      });
-    });
+    // 等待loadFromJSON的Promise完全解决
+    await canvas.loadFromJSON(nextState);
+    console.log('[Editor] loadFromJSON Promise完成，当前对象数量:', canvas.getObjects().length);
+    
+    // 通知EditorCanvas恢复事件监听器并更新refs
+    window.dispatchEvent(new CustomEvent('canvasStateRestored'));
+    
+    // 多次强制渲染确保视图更新
+    canvas.renderAll();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    canvas.requestRenderAll();
+    console.log('[Editor] 重做操作完成，当前画布对象数量:', canvas.getObjects().length);
   }, [canvas, historyIndex, history]);
   const startTask = useCallback((taskName: string) => {
     const taskId = Date.now().toString();
@@ -467,27 +467,26 @@ const Editor = () => {
     }
   }, [canvas, saveState, startTask, completeTask, cancelTask]);
 
-  const handleLoadDraft = useCallback((draftData: string) => {
+  const handleLoadDraft = useCallback(async (draftData: string) => {
     if (!canvas) return;
     try {
       // 通知EditorCanvas移除事件监听器
       window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
       
-      canvas.loadFromJSON(JSON.parse(draftData)).then(() => {
-        canvas.renderAll();
-        
-        // 通知EditorCanvas恢复事件监听器并更新refs
-        window.dispatchEvent(new CustomEvent('canvasStateRestored'));
-        
-        // 重置历史记录为这个新加载的状态
-        const newState = JSON.stringify((canvas as any).toJSON(['data', 'name']));
-        dispatchHistory({
-          type: "RESET",
-          payload: newState
-        });
-        
-        toast.success("草稿已加载到画布");
+      await canvas.loadFromJSON(JSON.parse(draftData));
+      canvas.renderAll();
+      
+      // 通知EditorCanvas恢复事件监听器并更新refs
+      window.dispatchEvent(new CustomEvent('canvasStateRestored'));
+      
+      // 重置历史记录为这个新加载的状态
+      const newState = JSON.stringify((canvas as any).toJSON(['data', 'name']));
+      dispatchHistory({
+        type: "RESET",
+        payload: newState
       });
+      
+      toast.success("草稿已加载到画布");
     } catch (error) {
       console.error("加载草稿失败:", error);
       toast.error("加载草稿失败");
