@@ -37,7 +37,6 @@ export const EditorCanvas = ({
   const panStartRef = useRef({ x: 0, y: 0 });
   const frameRef = useRef<Rect | null>(null);
   const frameBorderRef = useRef<Rect | null>(null);
-  const isRestoringStateRef = useRef(false); // 标记是否正在恢复状态
   
   const prevZoomRef = useRef(zoom);
   
@@ -296,17 +295,11 @@ export const EditorCanvas = ({
     };
 
     const handleObjectAdded = (e: any) => {
-      // 如果正在恢复状态，跳过处理
-      if (isRestoringStateRef.current) {
-        return;
-      }
-      
       const addedObj = e.target;
       console.log('[EditorCanvas] 对象添加事件触发:', {
         type: addedObj?.type,
         name: addedObj?.name || 'unnamed',
-        当前总对象数: fabricCanvas.getObjects().length,
-        正在恢复状态: isRestoringStateRef.current
+        当前总对象数: fabricCanvas.getObjects().length
       });
       
       // Ensure frame always stays at the back when new objects are added
@@ -366,16 +359,21 @@ export const EditorCanvas = ({
     canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
     
-    // 监听状态恢复开始事件
-    const handleStateRestoring = () => {
-      console.log('[EditorCanvas] 收到状态恢复开始事件，设置标志');
-      isRestoringStateRef.current = true;
+    // 在恢复状态前移除 object:added 监听器，避免重复对象
+    const handleBeforeRestore = () => {
+      console.log('[EditorCanvas] 准备恢复状态，临时移除 object:added 监听器');
+      fabricCanvas.off('object:added', handleObjectAdded);
     };
-    window.addEventListener('canvasStateRestoring', handleStateRestoring);
+    window.addEventListener('beforeCanvasRestore', handleBeforeRestore);
     
     // 监听画布状态恢复事件，更新refs
     const handleStateRestored = () => {
       console.log('[EditorCanvas] ======== 开始处理状态恢复 ========');
+      
+      // 重新添加 object:added 监听器
+      console.log('[EditorCanvas] 重新添加 object:added 监听器');
+      fabricCanvas.on('object:added', handleObjectAdded);
+      
       const objectsBefore = fabricCanvas.getObjects();
       console.log('[EditorCanvas] 状态恢复前对象数量:', objectsBefore.length);
       console.log('[EditorCanvas] 状态恢复前所有对象:', objectsBefore.map((obj: any) => ({
@@ -395,10 +393,6 @@ export const EditorCanvas = ({
       
       frameRef.current = foundFrame;
       frameBorderRef.current = foundBorder;
-      
-      // 恢复完成，重置标志
-      isRestoringStateRef.current = false;
-      console.log('[EditorCanvas] 状态恢复标志已重置');
       
       // 验证是否有重复创建
       const objectsAfter = fabricCanvas.getObjects();
@@ -424,7 +418,7 @@ export const EditorCanvas = ({
         canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
       }
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('canvasStateRestoring', handleStateRestoring);
+      window.removeEventListener('beforeCanvasRestore', handleBeforeRestore);
       window.removeEventListener('canvasStateRestored', handleStateRestored);
       fabricCanvas.dispose();
       frameRef.current = null;
