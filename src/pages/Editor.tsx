@@ -194,7 +194,12 @@ const Editor = () => {
     
     // loadFromJSON会清空画布，然后加载新内容
     await canvas.loadFromJSON(previousState);
-    console.log('[Editor] 恢复用户内容后，画布对象数量:', canvas.getObjects().length);
+    console.log('[Editor] loadFromJSON后，画布对象数量:', canvas.getObjects().length);
+    
+    // 清除可能存在的旧框架元素（历史状态中可能包含）
+    const loadedFrameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+    loadedFrameElements.forEach(obj => canvas.remove(obj));
+    console.log('[Editor] 清除旧框架元素后，画布对象数量:', canvas.getObjects().length);
     
     // 重新添加框架元素
     if (frameElements.length > 0) {
@@ -237,7 +242,12 @@ const Editor = () => {
     
     // loadFromJSON会清空画布，然后加载新内容
     await canvas.loadFromJSON(nextState);
-    console.log('[Editor] 恢复用户内容后，画布对象数量:', canvas.getObjects().length);
+    console.log('[Editor] loadFromJSON后，画布对象数量:', canvas.getObjects().length);
+    
+    // 清除可能存在的旧框架元素（历史状态中可能包含）
+    const loadedFrameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+    loadedFrameElements.forEach(obj => canvas.remove(obj));
+    console.log('[Editor] 清除旧框架元素后，画布对象数量:', canvas.getObjects().length);
     
     // 重新添加框架元素
     if (frameElements.length > 0) {
@@ -335,6 +345,10 @@ const Editor = () => {
             
             // loadFromJSON会清空画布，然后加载新内容
             await canvas.loadFromJSON(parsedData);
+            
+            // 清除可能存在的旧框架元素（历史状态中可能包含）
+            const loadedFrameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+            loadedFrameElements.forEach(obj => canvas.remove(obj));
             
             // 重新添加框架元素
             if (frameElements.length > 0) {
