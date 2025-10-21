@@ -151,7 +151,9 @@ const Editor = () => {
   // Save canvas state to history
   const saveState = useCallback(() => {
     if (!canvas) return;
-    const state = JSON.stringify((canvas as any).toJSON(['data', 'name']));
+    const jsonObj = (canvas as any).toJSON(['data', 'name']);
+    console.log('[Editor] 保存状态，示例对象:', jsonObj.objects?.[0]);
+    const state = JSON.stringify(jsonObj);
     dispatchHistory({
       type: "SAVE_STATE",
       payload: state
@@ -178,6 +180,25 @@ const Editor = () => {
     // 等待loadFromJSON的Promise完全解决
     await canvas.loadFromJSON(previousState);
     console.log('[Editor] loadFromJSON Promise完成，当前对象数量:', canvas.getObjects().length);
+    
+    // 修复对象属性（确保 name 和 data 被正确恢复）
+    const parsedState = JSON.parse(previousState);
+    let fixedCount = 0;
+    canvas.getObjects().forEach((obj: any, index: number) => {
+      const originalObj = parsedState.objects?.[index];
+      if (originalObj) {
+        // 恢复 name 属性
+        if (originalObj.name && (!obj.name || obj.name === 'unnamed')) {
+          obj.name = originalObj.name;
+          fixedCount++;
+        }
+        // 确保 data 属性完整
+        if (originalObj.data) {
+          obj.data = { ...originalObj.data };
+        }
+      }
+    });
+    console.log('[Editor] 属性修复完成，修复了', fixedCount, '个对象的 name 属性');
     
     // 通知EditorCanvas恢复事件监听器并更新refs
     window.dispatchEvent(new CustomEvent('canvasStateRestored'));
@@ -209,6 +230,25 @@ const Editor = () => {
     // 等待loadFromJSON的Promise完全解决
     await canvas.loadFromJSON(nextState);
     console.log('[Editor] loadFromJSON Promise完成，当前对象数量:', canvas.getObjects().length);
+    
+    // 修复对象属性（确保 name 和 data 被正确恢复）
+    const parsedState = JSON.parse(nextState);
+    let fixedCount = 0;
+    canvas.getObjects().forEach((obj: any, index: number) => {
+      const originalObj = parsedState.objects?.[index];
+      if (originalObj) {
+        // 恢复 name 属性
+        if (originalObj.name && (!obj.name || obj.name === 'unnamed')) {
+          obj.name = originalObj.name;
+          fixedCount++;
+        }
+        // 确保 data 属性完整
+        if (originalObj.data) {
+          obj.data = { ...originalObj.data };
+        }
+      }
+    });
+    console.log('[Editor] 属性修复完成，修复了', fixedCount, '个对象的 name 属性');
     
     // 通知EditorCanvas恢复事件监听器并更新refs
     window.dispatchEvent(new CustomEvent('canvasStateRestored'));
@@ -474,6 +514,23 @@ const Editor = () => {
       window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
       
       await canvas.loadFromJSON(JSON.parse(draftData));
+      
+      // 修复对象属性（确保 name 和 data 被正确恢复）
+      const parsedData = JSON.parse(draftData);
+      canvas.getObjects().forEach((obj: any, index: number) => {
+        const originalObj = parsedData.objects?.[index];
+        if (originalObj) {
+          // 恢复 name 属性
+          if (originalObj.name && (!obj.name || obj.name === 'unnamed')) {
+            obj.name = originalObj.name;
+          }
+          // 确保 data 属性完整
+          if (originalObj.data) {
+            obj.data = { ...originalObj.data };
+          }
+        }
+      });
+      
       canvas.renderAll();
       
       // 通知EditorCanvas恢复事件监听器并更新refs

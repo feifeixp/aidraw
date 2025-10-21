@@ -432,7 +432,8 @@ export const EditorCanvas = ({
       console.log('[EditorCanvas] 状态恢复后对象数量:', objectsBefore.length);
       console.log('[EditorCanvas] 状态恢复后所有对象:', objectsBefore.map((obj: any) => ({
         type: obj.type,
-        name: obj.name || 'unnamed'
+        name: obj.name || 'unnamed',
+        data: obj.data || {}
       })));
       
       // 查找所有分镜相关对象（通过 data 属性识别）
@@ -443,6 +444,14 @@ export const EditorCanvas = ({
       objectsBefore.forEach((obj: any) => {
         const objData = obj.data || {};
         const objName = obj.name || '';
+        
+        console.log('[EditorCanvas] 检查对象:', {
+          type: obj.type,
+          name: objName,
+          'data.objectType': objData.objectType,
+          'data.frameId': objData.frameId,
+          'data.objectName': objData.objectName
+        });
         
         // 优先使用 data.objectName，然后是 name 属性，最后是 data.objectType 组合识别
         const effectiveName = objData.objectName || objName;
