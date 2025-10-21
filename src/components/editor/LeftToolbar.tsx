@@ -62,6 +62,10 @@ export const LeftToolbar = ({
   const [extractDilation, setExtractDilation] = useState(0);
   const [extractFeather, setExtractFeather] = useState(0);
   const [extractPadding, setExtractPadding] = useState(10);
+  const [extractMode, setExtractMode] = useState<'auto' | 'scribble'>('auto');
+  const [isScribbling, setIsScribbling] = useState(false);
+  const [scribblePoints, setScribblePoints] = useState<Array<{ x: number; y: number }>>([]);
+  const scribbleCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showAiGenerateDialog, setShowAiGenerateDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
@@ -507,12 +511,38 @@ export const LeftToolbar = ({
     
     setShowExtractDialog(true);
   };
+  
+  const startScribbleMode = () => {
+    setShowExtractDialog(false);
+    setIsScribbling(true);
+    setScribblePoints([]);
+    toast.info("请在图片上涂抹需要提取的区域");
+  };
+  
+  const cancelScribbleMode = () => {
+    setIsScribbling(false);
+    setScribblePoints([]);
+    if (scribbleCanvasRef.current) {
+      const ctx = scribbleCanvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, scribbleCanvasRef.current.width, scribbleCanvasRef.current.height);
+      }
+    }
+  };
 
   const executeSmartExtract = async () => {
     const activeObject = canvas?.getActiveObject();
     if (!canvas || !activeObject || activeObject.type !== 'image') return;
     
+    // 检查是否需要涂抹模式
+    if (extractMode === 'scribble' && scribblePoints.length === 0) {
+      setShowExtractDialog(false);
+      startScribbleMode();
+      return;
+    }
+    
     setShowExtractDialog(false);
+    setIsScribbling(false);
     const taskId = startTask("正在智能提取");
     try {
       // Get original image dimensions and calculate multiplier to maintain quality
@@ -542,12 +572,30 @@ export const LeftToolbar = ({
       const segmenter = new MediaPipeSegmenter();
       await segmenter.initialize();
       
-      // Use center point for segmentation
-      const centerX = img.width / 2;
-      const centerY = img.height / 2;
+      // 根据模式进行分割
+      let result;
+      if (extractMode === 'scribble' && scribblePoints.length > 0) {
+        // 涂抹模式：使用涂抹的点
+        toast.info("正在根据涂抹区域分析图片...");
+        
+        // 将涂抹点坐标转换到原始图片坐标系
+        const scaledPoints = scribblePoints.map(point => ({
+          x: point.x * img.width,
+          y: point.y * img.height
+        }));
+        
+        result = await segmenter.segmentWithScribbles(img, scaledPoints);
+      } else {
+        // 自动模式：使用中心点
+        const centerX = img.width / 2;
+        const centerY = img.height / 2;
+        
+        toast.info("正在分析图片...");
+        result = await segmenter.segmentWithPoint(img, centerX, centerY);
+      }
       
-      toast.info("正在分析图片...");
-      const result = await segmenter.segmentWithPoint(img, centerX, centerY);
+      // 清空涂抹点
+      setScribblePoints([]);
       
       if (!result || !result.categoryMask) {
         toast.error("未检测到主要物体");
@@ -1182,6 +1230,32 @@ export const LeftToolbar = ({
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label>提取模式</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={extractMode === 'auto' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setExtractMode('auto')}
+                  className="flex-1"
+                >
+                  自动提取
+                </Button>
+                <Button
+                  variant={extractMode === 'scribble' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setExtractMode('scribble')}
+                  className="flex-1"
+                >
+                  涂抹选择
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {extractMode === 'auto' 
+                  ? '自动识别图片中心的主要物体' 
+                  : '手动涂抹需要提取的区域，更精确'}
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="extract-padding">裁剪边距: {extractPadding} 像素</Label>
               <Slider 
                 id="extract-padding" 
@@ -1227,11 +1301,64 @@ export const LeftToolbar = ({
               </p>
             </div>
             <Button onClick={executeSmartExtract} className="w-full">
-              开始提取
+              {extractMode === 'scribble' ? '下一步：涂抹区域' : '开始提取'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Scribble Overlay */}
+      {isScribbling && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+          style={{ pointerEvents: 'auto' }}
+        >
+          <div className="bg-background p-6 rounded-lg shadow-lg max-w-4xl w-full mx-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">涂抹需要提取的区域</h3>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setScribblePoints([]);
+                      if (scribbleCanvasRef.current) {
+                        const ctx = scribbleCanvasRef.current.getContext('2d');
+                        if (ctx) {
+                          ctx.clearRect(0, 0, scribbleCanvasRef.current.width, scribbleCanvasRef.current.height);
+                        }
+                      }
+                    }}
+                  >
+                    清除
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={cancelScribbleMode}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={executeSmartExtract}
+                    disabled={scribblePoints.length === 0}
+                  >
+                    确认提取
+                  </Button>
+                </div>
+              </div>
+              <ScribbleCanvas
+                canvas={canvas}
+                scribbleCanvasRef={scribbleCanvasRef}
+                scribblePoints={scribblePoints}
+                setScribblePoints={setScribblePoints}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Eraser Settings Dialog */}
       <Dialog open={showEraserSettings} onOpenChange={setShowEraserSettings}>
@@ -1589,5 +1716,112 @@ const AddElementHistoryGrid = ({
         );
       })}
     </>
+  );
+};
+
+// Scribble Canvas Component for interactive extraction
+interface ScribbleCanvasProps {
+  canvas: FabricCanvas | null;
+  scribbleCanvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
+  scribblePoints: Array<{ x: number; y: number }>;
+  setScribblePoints: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number }>>>;
+}
+
+const ScribbleCanvas = ({ canvas, scribbleCanvasRef, scribblePoints, setScribblePoints }: ScribbleCanvasProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [imageData, setImageData] = useState<string | null>(null);
+
+  useEffect(() => {
+    const activeObject = canvas?.getActiveObject();
+    if (!activeObject || activeObject.type !== 'image') return;
+
+    const fabricImage = activeObject as any;
+    const dataURL = fabricImage.toDataURL({
+      format: 'png',
+      quality: 1,
+      enableRetinaScaling: false
+    });
+    setImageData(dataURL);
+  }, [canvas]);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDrawing(true);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    setScribblePoints([...scribblePoints, { x, y }]);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    setScribblePoints([...scribblePoints, { x, y }]);
+    
+    // 绘制涂抹轨迹
+    const canvas = scribbleCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const canvasX = x * canvas.width;
+    const canvasY = y * canvas.height;
+    
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    if (scribblePoints.length > 0) {
+      const lastPoint = scribblePoints[scribblePoints.length - 1];
+      ctx.beginPath();
+      ctx.moveTo(lastPoint.x * canvas.width, lastPoint.y * canvas.height);
+      ctx.lineTo(canvasX, canvasY);
+      ctx.stroke();
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDrawing(false);
+  };
+
+  useEffect(() => {
+    const canvas = scribbleCanvasRef.current;
+    if (!canvas || !imageData) return;
+
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+    };
+    img.src = imageData;
+  }, [imageData, scribbleCanvasRef]);
+
+  if (!imageData) return <div className="text-center py-8">加载中...</div>;
+
+  return (
+    <div ref={containerRef} className="relative w-full bg-muted rounded-lg overflow-hidden">
+      <div className="relative w-full" style={{ paddingBottom: '75%' }}>
+        <img
+          src={imageData}
+          alt="提取对象"
+          className="absolute inset-0 w-full h-full object-contain"
+        />
+        <canvas
+          ref={scribbleCanvasRef}
+          className="absolute inset-0 w-full h-full cursor-crosshair"
+          style={{ touchAction: 'none' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        />
+      </div>
+      <div className="p-2 text-sm text-muted-foreground text-center">
+        在图片上涂抹需要提取的区域（绿色轨迹）
+      </div>
+    </div>
   );
 };

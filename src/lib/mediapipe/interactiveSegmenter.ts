@@ -50,6 +50,31 @@ export class MediaPipeSegmenter {
     return result;
   }
 
+  async segmentWithScribbles(
+    image: HTMLImageElement | HTMLCanvasElement,
+    scribblePoints: Array<{ x: number; y: number }>
+  ): Promise<InteractiveSegmenterResult | null> {
+    if (!this.segmenter) {
+      throw new Error('Segmenter not initialized');
+    }
+
+    const imageWidth = image instanceof HTMLImageElement ? image.width : image.width;
+    const imageHeight = image instanceof HTMLImageElement ? image.height : image.height;
+
+    // Normalize coordinates to [0, 1] and create scribbles array
+    const scribbles = scribblePoints.map(point => ({
+      x: point.x / imageWidth,
+      y: point.y / imageHeight
+    }));
+
+    const result = this.segmenter.segment(
+      image,
+      { scribble: scribbles }
+    );
+
+    return result;
+  }
+
   extractMaskedImage(
     sourceCanvas: HTMLCanvasElement,
     categoryMask: Uint8Array,
