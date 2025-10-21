@@ -360,16 +360,6 @@ export const EditorCanvas = ({
             lockMovementY: true
           });
         }
-        if (objName.startsWith('storyboard-number-')) {
-          obj.set({
-            selectable: false,
-            evented: false,
-            hasControls: false,
-            hasBorders: false,
-            lockMovementX: true,
-            lockMovementY: true
-          });
-        }
       });
     };
 
@@ -478,16 +468,6 @@ export const EditorCanvas = ({
           });
         }
         if (objName.startsWith('storyboard-border-')) {
-          obj.set({
-            selectable: false,
-            evented: false,
-            hasControls: false,
-            hasBorders: false,
-            lockMovementX: true,
-            lockMovementY: true
-          });
-        }
-        if (objName.startsWith('storyboard-number-')) {
           obj.set({
             selectable: false,
             evented: false,
@@ -767,16 +747,6 @@ export const EditorCanvas = ({
         const objName = (obj as any).name || '';
         if (objName.startsWith('storyboard-border-')) {
           canvas.bringObjectToFront(obj);
-          obj.set({
-            selectable: false,
-            evented: false,
-            hasControls: false,
-            hasBorders: false,
-            lockMovementX: true,
-            lockMovementY: true
-          });
-        }
-        if (objName.startsWith('storyboard-number-')) {
           obj.set({
             selectable: false,
             evented: false,
