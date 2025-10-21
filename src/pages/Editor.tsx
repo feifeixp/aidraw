@@ -152,7 +152,7 @@ const Editor = () => {
   const saveState = useCallback(() => {
     if (!canvas) return;
     const jsonObj = (canvas as any).toJSON(['data', 'name']);
-    console.log('[Editor] 保存状态，示例对象:', jsonObj.objects?.[0]);
+    console.log('[Editor] 保存状态，示例对象:', JSON.stringify(jsonObj.objects?.[0]).substring(0, 500));
     const state = JSON.stringify(jsonObj);
     dispatchHistory({
       type: "SAVE_STATE",

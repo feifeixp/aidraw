@@ -143,6 +143,7 @@ export const EditorCanvas = ({
       lockMovementX: true,
       lockMovementY: true,
       hoverCursor: 'pointer',
+      name: 'storyboard-frame-1',
       data: { 
         isFrameElement: true,
         objectType: 'storyboard-frame',
@@ -150,7 +151,6 @@ export const EditorCanvas = ({
         objectName: 'storyboard-frame-1'
       },
     });
-    (frame as any).name = 'storyboard-frame-1';
 
     fabricCanvas.add(frame);
     fabricCanvas.sendObjectToBack(frame);
@@ -174,6 +174,7 @@ export const EditorCanvas = ({
       lockMovementY: true,
       hoverCursor: 'default',
       visible: true, // 默认显示第一个分镜边框
+      name: 'storyboard-border-1',
       data: { 
         isFrameElement: true,
         objectType: 'storyboard-border',
@@ -181,7 +182,6 @@ export const EditorCanvas = ({
         objectName: 'storyboard-border-1'
       },
     });
-    (frameBorder as any).name = 'storyboard-border-1';
     
     fabricCanvas.add(frameBorder);
     frameBorderRef.current = frameBorder;
@@ -194,6 +194,7 @@ export const EditorCanvas = ({
       fill: '#666666',
       selectable: false,
       evented: false,
+      name: 'storyboard-number-1',
       data: { 
         isFrameElement: true,
         objectType: 'storyboard-number',
@@ -201,7 +202,6 @@ export const EditorCanvas = ({
         objectName: 'storyboard-number-1'
       },
     });
-    (frameNumber as any).name = 'storyboard-number-1';
     
     fabricCanvas.add(frameNumber);
     

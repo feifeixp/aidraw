@@ -122,6 +122,7 @@ export const EditorToolbar = ({
       lockMovementX: true,
       lockMovementY: true,
       hoverCursor: 'default',
+      name: `storyboard-frame-${frameIndex + 1}`,
       data: {
         isFrameElement: true,
         objectType: 'storyboard-frame',
@@ -129,7 +130,6 @@ export const EditorToolbar = ({
         objectName: `storyboard-frame-${frameIndex + 1}`
       }
     });
-    (frame as any).name = `storyboard-frame-${frameIndex + 1}`;
 
     // 创建frame边界线（默认不显示，只有激活时才显示）
     const frameBorder = new FabricRect({
@@ -149,6 +149,7 @@ export const EditorToolbar = ({
       lockMovementY: true,
       hoverCursor: 'pointer',
       visible: false,
+      name: `storyboard-border-${frameIndex + 1}`,
       data: {
         isFrameElement: true,
         objectType: 'storyboard-border',
@@ -156,7 +157,6 @@ export const EditorToolbar = ({
         objectName: `storyboard-border-${frameIndex + 1}`
       }
     });
-    (frameBorder as any).name = `storyboard-border-${frameIndex + 1}`;
 
     // 创建frame编号文本（显示在分镜外左上方，与分镜左边对齐）
     const frameNumber = new FabricText(`Shot-${String(frameIndex + 1).padStart(2, '0')}`, {
@@ -166,6 +166,7 @@ export const EditorToolbar = ({
       fill: '#666666',
       selectable: false,
       evented: false,
+      name: `storyboard-number-${frameIndex + 1}`,
       data: {
         isFrameElement: true,
         objectType: 'storyboard-number',
@@ -173,7 +174,6 @@ export const EditorToolbar = ({
         objectName: `storyboard-number-${frameIndex + 1}`
       }
     });
-    (frameNumber as any).name = `storyboard-number-${frameIndex + 1}`;
 
     // 添加到画布，确保frame在底层
     canvas.add(frame);
