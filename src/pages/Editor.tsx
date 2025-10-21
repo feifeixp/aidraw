@@ -28,6 +28,9 @@ type HistoryAction = {
   type: "UNDO";
 } | {
   type: "REDO";
+} | {
+  type: "RESET";
+  payload: string;
 };
 const historyReducer = (state: HistoryState, action: HistoryAction): HistoryState => {
   switch (action.type) {
@@ -62,6 +65,14 @@ const historyReducer = (state: HistoryState, action: HistoryAction): HistoryStat
         return {
           ...state,
           historyIndex: state.historyIndex + 1
+        };
+      }
+    case "RESET":
+      {
+        // 重置历史记录，只保留新的初始状态
+        return {
+          history: [action.payload],
+          historyIndex: 0
         };
       }
     default:
@@ -459,16 +470,29 @@ const Editor = () => {
   const handleLoadDraft = useCallback((draftData: string) => {
     if (!canvas) return;
     try {
+      // 通知EditorCanvas移除事件监听器
+      window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
+      
       canvas.loadFromJSON(JSON.parse(draftData)).then(() => {
         canvas.renderAll();
-        saveState();
+        
+        // 通知EditorCanvas恢复事件监听器并更新refs
+        window.dispatchEvent(new CustomEvent('canvasStateRestored'));
+        
+        // 重置历史记录为这个新加载的状态
+        const newState = JSON.stringify((canvas as any).toJSON(['data', 'name']));
+        dispatchHistory({
+          type: "RESET",
+          payload: newState
+        });
+        
         toast.success("草稿已加载到画布");
       });
     } catch (error) {
       console.error("加载草稿失败:", error);
       toast.error("加载草稿失败");
     }
-  }, [canvas, saveState]);
+  }, [canvas]);
   const leftToolbarContent = (
     <div className="overflow-auto h-full">
       <LeftToolbar 

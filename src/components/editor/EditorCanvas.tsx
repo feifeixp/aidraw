@@ -414,25 +414,37 @@ export const EditorCanvas = ({
       fabricCanvas.on('object:added', handleObjectAdded);
       
       const objectsBefore = fabricCanvas.getObjects();
-      console.log('[EditorCanvas] 状态恢复前对象数量:', objectsBefore.length);
-      console.log('[EditorCanvas] 状态恢复前所有对象:', objectsBefore.map((obj: any) => ({
+      console.log('[EditorCanvas] 状态恢复后对象数量:', objectsBefore.length);
+      console.log('[EditorCanvas] 状态恢复后所有对象:', objectsBefore.map((obj: any) => ({
         type: obj.type,
         name: obj.name || 'unnamed'
       })));
       
-      const foundFrame = objectsBefore.find((obj: any) => obj.name === 'storyboard-frame-1') as Rect || null;
-      const foundBorder = objectsBefore.find((obj: any) => obj.name === 'storyboard-border-1') as Rect || null;
+      // 查找所有分镜相关对象
+      const allFrames: Rect[] = [];
+      const allBorders: Rect[] = [];
+      const allNumbers: any[] = [];
       
-      console.log('[EditorCanvas] 找到的对象:', {
-        hasFrame: !!foundFrame,
-        hasBorder: !!foundBorder,
-        frameId: foundFrame ? (foundFrame as any).id : 'none',
-        borderId: foundBorder ? (foundBorder as any).id : 'none'
+      objectsBefore.forEach((obj: any) => {
+        const objName = obj.name || '';
+        if (objName.startsWith('storyboard-frame-')) {
+          allFrames.push(obj as Rect);
+        } else if (objName.startsWith('storyboard-border-')) {
+          allBorders.push(obj as Rect);
+        } else if (objName.startsWith('storyboard-number-')) {
+          allNumbers.push(obj);
+        }
       });
       
-      // 恢复frame和border的锁定状态
-      if (foundFrame) {
-        foundFrame.set({
+      console.log('[EditorCanvas] 找到的分镜对象:', {
+        frames: allFrames.length,
+        borders: allBorders.length,
+        numbers: allNumbers.length
+      });
+      
+      // 恢复所有分镜frame的锁定状态和层级
+      allFrames.forEach(frame => {
+        frame.set({
           selectable: false,
           evented: true,
           hasControls: false,
@@ -441,11 +453,12 @@ export const EditorCanvas = ({
           lockMovementY: true,
           hoverCursor: 'pointer'
         });
-        console.log('[EditorCanvas] 已恢复frame的锁定状态');
-      }
+        fabricCanvas.sendObjectToBack(frame);
+      });
       
-      if (foundBorder) {
-        foundBorder.set({
+      // 恢复所有分镜border的锁定状态和层级
+      allBorders.forEach(border => {
+        border.set({
           selectable: false,
           evented: false,
           hasControls: false,
@@ -453,47 +466,29 @@ export const EditorCanvas = ({
           lockMovementX: true,
           lockMovementY: true
         });
-        console.log('[EditorCanvas] 已恢复border的锁定状态');
-      }
-      
-      // 恢复所有分镜frame和border的锁定状态
-      fabricCanvas.getObjects().forEach(obj => {
-        const objName = (obj as any).name || '';
-        if (objName.startsWith('storyboard-frame-') && objName !== 'storyboard-frame-1') {
-          obj.set({
-            selectable: false,
-            evented: true,
-            hasControls: false,
-            hasBorders: false,
-            lockMovementX: true,
-            lockMovementY: true,
-            hoverCursor: 'pointer'
-          });
-        }
-        if (objName.startsWith('storyboard-border-')) {
-          obj.set({
-            selectable: false,
-            evented: false,
-            hasControls: false,
-            hasBorders: false,
-            lockMovementX: true,
-            lockMovementY: true
-          });
-        }
+        fabricCanvas.bringObjectToFront(border);
       });
+      
+      // 恢复所有分镜number的锁定状态和层级
+      allNumbers.forEach(number => {
+        number.set({
+          selectable: false,
+          evented: false
+        });
+        fabricCanvas.bringObjectToFront(number);
+      });
+      
+      // 更新refs指向第一个分镜（用于某些操作）
+      const foundFrame = allFrames.find((obj: any) => obj.name === 'storyboard-frame-1') || null;
+      const foundBorder = allBorders.find((obj: any) => obj.name === 'storyboard-border-1') || null;
       
       frameRef.current = foundFrame;
       frameBorderRef.current = foundBorder;
       
-      // 验证是否有重复创建
-      const objectsAfter = fabricCanvas.getObjects();
-      console.log('[EditorCanvas] 状态恢复后对象数量:', objectsAfter.length);
-      if (objectsAfter.length !== objectsBefore.length) {
-        console.error('[EditorCanvas] ⚠️ 警告：状态恢复后对象数量发生了变化！', {
-          before: objectsBefore.length,
-          after: objectsAfter.length
-        });
-      }
+      console.log('[EditorCanvas] Refs已更新:', {
+        hasFrame: !!frameRef.current,
+        hasBorder: !!frameBorderRef.current
+      });
       
       // 强制重新渲染画布
       fabricCanvas.requestRenderAll();

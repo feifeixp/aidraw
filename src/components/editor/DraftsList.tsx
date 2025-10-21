@@ -277,6 +277,9 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
       return;
     }
     
+    // 通知EditorCanvas即将清空画布
+    window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
+    
     // 清空所有画布内容（包括分镜）
     canvas.clear();
     
@@ -361,6 +364,9 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
     canvas.discardActiveObject();
     canvas.renderAll();
     
+    // 通知EditorCanvas画布已重新创建，需要更新refs
+    window.dispatchEvent(new CustomEvent('canvasStateRestored'));
+    
     onDraftIdChange?.(undefined);
     onActiveFrameIdChange?.("1");
     onFrameCountChange?.(1);
@@ -371,6 +377,26 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
   const handleLoadDraft = (draft: Draft) => {
     onLoadDraft(draft.data);
     onDraftIdChange?.(draft.id);
+    
+    // 从草稿数据中提取分镜信息
+    try {
+      const canvasData = JSON.parse(draft.data);
+      const objects = canvasData.objects || [];
+      
+      // 找到所有分镜frame
+      const frames = objects.filter((obj: any) => obj.name && obj.name.startsWith('storyboard-frame-'));
+      const frameCount = frames.length;
+      
+      // 找到当前应该激活的分镜（优先使用第一个，或者保持当前的）
+      if (frameCount > 0) {
+        const firstFrameId = frames[0].name.replace('storyboard-frame-', '');
+        onActiveFrameIdChange?.(firstFrameId);
+        onFrameCountChange?.(frameCount);
+      }
+    } catch (error) {
+      console.error("解析草稿分镜信息失败:", error);
+    }
+    
     setOpen(false);
     toast.success("草稿已加载");
   };
