@@ -31,7 +31,21 @@ export const DraftsList = ({
     }
 
     try {
+      // 获取画布上所有对象用于手动修复 data 属性
+      const allObjects = canvas.getObjects();
       const canvasData = (canvas as any).toJSON(['data', 'name']);
+      
+      // 🔧 手动修复 data 和 name 属性（Fabric.js v6 序列化问题）
+      if (canvasData.objects && canvasData.objects.length > 0) {
+        canvasData.objects.forEach((serializedObj: any, index: number) => {
+          const canvasObj = allObjects[index];
+          if (canvasObj) {
+            serializedObj.data = (canvasObj as any).data || {};
+            serializedObj.name = (canvasObj as any).name || '';
+          }
+        });
+      }
+      
       const timestamp = Date.now();
       
       const exportData = {

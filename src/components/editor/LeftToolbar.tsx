@@ -239,7 +239,20 @@ export const LeftToolbar = ({
   const handleConfirmNavigate = () => {
     // Save canvas state (exclude frame elements)
     if (canvas) {
+      const allObjects = canvas.getObjects();
       const jsonObj = (canvas as any).toJSON(['data', 'name']);
+      
+      // 🔧 手动修复 data 和 name 属性（Fabric.js v6 序列化问题）
+      if (jsonObj.objects && jsonObj.objects.length > 0) {
+        jsonObj.objects.forEach((serializedObj: any, index: number) => {
+          const canvasObj = allObjects[index];
+          if (canvasObj) {
+            serializedObj.data = (canvasObj as any).data || {};
+            serializedObj.name = (canvasObj as any).name || '';
+          }
+        });
+      }
+      
       // 过滤掉框架元素
       if (jsonObj.objects) {
         jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
@@ -635,10 +648,18 @@ export const LeftToolbar = ({
 
     try {
       const cloned = await activeObject.clone();
+      
+      // 🔧 确保 data 和 name 属性被正确复制
+      const originalData = (activeObject as any).data;
+      const originalName = (activeObject as any).name;
+      
       cloned.set({
         left: (cloned.left || 0) + 10,
         top: (cloned.top || 0) + 10,
+        data: originalData ? { ...originalData } : undefined,
+        name: originalName
       });
+      
       canvas?.add(cloned);
       canvas?.setActiveObject(cloned);
       canvas?.renderAll();

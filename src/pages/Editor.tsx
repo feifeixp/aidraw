@@ -292,7 +292,20 @@ const Editor = () => {
     if (canvas && history.length === 0) {
       // Small delay to ensure canvas is fully initialized
       const timer = setTimeout(() => {
+        const allObjects = canvas.getObjects();
         const jsonObj = (canvas as any).toJSON(['data', 'name']);
+        
+        // 🔧 手动修复 data 和 name 属性（Fabric.js v6 序列化问题）
+        if (jsonObj.objects && jsonObj.objects.length > 0) {
+          jsonObj.objects.forEach((serializedObj: any, index: number) => {
+            const canvasObj = allObjects[index];
+            if (canvasObj) {
+              serializedObj.data = (canvasObj as any).data || {};
+              serializedObj.name = (canvasObj as any).name || '';
+            }
+          });
+        }
+        
         // 过滤掉框架元素
         if (jsonObj.objects) {
           jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
@@ -497,7 +510,20 @@ const Editor = () => {
       canvas.renderAll();
       
       // 重置历史记录（仅保存用户内容，不包含框架元素）
+      const allObjects = canvas.getObjects();
       const jsonObj = (canvas as any).toJSON(['data', 'name']);
+      
+      // 🔧 手动修复 data 和 name 属性（Fabric.js v6 序列化问题）
+      if (jsonObj.objects && jsonObj.objects.length > 0) {
+        jsonObj.objects.forEach((serializedObj: any, index: number) => {
+          const canvasObj = allObjects[index];
+          if (canvasObj) {
+            serializedObj.data = (canvasObj as any).data || {};
+            serializedObj.name = (canvasObj as any).name || '';
+          }
+        });
+      }
+      
       if (jsonObj.objects) {
         jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
       }
