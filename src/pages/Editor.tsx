@@ -159,7 +159,14 @@ const Editor = () => {
     // 手动添加历史状态中的用户对象（不使用loadFromJSON避免清空画布）
     if (parsedState.objects && parsedState.objects.length > 0) {
       const objects = await util.enlivenObjects(parsedState.objects);
-      objects.forEach((obj: any) => {
+      // 再次过滤，确保不会添加任何框架元素
+      const userObjects = objects.filter((obj: any) => !obj.data?.isFrameElement);
+      console.log('[Editor] 恢复对象过滤:', {
+        原始数量: objects.length,
+        过滤后数量: userObjects.length,
+        过滤掉的数量: objects.length - userObjects.length
+      });
+      userObjects.forEach((obj: any) => {
         canvas.add(obj);
       });
     }
@@ -197,7 +204,14 @@ const Editor = () => {
     // 手动添加历史状态中的用户对象（不使用loadFromJSON避免清空画布）
     if (parsedState.objects && parsedState.objects.length > 0) {
       const objects = await util.enlivenObjects(parsedState.objects);
-      objects.forEach((obj: any) => {
+      // 再次过滤，确保不会添加任何框架元素
+      const userObjects = objects.filter((obj: any) => !obj.data?.isFrameElement);
+      console.log('[Editor] 恢复对象过滤:', {
+        原始数量: objects.length,
+        过滤后数量: userObjects.length,
+        过滤掉的数量: objects.length - userObjects.length
+      });
+      userObjects.forEach((obj: any) => {
         canvas.add(obj);
       });
     }
