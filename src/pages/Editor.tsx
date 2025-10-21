@@ -125,7 +125,12 @@ const Editor = () => {
       // Set new timer to save after 2 seconds of inactivity
       autoSaveTimer = setTimeout(() => {
         try {
-          const canvasJson = JSON.stringify((canvas as any).toJSON(['data', 'name']));
+          const jsonObj = (canvas as any).toJSON(['data', 'name']);
+          // 过滤掉框架元素
+          if (jsonObj.objects) {
+            jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
+          }
+          const canvasJson = JSON.stringify(jsonObj);
           localStorage.setItem('editor-draft', canvasJson);
           localStorage.setItem('editor-draft-timestamp', Date.now().toString());
           console.log("自动保存完成");
@@ -263,7 +268,12 @@ const Editor = () => {
     if (canvas && history.length === 0) {
       // Small delay to ensure canvas is fully initialized
       const timer = setTimeout(() => {
-        const state = JSON.stringify((canvas as any).toJSON(['data', 'name']));
+        const jsonObj = (canvas as any).toJSON(['data', 'name']);
+        // 过滤掉框架元素
+        if (jsonObj.objects) {
+          jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
+        }
+        const state = JSON.stringify(jsonObj);
         dispatchHistory({
           type: "SAVE_STATE",
           payload: state
@@ -277,7 +287,7 @@ const Editor = () => {
   useEffect(() => {
     if (!canvas) return;
     
-    const loadDraft = () => {
+    const loadDraft = async () => {
       const draftJson = localStorage.getItem('editor-draft');
       const draftTimestamp = localStorage.getItem('editor-draft-timestamp');
       
@@ -289,11 +299,31 @@ const Editor = () => {
         // Only auto-load if draft is less than 24 hours old
         if (hoursSinceLastSave < 24) {
           try {
-            canvas.loadFromJSON(JSON.parse(draftJson)).then(() => {
-              canvas.renderAll();
-              saveState();
-              console.log("已加载草稿");
-            });
+            // 通知EditorCanvas移除事件监听器
+            window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
+            
+            const parsedData = JSON.parse(draftJson);
+            // 过滤掉框架元素（以防旧草稿包含框架元素）
+            if (parsedData.objects) {
+              parsedData.objects = parsedData.objects.filter((obj: any) => !obj.data?.isFrameElement);
+            }
+            
+            // 保存所有分镜框架元素
+            const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+            
+            // 只清除非框架元素
+            const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
+            nonFrameObjects.forEach(obj => canvas.remove(obj));
+            
+            // 加载用户内容
+            await canvas.loadFromJSON(parsedData);
+            canvas.renderAll();
+            
+            // 通知EditorCanvas恢复事件监听器并更新refs
+            window.dispatchEvent(new CustomEvent('canvasStateRestored'));
+            
+            saveState();
+            console.log("已加载草稿");
           } catch (error) {
             console.error("加载草稿失败:", error);
           }
@@ -304,7 +334,7 @@ const Editor = () => {
     // Load after a short delay to ensure canvas is ready
     const timer = setTimeout(loadDraft, 500);
     return () => clearTimeout(timer);
-  }, [canvas]);
+  }, [canvas, saveState]);
 
   // Keyboard shortcut for pan tool (H key)
   useEffect(() => {

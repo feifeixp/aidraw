@@ -150,6 +150,10 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
 
     try {
       const canvasData = (canvas as any).toJSON(['data', 'name']);
+      // 过滤掉框架元素
+      if (canvasData.objects) {
+        canvasData.objects = canvasData.objects.filter((obj: any) => !obj.data?.isFrameElement);
+      }
       const canvasJson = JSON.stringify(canvasData);
       const timestamp = Date.now();
       const draftId = currentDraftId && !forceNew ? currentDraftId : timestamp.toString();

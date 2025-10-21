@@ -237,9 +237,14 @@ export const LeftToolbar = ({
   };
 
   const handleConfirmNavigate = () => {
-    // Save canvas state
+    // Save canvas state (exclude frame elements)
     if (canvas) {
-      const canvasJson = JSON.stringify((canvas as any).toJSON(['data', 'name']));
+      const jsonObj = (canvas as any).toJSON(['data', 'name']);
+      // 过滤掉框架元素
+      if (jsonObj.objects) {
+        jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
+      }
+      const canvasJson = JSON.stringify(jsonObj);
       localStorage.setItem('editor-draft', canvasJson);
       localStorage.setItem('editor-draft-timestamp', Date.now().toString());
       toast.success("草稿已保存");
