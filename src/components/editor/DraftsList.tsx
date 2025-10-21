@@ -149,7 +149,7 @@ export const DraftsList = ({ canvas, onLoadDraft, currentDraftId, onDraftIdChang
     }
 
     try {
-      const canvasData = (canvas as any).toJSON(['data']);
+      const canvasData = (canvas as any).toJSON(['data', 'name']);
       const canvasJson = JSON.stringify(canvasData);
       const timestamp = Date.now();
       const draftId = currentDraftId && !forceNew ? currentDraftId : timestamp.toString();
