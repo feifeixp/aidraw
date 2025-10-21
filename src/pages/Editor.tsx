@@ -124,22 +124,19 @@ const Editor = () => {
     // 先序列化整个画布
     const jsonObj = (canvas as any).toJSON(['data', 'name']);
     
-    // 手动过滤：通过对比画布对象和序列化对象
+    // 手动过滤并修复 data 属性
     if (jsonObj.objects && jsonObj.objects.length > 0) {
       const filteredObjects: any[] = [];
       
       jsonObj.objects.forEach((serializedObj: any, index: number) => {
         const canvasObj = allObjects[index];
         
-        // 检查画布对象（而不是序列化后的对象）是否是框架元素
+        // 检查画布对象是否是框架元素
         if (canvasObj && !(canvasObj as any).data?.isFrameElement) {
-          // 🔍 检查序列化后的 data 属性
-          console.log('[Editor] 📦 序列化对象:', {
-            type: serializedObj.type,
-            canvasData: (canvasObj as any).data,
-            serializedData: serializedObj.data,
-            dataMatch: JSON.stringify((canvasObj as any).data) === JSON.stringify(serializedObj.data)
-          });
+          // 🔧 手动修复 data 和 name 属性（Fabric.js v6 无法正确序列化）
+          serializedObj.data = (canvasObj as any).data || {};
+          serializedObj.name = (canvasObj as any).name || '';
+          
           filteredObjects.push(serializedObj);
         }
       });
@@ -201,12 +198,6 @@ const Editor = () => {
       });
       
       userObjects.forEach((obj: any) => {
-        console.log('[Editor] 🔄 恢复对象:', {
-          type: obj.type,
-          name: obj.name,
-          data: obj.data,
-          elementType: obj.data?.elementType
-        });
         canvas.add(obj);
       });
     }
