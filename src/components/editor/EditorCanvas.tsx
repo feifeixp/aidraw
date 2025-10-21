@@ -305,24 +305,70 @@ export const EditorCanvas = ({
       // Ensure frame always stays at the back when new objects are added
       if (frameRef.current) {
         fabricCanvas.sendObjectToBack(frameRef.current);
+        // 重新应用锁定状态
+        frameRef.current.set({
+          selectable: false,
+          evented: true,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true,
+          hoverCursor: 'pointer'
+        });
       }
       
-      // 确保所有分镜frame也在底层
+      // 确保所有分镜frame也在底层，并重新应用锁定状态
       fabricCanvas.getObjects().forEach(obj => {
         const objName = (obj as any).name || '';
         if (objName.startsWith('storyboard-frame-')) {
           fabricCanvas.sendObjectToBack(obj);
+          obj.set({
+            selectable: false,
+            evented: true,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true,
+            hoverCursor: 'pointer'
+          });
         }
       });
       
       // Ensure all borders stay on top (main frame border and storyboard borders)
       if (frameBorderRef.current) {
         fabricCanvas.bringObjectToFront(frameBorderRef.current);
+        // 重新应用锁定状态
+        frameBorderRef.current.set({
+          selectable: false,
+          evented: false,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true
+        });
       }
       fabricCanvas.getObjects().forEach(obj => {
         const objName = (obj as any).name || '';
         if (objName.startsWith('storyboard-border-')) {
           fabricCanvas.bringObjectToFront(obj);
+          obj.set({
+            selectable: false,
+            evented: false,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true
+          });
+        }
+        if (objName.startsWith('storyboard-number-')) {
+          obj.set({
+            selectable: false,
+            evented: false,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true
+          });
         }
       });
     };
@@ -674,25 +720,71 @@ export const EditorCanvas = ({
       // Ensure frame stays at the back and frameBorder on top
       if (frameRef.current) {
         canvas.sendObjectToBack(frameRef.current);
+        // 重新应用锁定状态
+        frameRef.current.set({
+          selectable: false,
+          evented: true,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true,
+          hoverCursor: 'pointer'
+        });
       }
       
-      // 确保所有分镜frame也在底层
+      // 确保所有分镜frame也在底层，并重新应用锁定状态
       canvas.getObjects().forEach(obj => {
         const objName = (obj as any).name || '';
         if (objName.startsWith('storyboard-frame-')) {
           canvas.sendObjectToBack(obj);
+          obj.set({
+            selectable: false,
+            evented: true,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true,
+            hoverCursor: 'pointer'
+          });
         }
       });
       
       if (frameBorderRef.current) {
         canvas.bringObjectToFront(frameBorderRef.current);
+        // 重新应用锁定状态
+        frameBorderRef.current.set({
+          selectable: false,
+          evented: false,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true
+        });
       }
       
-      // 确保所有分镜border在顶层
+      // 确保所有分镜border在顶层，并重新应用锁定状态
       canvas.getObjects().forEach(obj => {
         const objName = (obj as any).name || '';
         if (objName.startsWith('storyboard-border-')) {
           canvas.bringObjectToFront(obj);
+          obj.set({
+            selectable: false,
+            evented: false,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true
+          });
+        }
+        if (objName.startsWith('storyboard-number-')) {
+          obj.set({
+            selectable: false,
+            evented: false,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true
+          });
         }
       });
       
