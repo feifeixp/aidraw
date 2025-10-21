@@ -1729,8 +1729,10 @@ interface ScribbleCanvasProps {
 
 const ScribbleCanvas = ({ canvas, scribbleCanvasRef, scribblePoints, setScribblePoints }: ScribbleCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [imageData, setImageData] = useState<string | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const activeObject = canvas?.getActiveObject();
@@ -1745,74 +1747,118 @@ const ScribbleCanvas = ({ canvas, scribbleCanvasRef, scribblePoints, setScribble
     setImageData(dataURL);
   }, [canvas]);
 
+  // 初始化 canvas 尺寸
+  useEffect(() => {
+    if (!imageData || !imageRef.current || !scribbleCanvasRef.current) return;
+
+    const img = imageRef.current;
+    const canvasEl = scribbleCanvasRef.current;
+    
+    const updateCanvasSize = () => {
+      const rect = img.getBoundingClientRect();
+      canvasEl.width = rect.width;
+      canvasEl.height = rect.height;
+      setCanvasSize({ width: rect.width, height: rect.height });
+      
+      // 清空画布
+      const ctx = canvasEl.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, rect.width, rect.height);
+      }
+    };
+
+    // 图片加载完成后设置尺寸
+    if (img.complete) {
+      updateCanvasSize();
+    } else {
+      img.onload = updateCanvasSize;
+    }
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, [imageData, scribbleCanvasRef]);
+
+  const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvasEl = scribbleCanvasRef.current;
+    if (!canvasEl) return null;
+    
+    const rect = canvasEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // 归一化坐标 [0, 1]
+    const normalizedX = x / rect.width;
+    const normalizedY = y / rect.height;
+    
+    return { x: normalizedX, y: normalizedY, canvasX: x, canvasY: y };
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoordinates(e);
+    if (!coords) return;
+    
     setIsDrawing(true);
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    setScribblePoints([...scribblePoints, { x, y }]);
+    setScribblePoints([...scribblePoints, { x: coords.x, y: coords.y }]);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    setScribblePoints([...scribblePoints, { x, y }]);
     
-    // 绘制涂抹轨迹
-    const canvas = scribbleCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const coords = getCanvasCoordinates(e);
+    if (!coords) return;
+    
+    const canvasEl = scribbleCanvasRef.current;
+    if (!canvasEl) return;
+    
+    const ctx = canvasEl.getContext('2d');
     if (!ctx) return;
     
-    const canvasX = x * canvas.width;
-    const canvasY = y * canvas.height;
-    
+    // 绘制涂抹轨迹
     ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 8;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.7;
     
     if (scribblePoints.length > 0) {
       const lastPoint = scribblePoints[scribblePoints.length - 1];
+      const lastX = lastPoint.x * canvasSize.width;
+      const lastY = lastPoint.y * canvasSize.height;
+      
       ctx.beginPath();
-      ctx.moveTo(lastPoint.x * canvas.width, lastPoint.y * canvas.height);
-      ctx.lineTo(canvasX, canvasY);
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(coords.canvasX, coords.canvasY);
       ctx.stroke();
     }
+    
+    setScribblePoints([...scribblePoints, { x: coords.x, y: coords.y }]);
   };
 
   const handleMouseUp = () => {
     setIsDrawing(false);
   };
 
-  useEffect(() => {
-    const canvas = scribbleCanvasRef.current;
-    if (!canvas || !imageData) return;
-
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-    };
-    img.src = imageData;
-  }, [imageData, scribbleCanvasRef]);
-
   if (!imageData) return <div className="text-center py-8">加载中...</div>;
 
   return (
     <div ref={containerRef} className="relative w-full bg-muted rounded-lg overflow-hidden">
-      <div className="relative w-full" style={{ paddingBottom: '75%' }}>
+      <div className="relative w-full max-h-[70vh] flex items-center justify-center">
         <img
+          ref={imageRef}
           src={imageData}
           alt="提取对象"
-          className="absolute inset-0 w-full h-full object-contain"
+          className="max-w-full max-h-[70vh] object-contain"
         />
         <canvas
           ref={scribbleCanvasRef}
-          className="absolute inset-0 w-full h-full cursor-crosshair"
-          style={{ touchAction: 'none' }}
+          className="absolute cursor-crosshair"
+          style={{ 
+            touchAction: 'none',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
+          }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -1820,7 +1866,7 @@ const ScribbleCanvas = ({ canvas, scribbleCanvasRef, scribblePoints, setScribble
         />
       </div>
       <div className="p-2 text-sm text-muted-foreground text-center">
-        在图片上涂抹需要提取的区域（绿色轨迹）
+        在图片上涂抹需要提取的区域（绿色轨迹） | 已涂抹点数: {scribblePoints.length}
       </div>
     </div>
   );
