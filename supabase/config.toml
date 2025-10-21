@@ -12,6 +12,9 @@ verify_jwt = true
 [functions.ai-generate-image]
 verify_jwt = true
 
+[functions.ai-generate-storyboards]
+verify_jwt = true
+
 [functions.ai-remove-background]
 verify_jwt = true
 

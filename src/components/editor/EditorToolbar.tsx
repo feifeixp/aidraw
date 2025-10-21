@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
   activeTool: string;
@@ -59,6 +60,10 @@ export const EditorToolbar = ({
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
   const [showStoryboardSettings, setShowStoryboardSettings] = useState(false);
   const [frameSize, setFrameSize] = useState({ width: 1024, height: 768 });
+  const [showAiStoryboardDialog, setShowAiStoryboardDialog] = useState(false);
+  const [scriptText, setScriptText] = useState("");
+  const [referenceImages, setReferenceImages] = useState<File[]>([]);
+  const [isGeneratingStoryboards, setIsGeneratingStoryboards] = useState(false);
   const handleUndo = () => {
     undo();
   };
@@ -202,6 +207,136 @@ export const EditorToolbar = ({
     setStoryboardFrameCount(frameIndex + 1);
 
     toast.success(`已创建分镜 ${frameIndex + 1}/${COLS * ROWS}`);
+  };
+
+  // AI 多分镜生成函数
+  const handleAiStoryboardGeneration = async () => {
+    if (!canvas) {
+      toast.error("画布未初始化");
+      return;
+    }
+
+    if (!scriptText.trim()) {
+      toast.error("请输入剧本文本");
+      return;
+    }
+
+    if (scriptText.length > 3500) {
+      toast.error("剧本文本不能超过3500字");
+      return;
+    }
+
+    if (referenceImages.length === 0) {
+      toast.error("请至少上传1张参考图片");
+      return;
+    }
+
+    if (referenceImages.length > 4) {
+      toast.error("最多只能上传4张参考图片");
+      return;
+    }
+
+    setShowAiStoryboardDialog(false);
+    setIsGeneratingStoryboards(true);
+    const taskId = startTask("正在生成AI分镜");
+
+    try {
+      toast.info("正在分析剧本和参考图片...");
+      
+      // 将图片转换为 base64
+      const imagePromises = referenceImages.map(file => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const imageDataUrls = await Promise.all(imagePromises);
+
+      // 调用 edge function 生成分镜
+      const { data, error } = await supabase.functions.invoke('ai-generate-storyboards', {
+        body: {
+          scriptText,
+          referenceImages: imageDataUrls
+        }
+      });
+
+      if (error) throw error;
+
+      if (!data || !data.images || data.images.length === 0) {
+        throw new Error("未生成任何分镜图片");
+      }
+
+      toast.success(`成功生成 ${data.images.length} 张分镜！`);
+      
+      // 将生成的图片添加到画布
+      for (let i = 0; i < data.images.length; i++) {
+        const imageUrl = data.images[i];
+        
+        // 创建分镜框架
+        handleCreateStoryboardFrame();
+        
+        // 加载图片到当前分镜
+        const img = await FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
+        
+        // 获取当前激活的分镜框架
+        const currentFrameIndex = storyboardFrameCount + i;
+        const COLS = 5;
+        const frameId = `${currentFrameIndex + 1}`;
+        
+        // 将图片添加到对应的分镜中
+        const INFINITE_CANVAS_SIZE = 10000;
+        const FRAME_WIDTH = frameSize.width;
+        const FRAME_HEIGHT = frameSize.height;
+        const SPACING = 50;
+        const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
+        const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
+        const totalHeight = 8 * FRAME_HEIGHT + 7 * SPACING;
+        const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
+        
+        const col = currentFrameIndex % COLS;
+        const row = Math.floor(currentFrameIndex / COLS);
+        const frameLeft = START_X + col * (FRAME_WIDTH + SPACING);
+        const frameTop = START_Y + row * (FRAME_HEIGHT + SPACING);
+        
+        // 缩放图片以适应分镜
+        const scale = Math.min(
+          FRAME_WIDTH / img.width,
+          FRAME_HEIGHT / img.height
+        );
+        
+        img.set({
+          left: frameLeft + (FRAME_WIDTH - img.width * scale) / 2,
+          top: frameTop + (FRAME_HEIGHT - img.height * scale) / 2,
+          scaleX: scale,
+          scaleY: scale,
+          data: {
+            elementType: 'scene',
+            frameId: frameId
+          }
+        });
+        
+        canvas.add(img);
+      }
+      
+      canvas.renderAll();
+      saveState();
+      
+      completeTask(taskId);
+      
+      // 清空表单
+      setScriptText("");
+      setReferenceImages([]);
+      
+    } catch (error) {
+      console.error("AI分镜生成错误:", error);
+      toast.error(error instanceof Error ? error.message : "AI分镜生成失败");
+      cancelTask();
+    } finally {
+      setIsGeneratingStoryboards(false);
+    }
   };
 
   const handleRedraw = async (shouldReplaceOriginal: boolean = true) => {
@@ -741,6 +876,18 @@ export const EditorToolbar = ({
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
       <div className="flex items-center gap-1 shrink-0">
+        <Button 
+          variant="default" 
+          size="sm" 
+          onClick={() => setShowAiStoryboardDialog(true)} 
+          className="whitespace-nowrap bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg" 
+          title="AI智能多分镜生成"
+          disabled={isGeneratingStoryboards}
+        >
+          <Sparkles className="h-4 w-4" />
+          <span className="ml-1">{isGeneratingStoryboards ? "生成中..." : "智能多分镜"}</span>
+        </Button>
+        
         <Button variant="outline" size="sm" onClick={handleCreateStoryboardFrame} className="whitespace-nowrap" title="创建分镜">
           <Grid3x3 className="h-4 w-4" />
           <span className="ml-1">创建分镜</span>
@@ -943,6 +1090,129 @@ export const EditorToolbar = ({
               </Button>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI 多分镜生成对话框 */}
+      <Dialog open={showAiStoryboardDialog} onOpenChange={setShowAiStoryboardDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              AI 智能多分镜生成
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* 剧本文本输入 */}
+            <div className="space-y-2">
+              <Label htmlFor="script-text" className="text-base font-semibold">
+                剧本文本 <span className="text-sm text-muted-foreground">({scriptText.length}/3500字)</span>
+              </Label>
+              <Textarea
+                id="script-text"
+                placeholder="输入您的剧本内容，AI将根据剧本生成分镜画面..."
+                value={scriptText}
+                onChange={(e) => setScriptText(e.target.value)}
+                rows={8}
+                className="resize-none"
+                maxLength={3500}
+              />
+              <p className="text-sm text-muted-foreground">
+                描述场景、角色动作和情绪，AI会自动生成对应的分镜线稿
+              </p>
+            </div>
+
+            {/* 参考图片上传 */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">
+                参考图片 <span className="text-sm text-muted-foreground">(最多4张)</span>
+              </Label>
+              <div className="border-2 border-dashed rounded-lg p-6 bg-muted/50">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length + referenceImages.length > 4) {
+                      toast.error("最多只能上传4张图片");
+                      return;
+                    }
+                    setReferenceImages([...referenceImages, ...files]);
+                  }}
+                  className="hidden"
+                  id="reference-images"
+                />
+                <label
+                  htmlFor="reference-images"
+                  className="flex flex-col items-center justify-center cursor-pointer"
+                >
+                  <Camera className="h-12 w-12 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    点击或拖拽上传角色参考图片
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    AI会识别图片中的角色特征，保持画风一致
+                  </p>
+                </label>
+              </div>
+
+              {/* 已上传图片预览 */}
+              {referenceImages.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 mt-4">
+                  {referenceImages.map((file, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`参考图 ${index + 1}`}
+                        className="w-full h-24 object-cover rounded border"
+                      />
+                      <button
+                        onClick={() => {
+                          setReferenceImages(referenceImages.filter((_, i) => i !== index));
+                        }}
+                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <span className="sr-only">删除</span>
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 生成说明 */}
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h4 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">AI 生成说明</h4>
+              <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                <li>• 生成干净的手绘动画电影分镜线稿</li>
+                <li>• 自动识别参考图片中的角色特征</li>
+                <li>• 保持角色画风和造型一致性</li>
+                <li>• 白色背景，画面简洁清晰</li>
+                <li>• 根据剧本自动生成多个分镜场景</li>
+              </ul>
+            </div>
+
+            {/* 生成按钮 */}
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowAiStoryboardDialog(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleAiStoryboardGeneration}
+                disabled={!scriptText.trim() || referenceImages.length === 0 || isGeneratingStoryboards}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                {isGeneratingStoryboards ? "生成中..." : "开始生成分镜"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>;
