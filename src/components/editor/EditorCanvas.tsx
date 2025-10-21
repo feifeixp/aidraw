@@ -127,15 +127,15 @@ export const EditorCanvas = ({
     } else {
       console.log('[EditorCanvas] 未找到现有分镜，创建新的默认分镜:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, 当前对象数: fabricCanvas.getObjects().length });
 
-      // 创建第一个分镜frame
+      // 创建第一个分镜frame（透明背景，类似Figma的section）
       const frame = new Rect({
       left: frameLeft,
       top: frameTop,
       width: DEFAULT_FRAME_WIDTH,
       height: DEFAULT_FRAME_HEIGHT,
-      fill: "#ffffff",
-      stroke: "#d1d5db",
-      strokeWidth: 1,
+      fill: 'transparent',
+      stroke: 'transparent',
+      strokeWidth: 0,
       selectable: false,
       evented: true,
       hasControls: false,
@@ -144,6 +144,7 @@ export const EditorCanvas = ({
       lockMovementY: true,
       hoverCursor: 'pointer',
       name: 'storyboard-frame-1',
+      excludeFromExport: true, // 不参与导出和复制
     });
 
     fabricCanvas.add(frame);
@@ -169,6 +170,7 @@ export const EditorCanvas = ({
       hoverCursor: 'default',
       name: 'storyboard-border-1',
       visible: true, // 默认显示第一个分镜边框
+      excludeFromExport: true, // 不参与导出和复制
     });
     
     fabricCanvas.add(frameBorder);
@@ -182,7 +184,8 @@ export const EditorCanvas = ({
       fill: '#666666',
       selectable: false,
       evented: false,
-      name: 'storyboard-number-1'
+      name: 'storyboard-number-1',
+      excludeFromExport: true, // 不参与导出和复制
     });
     
     fabricCanvas.add(frameNumber);
