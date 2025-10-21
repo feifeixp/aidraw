@@ -149,11 +149,17 @@ const Editor = () => {
   const undo = useCallback(() => {
     if (historyIndex <= 0 || !canvas) return;
     console.log('[Editor] 执行撤销操作，当前历史索引:', historyIndex);
+    console.log('[Editor] 撤销前画布对象数量:', canvas.getObjects().length);
     dispatchHistory({
       type: 'UNDO'
     });
     const previousState = history[historyIndex - 1];
     console.log('[Editor] 恢复到历史状态，对象数量:', JSON.parse(previousState).objects?.length || 0);
+    
+    // 先清空画布，避免重复对象
+    canvas.clear();
+    console.log('[Editor] 画布已清空，当前对象数量:', canvas.getObjects().length);
+    
     canvas.loadFromJSON(JSON.parse(previousState)).then(() => {
       console.log('[Editor] loadFromJSON 完成，触发状态恢复事件');
       // 触发自定义事件，让EditorCanvas更新refs
@@ -165,11 +171,17 @@ const Editor = () => {
   const redo = useCallback(() => {
     if (historyIndex >= history.length - 1 || !canvas) return;
     console.log('[Editor] 执行重做操作，当前历史索引:', historyIndex);
+    console.log('[Editor] 重做前画布对象数量:', canvas.getObjects().length);
     const nextState = history[historyIndex + 1];
     console.log('[Editor] 恢复到历史状态，对象数量:', JSON.parse(nextState).objects?.length || 0);
     dispatchHistory({
       type: 'REDO'
     });
+    
+    // 先清空画布，避免重复对象
+    canvas.clear();
+    console.log('[Editor] 画布已清空，当前对象数量:', canvas.getObjects().length);
+    
     canvas.loadFromJSON(JSON.parse(nextState)).then(() => {
       console.log('[Editor] loadFromJSON 完成，触发状态恢复事件');
       // 触发自定义事件，让EditorCanvas更新refs
