@@ -37,6 +37,7 @@ export const EditorCanvas = ({
   const panStartRef = useRef({ x: 0, y: 0 });
   const frameRef = useRef<Rect | null>(null);
   const frameBorderRef = useRef<Rect | null>(null);
+  const isRestoringStateRef = useRef(false); // 标记是否正在恢复状态
   
   const prevZoomRef = useRef(zoom);
   
@@ -295,11 +296,17 @@ export const EditorCanvas = ({
     };
 
     const handleObjectAdded = (e: any) => {
+      // 如果正在恢复状态，跳过处理
+      if (isRestoringStateRef.current) {
+        return;
+      }
+      
       const addedObj = e.target;
       console.log('[EditorCanvas] 对象添加事件触发:', {
         type: addedObj?.type,
         name: addedObj?.name || 'unnamed',
-        当前总对象数: fabricCanvas.getObjects().length
+        当前总对象数: fabricCanvas.getObjects().length,
+        正在恢复状态: isRestoringStateRef.current
       });
       
       // Ensure frame always stays at the back when new objects are added
@@ -359,6 +366,13 @@ export const EditorCanvas = ({
     canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
     
+    // 监听状态恢复开始事件
+    const handleStateRestoring = () => {
+      console.log('[EditorCanvas] 收到状态恢复开始事件，设置标志');
+      isRestoringStateRef.current = true;
+    };
+    window.addEventListener('canvasStateRestoring', handleStateRestoring);
+    
     // 监听画布状态恢复事件，更新refs
     const handleStateRestored = () => {
       console.log('[EditorCanvas] ======== 开始处理状态恢复 ========');
@@ -381,6 +395,10 @@ export const EditorCanvas = ({
       
       frameRef.current = foundFrame;
       frameBorderRef.current = foundBorder;
+      
+      // 恢复完成，重置标志
+      isRestoringStateRef.current = false;
+      console.log('[EditorCanvas] 状态恢复标志已重置');
       
       // 验证是否有重复创建
       const objectsAfter = fabricCanvas.getObjects();
@@ -406,6 +424,7 @@ export const EditorCanvas = ({
         canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
       }
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('canvasStateRestoring', handleStateRestoring);
       window.removeEventListener('canvasStateRestored', handleStateRestored);
       fabricCanvas.dispose();
       frameRef.current = null;

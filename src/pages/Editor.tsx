@@ -150,6 +150,10 @@ const Editor = () => {
     if (historyIndex <= 0 || !canvas) return;
     console.log('[Editor] 执行撤销操作，当前历史索引:', historyIndex);
     console.log('[Editor] 撤销前画布对象数量:', canvas.getObjects().length);
+    
+    // 设置状态恢复标志，防止 handleObjectAdded 干扰
+    window.dispatchEvent(new CustomEvent('canvasStateRestoring'));
+    
     dispatchHistory({
       type: 'UNDO'
     });
@@ -172,6 +176,10 @@ const Editor = () => {
     if (historyIndex >= history.length - 1 || !canvas) return;
     console.log('[Editor] 执行重做操作，当前历史索引:', historyIndex);
     console.log('[Editor] 重做前画布对象数量:', canvas.getObjects().length);
+    
+    // 设置状态恢复标志，防止 handleObjectAdded 干扰
+    window.dispatchEvent(new CustomEvent('canvasStateRestoring'));
+    
     const nextState = history[historyIndex + 1];
     console.log('[Editor] 恢复到历史状态，对象数量:', JSON.parse(nextState).objects?.length || 0);
     dispatchHistory({
