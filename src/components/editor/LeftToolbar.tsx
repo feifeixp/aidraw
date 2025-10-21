@@ -1307,54 +1307,79 @@ export const LeftToolbar = ({
         </DialogContent>
       </Dialog>
 
-      {/* Scribble Overlay */}
+      {/* Scribble Overlay - 中间区域涂抹界面 */}
       {isScribbling && (
         <div 
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
-          style={{ pointerEvents: 'auto' }}
+          className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            // 点击背景关闭
+            if (e.target === e.currentTarget) {
+              cancelScribbleMode();
+            }
+          }}
         >
-          <div className="bg-background p-6 rounded-lg shadow-lg max-w-4xl w-full mx-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">涂抹需要提取的区域</h3>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setScribblePoints([]);
-                      if (scribbleCanvasRef.current) {
-                        const ctx = scribbleCanvasRef.current.getContext('2d');
-                        if (ctx) {
-                          ctx.clearRect(0, 0, scribbleCanvasRef.current.width, scribbleCanvasRef.current.height);
-                        }
-                      }
-                    }}
-                  >
-                    清除
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={cancelScribbleMode}
-                  >
-                    取消
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={executeSmartExtract}
-                    disabled={scribblePoints.length === 0}
-                  >
-                    确认提取
-                  </Button>
-                </div>
+          <div className="bg-background rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col border-2 border-primary/20">
+            {/* 头部 */}
+            <div className="flex items-center justify-between p-4 border-b bg-muted/50">
+              <div>
+                <h3 className="text-xl font-semibold">涂抹需要提取的区域</h3>
+                <p className="text-sm text-muted-foreground mt-1">在图片上用鼠标涂抹出想要提取的物体</p>
               </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setScribblePoints([]);
+                    if (scribbleCanvasRef.current) {
+                      const ctx = scribbleCanvasRef.current.getContext('2d');
+                      if (ctx) {
+                        ctx.clearRect(0, 0, scribbleCanvasRef.current.width, scribbleCanvasRef.current.height);
+                      }
+                    }
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  清除
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelScribbleMode}
+                >
+                  取消
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={executeSmartExtract}
+                  disabled={scribblePoints.length === 0}
+                  className="min-w-[100px]"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  确认提取
+                </Button>
+              </div>
+            </div>
+            
+            {/* 画布区域 */}
+            <div className="flex-1 overflow-auto p-6">
               <ScribbleCanvas
                 canvas={canvas}
                 scribbleCanvasRef={scribbleCanvasRef}
                 scribblePoints={scribblePoints}
                 setScribblePoints={setScribblePoints}
               />
+            </div>
+            
+            {/* 底部提示 */}
+            <div className="p-3 border-t bg-muted/30 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-4 h-4 bg-green-500 rounded-full opacity-70"></div>
+                <span>绿色轨迹表示涂抹区域</span>
+              </div>
+              <div className="text-muted-foreground">
+                已涂抹点数: <span className="font-semibold text-foreground">{scribblePoints.length}</span>
+              </div>
             </div>
           </div>
         </div>
