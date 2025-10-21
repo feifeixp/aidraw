@@ -186,28 +186,23 @@ const Editor = () => {
     // 通知EditorCanvas移除事件监听器
     window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
     
-    // 保存所有分镜框架元素（需要深拷贝以保留完整信息）
-    const frameElements = canvas.getObjects()
-      .filter((obj: any) => obj.data?.isFrameElement)
-      .map(obj => obj.toObject(['data', 'name']));
-    console.log('[Editor] 保存分镜框架元素数量:', frameElements.length);
+    // 保存所有分镜框架元素的引用（不需要深拷贝）
+    const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+    console.log('[Editor] 当前框架元素数量:', frameElements.length);
     
-    // loadFromJSON会清空画布，然后加载新内容
-    await canvas.loadFromJSON(previousState);
-    console.log('[Editor] 恢复用户内容后，画布对象数量:', canvas.getObjects().length);
+    // 只清除非框架元素
+    const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
+    nonFrameObjects.forEach(obj => canvas.remove(obj));
+    console.log('[Editor] 清除用户对象后，画布对象数量:', canvas.getObjects().length);
     
-    // 重新添加框架元素
-    if (frameElements.length > 0) {
-      const objects = await util.enlivenObjects(frameElements);
+    // 手动添加历史状态中的用户对象（不使用loadFromJSON避免清空画布）
+    if (parsedState.objects && parsedState.objects.length > 0) {
+      const objects = await util.enlivenObjects(parsedState.objects);
       objects.forEach((obj: any) => {
         canvas.add(obj);
-        // 根据对象类型设置层级
-        if (obj.data?.objectType === 'storyboard-frame') {
-          canvas.sendObjectToBack(obj);
-        }
       });
     }
-    console.log('[Editor] 重新添加框架元素后，画布对象数量:', canvas.getObjects().length);
+    console.log('[Editor] 恢复用户内容后，画布对象数量:', canvas.getObjects().length);
     
     // 通知EditorCanvas恢复事件监听器并更新refs
     window.dispatchEvent(new CustomEvent('canvasStateRestored'));
@@ -229,28 +224,23 @@ const Editor = () => {
     // 通知EditorCanvas移除事件监听器
     window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
     
-    // 保存所有分镜框架元素（需要深拷贝以保留完整信息）
-    const frameElements = canvas.getObjects()
-      .filter((obj: any) => obj.data?.isFrameElement)
-      .map(obj => obj.toObject(['data', 'name']));
-    console.log('[Editor] 保存分镜框架元素数量:', frameElements.length);
+    // 保存所有分镜框架元素的引用（不需要深拷贝）
+    const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+    console.log('[Editor] 当前框架元素数量:', frameElements.length);
     
-    // loadFromJSON会清空画布，然后加载新内容
-    await canvas.loadFromJSON(nextState);
-    console.log('[Editor] 恢复用户内容后，画布对象数量:', canvas.getObjects().length);
+    // 只清除非框架元素
+    const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
+    nonFrameObjects.forEach(obj => canvas.remove(obj));
+    console.log('[Editor] 清除用户对象后，画布对象数量:', canvas.getObjects().length);
     
-    // 重新添加框架元素
-    if (frameElements.length > 0) {
-      const objects = await util.enlivenObjects(frameElements);
+    // 手动添加历史状态中的用户对象（不使用loadFromJSON避免清空画布）
+    if (parsedState.objects && parsedState.objects.length > 0) {
+      const objects = await util.enlivenObjects(parsedState.objects);
       objects.forEach((obj: any) => {
         canvas.add(obj);
-        // 根据对象类型设置层级
-        if (obj.data?.objectType === 'storyboard-frame') {
-          canvas.sendObjectToBack(obj);
-        }
       });
     }
-    console.log('[Editor] 重新添加框架元素后，画布对象数量:', canvas.getObjects().length);
+    console.log('[Editor] 恢复用户内容后，画布对象数量:', canvas.getObjects().length);
     
     // 通知EditorCanvas恢复事件监听器并更新refs
     window.dispatchEvent(new CustomEvent('canvasStateRestored'));
@@ -328,23 +318,18 @@ const Editor = () => {
               parsedData.objects = parsedData.objects.filter((obj: any) => !obj.data?.isFrameElement);
             }
             
-            // 保存所有分镜框架元素（需要深拷贝以保留完整信息）
-            const frameElements = canvas.getObjects()
-              .filter((obj: any) => obj.data?.isFrameElement)
-              .map(obj => obj.toObject(['data', 'name']));
+            // 保存所有分镜框架元素的引用（不需要深拷贝）
+            const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
             
-            // loadFromJSON会清空画布，然后加载新内容
-            await canvas.loadFromJSON(parsedData);
+            // 只清除非框架元素
+            const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
+            nonFrameObjects.forEach(obj => canvas.remove(obj));
             
-            // 重新添加框架元素
-            if (frameElements.length > 0) {
-              const objects = await util.enlivenObjects(frameElements);
+            // 手动添加历史状态中的用户对象（不使用loadFromJSON避免清空画布）
+            if (parsedData.objects && parsedData.objects.length > 0) {
+              const objects = await util.enlivenObjects(parsedData.objects);
               objects.forEach((obj: any) => {
                 canvas.add(obj);
-                // 根据对象类型设置层级
-                if (obj.data?.objectType === 'storyboard-frame') {
-                  canvas.sendObjectToBack(obj);
-                }
               });
             }
             
