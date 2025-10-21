@@ -143,9 +143,13 @@ export const EditorCanvas = ({
       lockMovementX: true,
       lockMovementY: true,
       hoverCursor: 'pointer',
-      name: 'storyboard-frame-1',
-      data: { isFrameElement: true }, // 标记为frame元素，用于导出时过滤
+      data: { 
+        isFrameElement: true,
+        objectType: 'storyboard-frame',
+        frameId: '1'
+      },
     });
+    (frame as any).name = 'storyboard-frame-1';
 
     fabricCanvas.add(frame);
     fabricCanvas.sendObjectToBack(frame);
@@ -168,10 +172,14 @@ export const EditorCanvas = ({
       lockMovementX: true,
       lockMovementY: true,
       hoverCursor: 'default',
-      name: 'storyboard-border-1',
       visible: true, // 默认显示第一个分镜边框
-      data: { isFrameElement: true }, // 标记为frame元素
+      data: { 
+        isFrameElement: true,
+        objectType: 'storyboard-border',
+        frameId: '1'
+      },
     });
+    (frameBorder as any).name = 'storyboard-border-1';
     
     fabricCanvas.add(frameBorder);
     frameBorderRef.current = frameBorder;
@@ -184,9 +192,13 @@ export const EditorCanvas = ({
       fill: '#666666',
       selectable: false,
       evented: false,
-      name: 'storyboard-number-1',
-      data: { isFrameElement: true }, // 标记为frame元素
+      data: { 
+        isFrameElement: true,
+        objectType: 'storyboard-number',
+        frameId: '1'
+      },
     });
+    (frameNumber as any).name = 'storyboard-number-1';
     
     fabricCanvas.add(frameNumber);
     
@@ -420,19 +432,32 @@ export const EditorCanvas = ({
         name: obj.name || 'unnamed'
       })));
       
-      // 查找所有分镜相关对象
+      // 查找所有分镜相关对象（通过 data 属性识别）
       const allFrames: Rect[] = [];
       const allBorders: Rect[] = [];
       const allNumbers: any[] = [];
       
       objectsBefore.forEach((obj: any) => {
+        const objData = obj.data || {};
         const objName = obj.name || '';
-        if (objName.startsWith('storyboard-frame-')) {
+        
+        // 优先使用 data 属性识别，兼容旧的 name 识别
+        if (objData.objectType === 'storyboard-frame' || objName.startsWith('storyboard-frame-')) {
           allFrames.push(obj as Rect);
-        } else if (objName.startsWith('storyboard-border-')) {
+          // 确保 name 属性正确设置
+          if (objData.frameId && !objName) {
+            obj.name = `storyboard-frame-${objData.frameId}`;
+          }
+        } else if (objData.objectType === 'storyboard-border' || objName.startsWith('storyboard-border-')) {
           allBorders.push(obj as Rect);
-        } else if (objName.startsWith('storyboard-number-')) {
+          if (objData.frameId && !objName) {
+            obj.name = `storyboard-border-${objData.frameId}`;
+          }
+        } else if (objData.objectType === 'storyboard-number' || objName.startsWith('storyboard-number-')) {
           allNumbers.push(obj);
+          if (objData.frameId && !objName) {
+            obj.name = `storyboard-number-${objData.frameId}`;
+          }
         }
       });
       
