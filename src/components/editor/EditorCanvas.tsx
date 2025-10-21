@@ -59,7 +59,7 @@ export const EditorCanvas = ({
       return;
     }
 
-    console.log('=== Initializing Canvas ===');
+    console.log('[EditorCanvas] ======== useEffect开始运行 - 初始化画布 ========');
     console.log('Canvas element:', canvasRef.current);
     console.log('Canvas element width attr:', canvasRef.current.width);
     console.log('Canvas element height attr:', canvasRef.current.height);
@@ -107,7 +107,7 @@ export const EditorCanvas = ({
     const frameLeft = START_X;
     const frameTop = START_Y;
 
-    console.log('[EditorCanvas] 准备创建默认分镜，检查是否已存在...');
+    console.log('[EditorCanvas] 准备创建默认分镜，检查是否已存在...画布对象数量:', fabricCanvas.getObjects().length);
     
     // 检查是否已经存在这些对象（防止重复创建）
     const existingFrame = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
@@ -118,13 +118,14 @@ export const EditorCanvas = ({
       console.log('[EditorCanvas] 发现已存在的分镜对象，跳过创建:', {
         hasFrame: !!existingFrame,
         hasBorder: !!existingBorder,
-        hasNumber: !!existingNumber
+        hasNumber: !!existingNumber,
+        当前对象总数: fabricCanvas.getObjects().length
       });
       // 更新 refs 指向现有对象
       frameRef.current = existingFrame as Rect || null;
       frameBorderRef.current = existingBorder as Rect || null;
     } else {
-      console.log('[EditorCanvas] 未找到现有分镜，创建新的默认分镜:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT });
+      console.log('[EditorCanvas] 未找到现有分镜，创建新的默认分镜:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, 当前对象数: fabricCanvas.getObjects().length });
 
       // 创建第一个分镜frame
       const frame = new Rect({
@@ -293,7 +294,14 @@ export const EditorCanvas = ({
       }
     };
 
-    const handleObjectAdded = () => {
+    const handleObjectAdded = (e: any) => {
+      const addedObj = e.target;
+      console.log('[EditorCanvas] 对象添加事件触发:', {
+        type: addedObj?.type,
+        name: addedObj?.name || 'unnamed',
+        当前总对象数: fabricCanvas.getObjects().length
+      });
+      
       // Ensure frame always stays at the back when new objects are added
       if (frameRef.current) {
         fabricCanvas.sendObjectToBack(frameRef.current);
@@ -353,12 +361,16 @@ export const EditorCanvas = ({
     
     // 监听画布状态恢复事件，更新refs
     const handleStateRestored = () => {
-      console.log('[EditorCanvas] 收到画布状态恢复事件');
-      const objects = fabricCanvas.getObjects();
-      console.log('[EditorCanvas] 当前画布对象数量:', objects.length);
+      console.log('[EditorCanvas] ======== 开始处理状态恢复 ========');
+      const objectsBefore = fabricCanvas.getObjects();
+      console.log('[EditorCanvas] 状态恢复前对象数量:', objectsBefore.length);
+      console.log('[EditorCanvas] 状态恢复前所有对象:', objectsBefore.map((obj: any) => ({
+        type: obj.type,
+        name: obj.name || 'unnamed'
+      })));
       
-      const foundFrame = objects.find((obj: any) => obj.name === 'storyboard-frame-1') as Rect || null;
-      const foundBorder = objects.find((obj: any) => obj.name === 'storyboard-border-1') as Rect || null;
+      const foundFrame = objectsBefore.find((obj: any) => obj.name === 'storyboard-frame-1') as Rect || null;
+      const foundBorder = objectsBefore.find((obj: any) => obj.name === 'storyboard-border-1') as Rect || null;
       
       console.log('[EditorCanvas] 找到的对象:', {
         hasFrame: !!foundFrame,
@@ -369,6 +381,17 @@ export const EditorCanvas = ({
       
       frameRef.current = foundFrame;
       frameBorderRef.current = foundBorder;
+      
+      // 验证是否有重复创建
+      const objectsAfter = fabricCanvas.getObjects();
+      console.log('[EditorCanvas] 状态恢复后对象数量:', objectsAfter.length);
+      if (objectsAfter.length !== objectsBefore.length) {
+        console.error('[EditorCanvas] ⚠️ 警告：状态恢复后对象数量发生了变化！', {
+          before: objectsBefore.length,
+          after: objectsAfter.length
+        });
+      }
+      console.log('[EditorCanvas] ======== 状态恢复处理完成 ========');
     };
     window.addEventListener('canvasStateRestored', handleStateRestored);
     
