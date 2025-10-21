@@ -148,26 +148,34 @@ const Editor = () => {
   }, [canvas]);
   const undo = useCallback(() => {
     if (historyIndex <= 0 || !canvas) return;
+    console.log('[Editor] 执行撤销操作，当前历史索引:', historyIndex);
     dispatchHistory({
       type: 'UNDO'
     });
     const previousState = history[historyIndex - 1];
+    console.log('[Editor] 恢复到历史状态，对象数量:', JSON.parse(previousState).objects?.length || 0);
     canvas.loadFromJSON(JSON.parse(previousState)).then(() => {
+      console.log('[Editor] loadFromJSON 完成，触发状态恢复事件');
       // 触发自定义事件，让EditorCanvas更新refs
       window.dispatchEvent(new CustomEvent('canvasStateRestored'));
       canvas.renderAll();
+      console.log('[Editor] 撤销操作完成，当前画布对象数量:', canvas.getObjects().length);
     });
   }, [canvas, historyIndex, history]);
   const redo = useCallback(() => {
     if (historyIndex >= history.length - 1 || !canvas) return;
+    console.log('[Editor] 执行重做操作，当前历史索引:', historyIndex);
     const nextState = history[historyIndex + 1];
+    console.log('[Editor] 恢复到历史状态，对象数量:', JSON.parse(nextState).objects?.length || 0);
     dispatchHistory({
       type: 'REDO'
     });
     canvas.loadFromJSON(JSON.parse(nextState)).then(() => {
+      console.log('[Editor] loadFromJSON 完成，触发状态恢复事件');
       // 触发自定义事件，让EditorCanvas更新refs
       window.dispatchEvent(new CustomEvent('canvasStateRestored'));
       canvas.renderAll();
+      console.log('[Editor] 重做操作完成，当前画布对象数量:', canvas.getObjects().length);
     });
   }, [canvas, historyIndex, history]);
   const startTask = useCallback((taskName: string) => {

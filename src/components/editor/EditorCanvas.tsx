@@ -107,10 +107,27 @@ export const EditorCanvas = ({
     const frameLeft = START_X;
     const frameTop = START_Y;
 
-    console.log('Creating default storyboard frame 1:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT });
+    console.log('[EditorCanvas] 准备创建默认分镜，检查是否已存在...');
+    
+    // 检查是否已经存在这些对象（防止重复创建）
+    const existingFrame = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
+    const existingBorder = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
+    const existingNumber = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-number-1');
+    
+    if (existingFrame || existingBorder || existingNumber) {
+      console.log('[EditorCanvas] 发现已存在的分镜对象，跳过创建:', {
+        hasFrame: !!existingFrame,
+        hasBorder: !!existingBorder,
+        hasNumber: !!existingNumber
+      });
+      // 更新 refs 指向现有对象
+      frameRef.current = existingFrame as Rect || null;
+      frameBorderRef.current = existingBorder as Rect || null;
+    } else {
+      console.log('[EditorCanvas] 未找到现有分镜，创建新的默认分镜:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT });
 
-    // 创建第一个分镜frame
-    const frame = new Rect({
+      // 创建第一个分镜frame
+      const frame = new Rect({
       left: frameLeft,
       top: frameTop,
       width: DEFAULT_FRAME_WIDTH,
@@ -169,16 +186,18 @@ export const EditorCanvas = ({
     
     fabricCanvas.add(frameNumber);
     
+    console.log('[EditorCanvas] 默认分镜创建完成');
+    }
+    
     // Force immediate render
     fabricCanvas.renderAll();
     
-    console.log('Default storyboard frame 1 created');
-    console.log('Canvas objects count:', fabricCanvas.getObjects().length);
+    console.log('[EditorCanvas] 当前画布对象数量:', fabricCanvas.getObjects().length);
     
     // Force another render after a delay to ensure visibility
     setTimeout(() => {
       fabricCanvas.renderAll();
-      console.log('Forced second render complete');
+      console.log('[EditorCanvas] 强制第二次渲染完成');
     }, 100);
 
     // Add keyboard event listener for Delete key
@@ -334,9 +353,22 @@ export const EditorCanvas = ({
     
     // 监听画布状态恢复事件，更新refs
     const handleStateRestored = () => {
+      console.log('[EditorCanvas] 收到画布状态恢复事件');
       const objects = fabricCanvas.getObjects();
-      frameRef.current = objects.find((obj: any) => obj.name === 'storyboard-frame-1') as Rect || null;
-      frameBorderRef.current = objects.find((obj: any) => obj.name === 'storyboard-border-1') as Rect || null;
+      console.log('[EditorCanvas] 当前画布对象数量:', objects.length);
+      
+      const foundFrame = objects.find((obj: any) => obj.name === 'storyboard-frame-1') as Rect || null;
+      const foundBorder = objects.find((obj: any) => obj.name === 'storyboard-border-1') as Rect || null;
+      
+      console.log('[EditorCanvas] 找到的对象:', {
+        hasFrame: !!foundFrame,
+        hasBorder: !!foundBorder,
+        frameId: foundFrame ? (foundFrame as any).id : 'none',
+        borderId: foundBorder ? (foundBorder as any).id : 'none'
+      });
+      
+      frameRef.current = foundFrame;
+      frameBorderRef.current = foundBorder;
     };
     window.addEventListener('canvasStateRestored', handleStateRestored);
     
