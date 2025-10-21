@@ -331,6 +331,15 @@ export const EditorCanvas = ({
     fabricCanvas.on('mouse:down', handleMouseDown);
     canvasElement.addEventListener('dblclick', handleCanvasDoubleClick);
     window.addEventListener('keydown', handleKeyDown);
+    
+    // 监听画布状态恢复事件，更新refs
+    const handleStateRestored = () => {
+      const objects = fabricCanvas.getObjects();
+      frameRef.current = objects.find((obj: any) => obj.name === 'storyboard-frame-1') as Rect || null;
+      frameBorderRef.current = objects.find((obj: any) => obj.name === 'storyboard-border-1') as Rect || null;
+    };
+    window.addEventListener('canvasStateRestored', handleStateRestored);
+    
     setCanvas(fabricCanvas);
 
     return () => {
@@ -342,6 +351,7 @@ export const EditorCanvas = ({
         canvasElement.removeEventListener('dblclick', handleCanvasDoubleClick);
       }
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('canvasStateRestored', handleStateRestored);
       fabricCanvas.dispose();
       frameRef.current = null;
       frameBorderRef.current = null;

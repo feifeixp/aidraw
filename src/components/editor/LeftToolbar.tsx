@@ -5,6 +5,7 @@ import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as Fabri
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
+import { moveObjectToEdgeInLayer, moveObjectInLayer } from "@/lib/layerSorting";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -651,7 +652,6 @@ export const LeftToolbar = ({
       toast.error("请先选择一个对象");
       return;
     }
-    const { moveObjectToEdgeInLayer } = require("@/lib/layerSorting");
     moveObjectToEdgeInLayer(canvas, activeObject, 'top');
     saveState();
     toast.success("已置于同类型顶层");
@@ -663,7 +663,6 @@ export const LeftToolbar = ({
       toast.error("请先选择一个对象");
       return;
     }
-    const { moveObjectToEdgeInLayer } = require("@/lib/layerSorting");
     moveObjectToEdgeInLayer(canvas, activeObject, 'bottom');
     saveState();
     toast.success("已置于同类型底层");
@@ -675,7 +674,6 @@ export const LeftToolbar = ({
       toast.error("请先选择一个对象");
       return;
     }
-    const { moveObjectInLayer } = require("@/lib/layerSorting");
     moveObjectInLayer(canvas, activeObject, 'up');
     saveState();
     toast.success("已上移一层");
@@ -687,7 +685,6 @@ export const LeftToolbar = ({
       toast.error("请先选择一个对象");
       return;
     }
-    const { moveObjectInLayer } = require("@/lib/layerSorting");
     moveObjectInLayer(canvas, activeObject, 'down');
     saveState();
     toast.success("已下移一层");

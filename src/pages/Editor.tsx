@@ -153,6 +153,8 @@ const Editor = () => {
     });
     const previousState = history[historyIndex - 1];
     canvas.loadFromJSON(JSON.parse(previousState)).then(() => {
+      // 触发自定义事件，让EditorCanvas更新refs
+      window.dispatchEvent(new CustomEvent('canvasStateRestored'));
       canvas.renderAll();
     });
   }, [canvas, historyIndex, history]);
@@ -163,6 +165,8 @@ const Editor = () => {
       type: 'REDO'
     });
     canvas.loadFromJSON(JSON.parse(nextState)).then(() => {
+      // 触发自定义事件，让EditorCanvas更新refs
+      window.dispatchEvent(new CustomEvent('canvasStateRestored'));
       canvas.renderAll();
     });
   }, [canvas, historyIndex, history]);
