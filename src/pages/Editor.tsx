@@ -160,12 +160,20 @@ const Editor = () => {
     if (parsedState.objects && parsedState.objects.length > 0) {
       const objects = await util.enlivenObjects(parsedState.objects);
       // 再次过滤，确保不会添加任何框架元素
+      const frameObjects = objects.filter((obj: any) => obj.data?.isFrameElement);
       const userObjects = objects.filter((obj: any) => !obj.data?.isFrameElement);
-      console.log('[Editor] 恢复对象过滤:', {
-        原始数量: objects.length,
-        过滤后数量: userObjects.length,
-        过滤掉的数量: objects.length - userObjects.length
+      
+      console.log('[Editor] ⚠️ 恢复对象详细分析:', {
+        总对象数: objects.length,
+        框架对象数: frameObjects.length,
+        用户对象数: userObjects.length,
+        框架对象详情: frameObjects.map((o: any) => ({
+          name: o.name,
+          type: o.type,
+          objectType: o.data?.objectType
+        }))
       });
+      
       userObjects.forEach((obj: any) => {
         canvas.add(obj);
       });
@@ -205,12 +213,20 @@ const Editor = () => {
     if (parsedState.objects && parsedState.objects.length > 0) {
       const objects = await util.enlivenObjects(parsedState.objects);
       // 再次过滤，确保不会添加任何框架元素
+      const frameObjects = objects.filter((obj: any) => obj.data?.isFrameElement);
       const userObjects = objects.filter((obj: any) => !obj.data?.isFrameElement);
-      console.log('[Editor] 恢复对象过滤:', {
-        原始数量: objects.length,
-        过滤后数量: userObjects.length,
-        过滤掉的数量: objects.length - userObjects.length
+      
+      console.log('[Editor] ⚠️ 恢复对象详细分析:', {
+        总对象数: objects.length,
+        框架对象数: frameObjects.length,
+        用户对象数: userObjects.length,
+        框架对象详情: frameObjects.map((o: any) => ({
+          name: o.name,
+          type: o.type,
+          objectType: o.data?.objectType
+        }))
       });
+      
       userObjects.forEach((obj: any) => {
         canvas.add(obj);
       });
