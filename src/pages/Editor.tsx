@@ -112,46 +112,7 @@ const Editor = () => {
     }
   }, []);
 
-  // Auto-save functionality
-  useEffect(() => {
-    if (!canvas) return;
-
-    let autoSaveTimer: NodeJS.Timeout;
-    
-    const handleCanvasChange = () => {
-      // Clear existing timer
-      clearTimeout(autoSaveTimer);
-      
-      // Set new timer to save after 2 seconds of inactivity
-      autoSaveTimer = setTimeout(() => {
-        try {
-          const jsonObj = (canvas as any).toJSON(['data', 'name']);
-          // 过滤掉框架元素
-          if (jsonObj.objects) {
-            jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
-          }
-          const canvasJson = JSON.stringify(jsonObj);
-          localStorage.setItem('editor-draft', canvasJson);
-          localStorage.setItem('editor-draft-timestamp', Date.now().toString());
-          console.log("自动保存完成");
-        } catch (error) {
-          console.error("自动保存失败:", error);
-        }
-      }, 2000);
-    };
-
-    // Listen to canvas modification events
-    canvas.on('object:modified', handleCanvasChange);
-    canvas.on('object:added', handleCanvasChange);
-    canvas.on('object:removed', handleCanvasChange);
-
-    return () => {
-      clearTimeout(autoSaveTimer);
-      canvas.off('object:modified', handleCanvasChange);
-      canvas.off('object:added', handleCanvasChange);
-      canvas.off('object:removed', handleCanvasChange);
-    };
-  }, [canvas]);
+  // 移除自动保存功能 - 不再使用localStorage缓存
 
   // Save canvas state to history (exclude frame elements)
   const saveState = useCallback(() => {
@@ -293,64 +254,7 @@ const Editor = () => {
     }
   }, [canvas, history.length]);
 
-  // Load draft when returning to editor
-  useEffect(() => {
-    if (!canvas) return;
-    
-    const loadDraft = async () => {
-      const draftJson = localStorage.getItem('editor-draft');
-      const draftTimestamp = localStorage.getItem('editor-draft-timestamp');
-      
-      if (draftJson && draftTimestamp) {
-        const timestamp = parseInt(draftTimestamp);
-        const now = Date.now();
-        const hoursSinceLastSave = (now - timestamp) / (1000 * 60 * 60);
-        
-        // Only auto-load if draft is less than 24 hours old
-        if (hoursSinceLastSave < 24) {
-          try {
-            // 通知EditorCanvas移除事件监听器
-            window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
-            
-            const parsedData = JSON.parse(draftJson);
-            // 过滤掉框架元素（以防旧草稿包含框架元素）
-            if (parsedData.objects) {
-              parsedData.objects = parsedData.objects.filter((obj: any) => !obj.data?.isFrameElement);
-            }
-            
-            // 保存所有分镜框架元素的引用（不需要深拷贝）
-            const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
-            
-            // 只清除非框架元素
-            const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
-            nonFrameObjects.forEach(obj => canvas.remove(obj));
-            
-            // 手动添加历史状态中的用户对象（不使用loadFromJSON避免清空画布）
-            if (parsedData.objects && parsedData.objects.length > 0) {
-              const objects = await util.enlivenObjects(parsedData.objects);
-              objects.forEach((obj: any) => {
-                canvas.add(obj);
-              });
-            }
-            
-            canvas.renderAll();
-            
-            // 通知EditorCanvas恢复事件监听器并更新refs
-            window.dispatchEvent(new CustomEvent('canvasStateRestored'));
-            
-            saveState();
-            console.log("已加载草稿");
-          } catch (error) {
-            console.error("加载草稿失败:", error);
-          }
-        }
-      }
-    };
-
-    // Load after a short delay to ensure canvas is ready
-    const timer = setTimeout(loadDraft, 500);
-    return () => clearTimeout(timer);
-  }, [canvas, saveState]);
+  // 移除自动加载草稿功能 - 不再使用localStorage缓存
 
   // Keyboard shortcut for pan tool (H key)
   useEffect(() => {
@@ -530,45 +434,24 @@ const Editor = () => {
   const handleLoadDraft = useCallback(async (draftData: string) => {
     if (!canvas) return;
     try {
-      // 通知EditorCanvas移除事件监听器
-      window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
-      
       const parsedData = JSON.parse(draftData);
       
-      // 过滤掉框架元素（只加载用户内容）
-      if (parsedData.objects) {
-        parsedData.objects = parsedData.objects.filter((obj: any) => {
-          return !obj.data?.isFrameElement;
-        });
-      }
+      // 清空整个画布（包括分镜）
+      canvas.clear();
       
-      // 保存所有分镜框架元素
-      const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
-      
-      // 只清除非框架元素
-      const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
-      nonFrameObjects.forEach(obj => canvas.remove(obj));
-      
-      // 加载用户内容
+      // 加载草稿数据（包含所有内容，包括分镜）
       await canvas.loadFromJSON(parsedData);
-      
       canvas.renderAll();
       
-      // 通知EditorCanvas恢复事件监听器并更新refs
-      window.dispatchEvent(new CustomEvent('canvasStateRestored'));
-      
-      // 重置历史记录为这个新加载的状态（不包含框架元素）
+      // 重置历史记录（仅保存用户内容，不包含框架元素）
       const jsonObj = (canvas as any).toJSON(['data', 'name']);
       if (jsonObj.objects) {
         jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
       }
-      const newState = JSON.stringify(jsonObj);
-      dispatchHistory({
-        type: "RESET",
-        payload: newState
-      });
+      const state = JSON.stringify(jsonObj);
+      dispatchHistory({ type: 'RESET', payload: state });
       
-      toast.success("草稿已加载到画布");
+      toast.success("草稿已加载");
     } catch (error) {
       console.error("加载草稿失败:", error);
       toast.error("加载草稿失败");
