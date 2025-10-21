@@ -148,11 +148,19 @@ const Editor = () => {
     };
   }, [canvas]);
 
-  // Save canvas state to history
+  // Save canvas state to history (exclude frame elements)
   const saveState = useCallback(() => {
     if (!canvas) return;
     const jsonObj = (canvas as any).toJSON(['data', 'name']);
-    console.log('[Editor] 保存状态，示例对象:', JSON.stringify(jsonObj.objects?.[0]).substring(0, 500));
+    
+    // 过滤掉所有分镜框架元素（不参与历史记录）
+    if (jsonObj.objects) {
+      jsonObj.objects = jsonObj.objects.filter((obj: any) => {
+        return !obj.data?.isFrameElement;
+      });
+    }
+    
+    console.log('[Editor] 保存状态，用户对象数量:', jsonObj.objects?.length || 0);
     const state = JSON.stringify(jsonObj);
     dispatchHistory({
       type: "SAVE_STATE",
@@ -162,60 +170,43 @@ const Editor = () => {
   const undo = useCallback(async () => {
     if (historyIndex <= 0 || !canvas) return;
     console.log('[Editor] 执行撤销操作，当前历史索引:', historyIndex);
-    console.log('[Editor] 撤销前画布对象数量:', canvas.getObjects().length);
     
     dispatchHistory({
       type: 'UNDO'
     });
     const previousState = history[historyIndex - 1];
-    console.log('[Editor] 恢复到历史状态，对象数量:', JSON.parse(previousState).objects?.length || 0);
+    const parsedState = JSON.parse(previousState);
+    console.log('[Editor] 恢复到历史状态，用户对象数量:', parsedState.objects?.length || 0);
     
     // 通知EditorCanvas移除事件监听器
     window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
     
-    // 先清空画布
-    canvas.clear();
-    console.log('[Editor] 画布已清空，当前对象数量:', canvas.getObjects().length);
+    // 保存所有分镜框架元素
+    const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+    console.log('[Editor] 保存分镜框架元素数量:', frameElements.length);
     
-    // 等待loadFromJSON的Promise完全解决
+    // 只清除非框架元素
+    const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
+    nonFrameObjects.forEach(obj => canvas.remove(obj));
+    console.log('[Editor] 清除用户对象后，画布对象数量:', canvas.getObjects().length);
+    
+    // 恢复用户内容
     await canvas.loadFromJSON(previousState);
-    console.log('[Editor] loadFromJSON Promise完成，当前对象数量:', canvas.getObjects().length);
-    
-    // 修复对象属性（确保 name 和 data 被正确恢复）
-    const parsedState = JSON.parse(previousState);
-    let fixedCount = 0;
-    canvas.getObjects().forEach((obj: any, index: number) => {
-      const originalObj = parsedState.objects?.[index];
-      if (originalObj) {
-        // 恢复 name 属性
-        if (originalObj.name && (!obj.name || obj.name === 'unnamed')) {
-          obj.name = originalObj.name;
-          fixedCount++;
-        }
-        // 确保 data 属性完整
-        if (originalObj.data) {
-          obj.data = { ...originalObj.data };
-        }
-      }
-    });
-    console.log('[Editor] 属性修复完成，修复了', fixedCount, '个对象的 name 属性');
+    console.log('[Editor] 恢复用户内容后，画布对象数量:', canvas.getObjects().length);
     
     // 通知EditorCanvas恢复事件监听器并更新refs
     window.dispatchEvent(new CustomEvent('canvasStateRestored'));
     
-    // 多次强制渲染确保视图更新
     canvas.renderAll();
-    await new Promise(resolve => requestAnimationFrame(resolve));
-    canvas.requestRenderAll();
     console.log('[Editor] 撤销操作完成，当前画布对象数量:', canvas.getObjects().length);
   }, [canvas, historyIndex, history]);
   const redo = useCallback(async () => {
     if (historyIndex >= history.length - 1 || !canvas) return;
     console.log('[Editor] 执行重做操作，当前历史索引:', historyIndex);
-    console.log('[Editor] 重做前画布对象数量:', canvas.getObjects().length);
     
     const nextState = history[historyIndex + 1];
-    console.log('[Editor] 恢复到历史状态，对象数量:', JSON.parse(nextState).objects?.length || 0);
+    const parsedState = JSON.parse(nextState);
+    console.log('[Editor] 恢复到历史状态，用户对象数量:', parsedState.objects?.length || 0);
     dispatchHistory({
       type: 'REDO'
     });
@@ -223,40 +214,23 @@ const Editor = () => {
     // 通知EditorCanvas移除事件监听器
     window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
     
-    // 先清空画布
-    canvas.clear();
-    console.log('[Editor] 画布已清空，当前对象数量:', canvas.getObjects().length);
+    // 保存所有分镜框架元素
+    const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+    console.log('[Editor] 保存分镜框架元素数量:', frameElements.length);
     
-    // 等待loadFromJSON的Promise完全解决
+    // 只清除非框架元素
+    const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
+    nonFrameObjects.forEach(obj => canvas.remove(obj));
+    console.log('[Editor] 清除用户对象后，画布对象数量:', canvas.getObjects().length);
+    
+    // 恢复用户内容
     await canvas.loadFromJSON(nextState);
-    console.log('[Editor] loadFromJSON Promise完成，当前对象数量:', canvas.getObjects().length);
-    
-    // 修复对象属性（确保 name 和 data 被正确恢复）
-    const parsedState = JSON.parse(nextState);
-    let fixedCount = 0;
-    canvas.getObjects().forEach((obj: any, index: number) => {
-      const originalObj = parsedState.objects?.[index];
-      if (originalObj) {
-        // 恢复 name 属性
-        if (originalObj.name && (!obj.name || obj.name === 'unnamed')) {
-          obj.name = originalObj.name;
-          fixedCount++;
-        }
-        // 确保 data 属性完整
-        if (originalObj.data) {
-          obj.data = { ...originalObj.data };
-        }
-      }
-    });
-    console.log('[Editor] 属性修复完成，修复了', fixedCount, '个对象的 name 属性');
+    console.log('[Editor] 恢复用户内容后，画布对象数量:', canvas.getObjects().length);
     
     // 通知EditorCanvas恢复事件监听器并更新refs
     window.dispatchEvent(new CustomEvent('canvasStateRestored'));
     
-    // 多次强制渲染确保视图更新
     canvas.renderAll();
-    await new Promise(resolve => requestAnimationFrame(resolve));
-    canvas.requestRenderAll();
     console.log('[Editor] 重做操作完成，当前画布对象数量:', canvas.getObjects().length);
   }, [canvas, historyIndex, history]);
   const startTask = useCallback((taskName: string) => {
@@ -513,31 +487,36 @@ const Editor = () => {
       // 通知EditorCanvas移除事件监听器
       window.dispatchEvent(new CustomEvent('beforeCanvasRestore'));
       
-      await canvas.loadFromJSON(JSON.parse(draftData));
-      
-      // 修复对象属性（确保 name 和 data 被正确恢复）
       const parsedData = JSON.parse(draftData);
-      canvas.getObjects().forEach((obj: any, index: number) => {
-        const originalObj = parsedData.objects?.[index];
-        if (originalObj) {
-          // 恢复 name 属性
-          if (originalObj.name && (!obj.name || obj.name === 'unnamed')) {
-            obj.name = originalObj.name;
-          }
-          // 确保 data 属性完整
-          if (originalObj.data) {
-            obj.data = { ...originalObj.data };
-          }
-        }
-      });
+      
+      // 过滤掉框架元素（只加载用户内容）
+      if (parsedData.objects) {
+        parsedData.objects = parsedData.objects.filter((obj: any) => {
+          return !obj.data?.isFrameElement;
+        });
+      }
+      
+      // 保存所有分镜框架元素
+      const frameElements = canvas.getObjects().filter((obj: any) => obj.data?.isFrameElement);
+      
+      // 只清除非框架元素
+      const nonFrameObjects = canvas.getObjects().filter((obj: any) => !obj.data?.isFrameElement);
+      nonFrameObjects.forEach(obj => canvas.remove(obj));
+      
+      // 加载用户内容
+      await canvas.loadFromJSON(parsedData);
       
       canvas.renderAll();
       
       // 通知EditorCanvas恢复事件监听器并更新refs
       window.dispatchEvent(new CustomEvent('canvasStateRestored'));
       
-      // 重置历史记录为这个新加载的状态
-      const newState = JSON.stringify((canvas as any).toJSON(['data', 'name']));
+      // 重置历史记录为这个新加载的状态（不包含框架元素）
+      const jsonObj = (canvas as any).toJSON(['data', 'name']);
+      if (jsonObj.objects) {
+        jsonObj.objects = jsonObj.objects.filter((obj: any) => !obj.data?.isFrameElement);
+      }
+      const newState = JSON.stringify(jsonObj);
       dispatchHistory({
         type: "RESET",
         payload: newState

@@ -422,128 +422,66 @@ export const EditorCanvas = ({
     
     // 监听画布状态恢复事件，更新refs
     const handleStateRestored = () => {
-      console.log('[EditorCanvas] ======== 开始处理状态恢复 ========');
+      console.log('[EditorCanvas] 状态恢复：重新添加监听器并更新refs');
       
       // 重新添加 object:added 监听器
-      console.log('[EditorCanvas] 重新添加 object:added 监听器');
       fabricCanvas.on('object:added', handleObjectAdded);
       
-      const objectsBefore = fabricCanvas.getObjects();
-      console.log('[EditorCanvas] 状态恢复后对象数量:', objectsBefore.length);
-      console.log('[EditorCanvas] 状态恢复后所有对象:', objectsBefore.map((obj: any) => ({
-        type: obj.type,
-        name: obj.name || 'unnamed',
-        data: obj.data || {}
-      })));
-      
-      // 查找所有分镜相关对象（通过 data 属性识别）
+      // 查找所有框架元素
+      const allObjects = fabricCanvas.getObjects();
       const allFrames: Rect[] = [];
       const allBorders: Rect[] = [];
       const allNumbers: any[] = [];
       
-      objectsBefore.forEach((obj: any) => {
+      allObjects.forEach((obj: any) => {
         const objData = obj.data || {};
-        const objName = obj.name || '';
         
-        console.log('[EditorCanvas] 检查对象:', {
-          type: obj.type,
-          name: objName,
-          'data.objectType': objData.objectType,
-          'data.frameId': objData.frameId,
-          'data.objectName': objData.objectName
-        });
-        
-        // 优先使用 data.objectName，然后是 name 属性，最后是 data.objectType 组合识别
-        const effectiveName = objData.objectName || objName;
-        
-        if (objData.objectType === 'storyboard-frame' || effectiveName.startsWith('storyboard-frame-')) {
+        if (objData.objectType === 'storyboard-frame') {
           allFrames.push(obj as Rect);
-          // 确保 name 属性正确设置
-          const expectedName = `storyboard-frame-${objData.frameId}`;
-          if (!obj.name || obj.name === 'unnamed') {
-            obj.name = expectedName;
-          }
-          if (!objData.objectName) {
-            objData.objectName = expectedName;
-          }
-        } else if (objData.objectType === 'storyboard-border' || effectiveName.startsWith('storyboard-border-')) {
+          // 确保锁定状态
+          obj.set({
+            selectable: false,
+            evented: true,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true,
+            hoverCursor: 'pointer'
+          });
+          fabricCanvas.sendObjectToBack(obj);
+        } else if (objData.objectType === 'storyboard-border') {
           allBorders.push(obj as Rect);
-          const expectedName = `storyboard-border-${objData.frameId}`;
-          if (!obj.name || obj.name === 'unnamed') {
-            obj.name = expectedName;
-          }
-          if (!objData.objectName) {
-            objData.objectName = expectedName;
-          }
-        } else if (objData.objectType === 'storyboard-number' || effectiveName.startsWith('storyboard-number-')) {
+          obj.set({
+            selectable: false,
+            evented: false,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true
+          });
+          fabricCanvas.bringObjectToFront(obj);
+        } else if (objData.objectType === 'storyboard-number') {
           allNumbers.push(obj);
-          const expectedName = `storyboard-number-${objData.frameId}`;
-          if (!obj.name || obj.name === 'unnamed') {
-            obj.name = expectedName;
-          }
-          if (!objData.objectName) {
-            objData.objectName = expectedName;
-          }
+          obj.set({
+            selectable: false,
+            evented: false
+          });
+          fabricCanvas.bringObjectToFront(obj);
         }
       });
       
-      console.log('[EditorCanvas] 找到的分镜对象:', {
+      // 更新refs指向第一个分镜
+      frameRef.current = allFrames.find((obj: any) => obj.data?.frameId === '1') || null;
+      frameBorderRef.current = allBorders.find((obj: any) => obj.data?.frameId === '1') || null;
+      
+      console.log('[EditorCanvas] 找到框架元素:', {
         frames: allFrames.length,
         borders: allBorders.length,
-        numbers: allNumbers.length
+        numbers: allNumbers.length,
+        hasRef: !!frameRef.current
       });
       
-      // 恢复所有分镜frame的锁定状态和层级
-      allFrames.forEach(frame => {
-        frame.set({
-          selectable: false,
-          evented: true,
-          hasControls: false,
-          hasBorders: false,
-          lockMovementX: true,
-          lockMovementY: true,
-          hoverCursor: 'pointer'
-        });
-        fabricCanvas.sendObjectToBack(frame);
-      });
-      
-      // 恢复所有分镜border的锁定状态和层级
-      allBorders.forEach(border => {
-        border.set({
-          selectable: false,
-          evented: false,
-          hasControls: false,
-          hasBorders: false,
-          lockMovementX: true,
-          lockMovementY: true
-        });
-        fabricCanvas.bringObjectToFront(border);
-      });
-      
-      // 恢复所有分镜number的锁定状态和层级
-      allNumbers.forEach(number => {
-        number.set({
-          selectable: false,
-          evented: false
-        });
-        fabricCanvas.bringObjectToFront(number);
-      });
-      
-      // 更新refs指向第一个分镜（用于某些操作）
-      const foundFrame = allFrames.find((obj: any) => obj.name === 'storyboard-frame-1') || null;
-      const foundBorder = allBorders.find((obj: any) => obj.name === 'storyboard-border-1') || null;
-      
-      frameRef.current = foundFrame;
-      frameBorderRef.current = foundBorder;
-      
-      console.log('[EditorCanvas] Refs已更新:', {
-        hasFrame: !!frameRef.current,
-        hasBorder: !!frameBorderRef.current
-      });
-      
-      // 强制重新渲染画布
       fabricCanvas.requestRenderAll();
-      console.log('[EditorCanvas] ======== 状态恢复处理完成 ========');
     };
     window.addEventListener('canvasStateRestored', handleStateRestored);
     
