@@ -117,12 +117,39 @@ const Editor = () => {
   // Save canvas state to history (exclude frame elements)
   const saveState = useCallback(() => {
     if (!canvas) return;
+    
+    // 获取当前画布上所有对象的详细信息
+    const allObjects = canvas.getObjects();
+    console.log('[Editor] 🔍 保存前画布对象分析:', {
+      总对象数: allObjects.length,
+      对象列表: allObjects.map((obj: any, index) => ({
+        索引: index,
+        type: obj.type,
+        name: obj.name || 'unnamed',
+        hasData: !!obj.data,
+        isFrameElement: obj.data?.isFrameElement || false,
+        objectType: obj.data?.objectType || 'none'
+      }))
+    });
+    
     const jsonObj = (canvas as any).toJSON(['data', 'name']);
     
     // 过滤掉所有分镜框架元素（不参与历史记录）
     if (jsonObj.objects) {
+      const beforeFilter = jsonObj.objects.length;
       jsonObj.objects = jsonObj.objects.filter((obj: any) => {
         return !obj.data?.isFrameElement;
+      });
+      console.log('[Editor] 🔍 过滤结果:', {
+        过滤前: beforeFilter,
+        过滤后: jsonObj.objects.length,
+        被过滤掉: beforeFilter - jsonObj.objects.length,
+        保存的对象: jsonObj.objects.map((obj: any) => ({
+          type: obj.type,
+          name: obj.name || 'unnamed',
+          hasData: !!obj.data,
+          isFrameElement: obj.data?.isFrameElement || false
+        }))
       });
     }
     
