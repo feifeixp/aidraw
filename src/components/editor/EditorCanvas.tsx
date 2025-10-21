@@ -788,7 +788,7 @@ export const EditorCanvas = ({
   // Handle mouse wheel zoom
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !frameRef.current) return;
+    if (!container) return;
 
     let rafId: number | null = null;
 
@@ -853,7 +853,7 @@ export const EditorCanvas = ({
   // Handle zoom changes from slider - keep viewport center fixed
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !frameRef.current) return;
+    if (!container) return;
     
     // Skip on initial mount
     if (prevZoomRef.current === zoom) return;
