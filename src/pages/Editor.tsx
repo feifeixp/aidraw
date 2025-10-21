@@ -133,6 +133,13 @@ const Editor = () => {
         
         // 检查画布对象（而不是序列化后的对象）是否是框架元素
         if (canvasObj && !(canvasObj as any).data?.isFrameElement) {
+          // 🔍 检查序列化后的 data 属性
+          console.log('[Editor] 📦 序列化对象:', {
+            type: serializedObj.type,
+            canvasData: (canvasObj as any).data,
+            serializedData: serializedObj.data,
+            dataMatch: JSON.stringify((canvasObj as any).data) === JSON.stringify(serializedObj.data)
+          });
           filteredObjects.push(serializedObj);
         }
       });
@@ -194,6 +201,12 @@ const Editor = () => {
       });
       
       userObjects.forEach((obj: any) => {
+        console.log('[Editor] 🔄 恢复对象:', {
+          type: obj.type,
+          name: obj.name,
+          data: obj.data,
+          elementType: obj.data?.elementType
+        });
         canvas.add(obj);
       });
     }
