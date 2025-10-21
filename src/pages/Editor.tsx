@@ -134,22 +134,31 @@ const Editor = () => {
     
     const jsonObj = (canvas as any).toJSON(['data', 'name']);
     
+    // 检查序列化后的数据
+    console.log('[Editor] 🔍 toJSON 后的对象:', {
+      总数: jsonObj.objects?.length || 0,
+      前3个对象: jsonObj.objects?.slice(0, 3).map((obj: any) => ({
+        type: obj.type,
+        name: obj.name,
+        data: obj.data,
+        完整对象: obj
+      }))
+    });
+    
     // 过滤掉所有分镜框架元素（不参与历史记录）
     if (jsonObj.objects) {
       const beforeFilter = jsonObj.objects.length;
       jsonObj.objects = jsonObj.objects.filter((obj: any) => {
-        return !obj.data?.isFrameElement;
+        const shouldKeep = !obj.data?.isFrameElement;
+        if (!shouldKeep) {
+          console.log('[Editor] 🚫 过滤掉对象:', obj.name, obj.data);
+        }
+        return shouldKeep;
       });
       console.log('[Editor] 🔍 过滤结果:', {
         过滤前: beforeFilter,
         过滤后: jsonObj.objects.length,
-        被过滤掉: beforeFilter - jsonObj.objects.length,
-        保存的对象: jsonObj.objects.map((obj: any) => ({
-          type: obj.type,
-          name: obj.name || 'unnamed',
-          hasData: !!obj.data,
-          isFrameElement: obj.data?.isFrameElement || false
-        }))
+        被过滤掉: beforeFilter - jsonObj.objects.length
       });
     }
     
