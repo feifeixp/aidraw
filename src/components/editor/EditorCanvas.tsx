@@ -144,7 +144,7 @@ export const EditorCanvas = ({
       lockMovementY: true,
       hoverCursor: 'pointer',
       name: 'storyboard-frame-1',
-      excludeFromExport: true, // 不参与导出和复制
+      data: { isFrameElement: true }, // 标记为frame元素，用于导出时过滤
     });
 
     fabricCanvas.add(frame);
@@ -170,7 +170,7 @@ export const EditorCanvas = ({
       hoverCursor: 'default',
       name: 'storyboard-border-1',
       visible: true, // 默认显示第一个分镜边框
-      excludeFromExport: true, // 不参与导出和复制
+      data: { isFrameElement: true }, // 标记为frame元素
     });
     
     fabricCanvas.add(frameBorder);
@@ -185,7 +185,7 @@ export const EditorCanvas = ({
       selectable: false,
       evented: false,
       name: 'storyboard-number-1',
-      excludeFromExport: true, // 不参与导出和复制
+      data: { isFrameElement: true }, // 标记为frame元素
     });
     
     fabricCanvas.add(frameNumber);
