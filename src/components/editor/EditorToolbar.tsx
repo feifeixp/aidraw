@@ -125,7 +125,8 @@ export const EditorToolbar = ({
       data: {
         isFrameElement: true,
         objectType: 'storyboard-frame',
-        frameId: `${frameIndex + 1}`
+        frameId: `${frameIndex + 1}`,
+        objectName: `storyboard-frame-${frameIndex + 1}`
       }
     });
     (frame as any).name = `storyboard-frame-${frameIndex + 1}`;
@@ -151,7 +152,8 @@ export const EditorToolbar = ({
       data: {
         isFrameElement: true,
         objectType: 'storyboard-border',
-        frameId: `${frameIndex + 1}`
+        frameId: `${frameIndex + 1}`,
+        objectName: `storyboard-border-${frameIndex + 1}`
       }
     });
     (frameBorder as any).name = `storyboard-border-${frameIndex + 1}`;
@@ -167,7 +169,8 @@ export const EditorToolbar = ({
       data: {
         isFrameElement: true,
         objectType: 'storyboard-number',
-        frameId: `${frameIndex + 1}`
+        frameId: `${frameIndex + 1}`,
+        objectName: `storyboard-number-${frameIndex + 1}`
       }
     });
     (frameNumber as any).name = `storyboard-number-${frameIndex + 1}`;

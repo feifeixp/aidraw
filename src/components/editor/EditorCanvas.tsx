@@ -128,7 +128,7 @@ export const EditorCanvas = ({
       console.log('[EditorCanvas] 未找到现有分镜，创建新的默认分镜:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, 当前对象数: fabricCanvas.getObjects().length });
 
       // 创建第一个分镜frame（透明背景，类似Figma的section）
-      const frame = new Rect({
+    const frame = new Rect({
       left: frameLeft,
       top: frameTop,
       width: DEFAULT_FRAME_WIDTH,
@@ -146,7 +146,8 @@ export const EditorCanvas = ({
       data: { 
         isFrameElement: true,
         objectType: 'storyboard-frame',
-        frameId: '1'
+        frameId: '1',
+        objectName: 'storyboard-frame-1'
       },
     });
     (frame as any).name = 'storyboard-frame-1';
@@ -176,7 +177,8 @@ export const EditorCanvas = ({
       data: { 
         isFrameElement: true,
         objectType: 'storyboard-border',
-        frameId: '1'
+        frameId: '1',
+        objectName: 'storyboard-border-1'
       },
     });
     (frameBorder as any).name = 'storyboard-border-1';
@@ -195,7 +197,8 @@ export const EditorCanvas = ({
       data: { 
         isFrameElement: true,
         objectType: 'storyboard-number',
-        frameId: '1'
+        frameId: '1',
+        objectName: 'storyboard-number-1'
       },
     });
     (frameNumber as any).name = 'storyboard-number-1';
@@ -441,22 +444,36 @@ export const EditorCanvas = ({
         const objData = obj.data || {};
         const objName = obj.name || '';
         
-        // 优先使用 data 属性识别，兼容旧的 name 识别
-        if (objData.objectType === 'storyboard-frame' || objName.startsWith('storyboard-frame-')) {
+        // 优先使用 data.objectName，然后是 name 属性，最后是 data.objectType 组合识别
+        const effectiveName = objData.objectName || objName;
+        
+        if (objData.objectType === 'storyboard-frame' || effectiveName.startsWith('storyboard-frame-')) {
           allFrames.push(obj as Rect);
           // 确保 name 属性正确设置
-          if (objData.frameId && !objName) {
-            obj.name = `storyboard-frame-${objData.frameId}`;
+          const expectedName = `storyboard-frame-${objData.frameId}`;
+          if (!obj.name || obj.name === 'unnamed') {
+            obj.name = expectedName;
           }
-        } else if (objData.objectType === 'storyboard-border' || objName.startsWith('storyboard-border-')) {
+          if (!objData.objectName) {
+            objData.objectName = expectedName;
+          }
+        } else if (objData.objectType === 'storyboard-border' || effectiveName.startsWith('storyboard-border-')) {
           allBorders.push(obj as Rect);
-          if (objData.frameId && !objName) {
-            obj.name = `storyboard-border-${objData.frameId}`;
+          const expectedName = `storyboard-border-${objData.frameId}`;
+          if (!obj.name || obj.name === 'unnamed') {
+            obj.name = expectedName;
           }
-        } else if (objData.objectType === 'storyboard-number' || objName.startsWith('storyboard-number-')) {
+          if (!objData.objectName) {
+            objData.objectName = expectedName;
+          }
+        } else if (objData.objectType === 'storyboard-number' || effectiveName.startsWith('storyboard-number-')) {
           allNumbers.push(obj);
-          if (objData.frameId && !objName) {
-            obj.name = `storyboard-number-${objData.frameId}`;
+          const expectedName = `storyboard-number-${objData.frameId}`;
+          if (!obj.name || obj.name === 'unnamed') {
+            obj.name = expectedName;
+          }
+          if (!objData.objectName) {
+            objData.objectName = expectedName;
           }
         }
       });
