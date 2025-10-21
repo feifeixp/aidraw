@@ -118,51 +118,34 @@ const Editor = () => {
   const saveState = useCallback(() => {
     if (!canvas) return;
     
-    // 获取当前画布上所有对象的详细信息
+    // 直接从画布获取所有对象
     const allObjects = canvas.getObjects();
-    console.log('[Editor] 🔍 保存前画布对象分析:', {
-      总对象数: allObjects.length,
-      对象列表: allObjects.map((obj: any, index) => ({
-        索引: index,
-        type: obj.type,
-        name: obj.name || 'unnamed',
-        hasData: !!obj.data,
-        isFrameElement: obj.data?.isFrameElement || false,
-        objectType: obj.data?.objectType || 'none'
-      }))
-    });
     
+    // 先序列化整个画布
     const jsonObj = (canvas as any).toJSON(['data', 'name']);
     
-    // 检查序列化后的数据
-    console.log('[Editor] 🔍 toJSON 后的对象:', {
-      总数: jsonObj.objects?.length || 0,
-      前3个对象: jsonObj.objects?.slice(0, 3).map((obj: any) => ({
-        type: obj.type,
-        name: obj.name,
-        data: obj.data,
-        完整对象: obj
-      }))
-    });
-    
-    // 过滤掉所有分镜框架元素（不参与历史记录）
-    if (jsonObj.objects) {
-      const beforeFilter = jsonObj.objects.length;
-      jsonObj.objects = jsonObj.objects.filter((obj: any) => {
-        const shouldKeep = !obj.data?.isFrameElement;
-        if (!shouldKeep) {
-          console.log('[Editor] 🚫 过滤掉对象:', obj.name, obj.data);
+    // 手动过滤：通过对比画布对象和序列化对象
+    if (jsonObj.objects && jsonObj.objects.length > 0) {
+      const filteredObjects: any[] = [];
+      
+      jsonObj.objects.forEach((serializedObj: any, index: number) => {
+        const canvasObj = allObjects[index];
+        
+        // 检查画布对象（而不是序列化后的对象）是否是框架元素
+        if (canvasObj && !(canvasObj as any).data?.isFrameElement) {
+          filteredObjects.push(serializedObj);
         }
-        return shouldKeep;
       });
-      console.log('[Editor] 🔍 过滤结果:', {
-        过滤前: beforeFilter,
-        过滤后: jsonObj.objects.length,
-        被过滤掉: beforeFilter - jsonObj.objects.length
+      
+      jsonObj.objects = filteredObjects;
+      
+      console.log('[Editor] 💾 保存状态:', {
+        画布总对象: allObjects.length,
+        过滤后对象: filteredObjects.length,
+        被过滤: allObjects.length - filteredObjects.length
       });
     }
     
-    console.log('[Editor] 保存状态，用户对象数量:', jsonObj.objects?.length || 0);
     const state = JSON.stringify(jsonObj);
     dispatchHistory({
       type: "SAVE_STATE",
