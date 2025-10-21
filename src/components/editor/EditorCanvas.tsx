@@ -659,7 +659,20 @@ export const EditorCanvas = ({
   }, [canvas]);
 
   const loadImageToCanvas = async (imageUrl: string, name: string = "图片", elementType?: string) => {
-    if (!canvas || !frameRef.current) return;
+    if (!canvas) return;
+
+    // 如果frameRef为空，尝试从画布中查找
+    if (!frameRef.current) {
+      const foundFrame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
+      if (foundFrame) {
+        frameRef.current = foundFrame as Rect;
+        console.log('[EditorCanvas] loadImageToCanvas: 从画布中找到frame并更新ref');
+      } else {
+        console.error('[EditorCanvas] loadImageToCanvas: 无法找到frame对象');
+        toast.error("画布未初始化");
+        return;
+      }
+    }
 
     FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then(async img => {
       if (!img) return;
