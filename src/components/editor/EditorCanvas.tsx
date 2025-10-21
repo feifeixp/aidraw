@@ -391,6 +391,68 @@ export const EditorCanvas = ({
         borderId: foundBorder ? (foundBorder as any).id : 'none'
       });
       
+      // 恢复frame和border的锁定状态
+      if (foundFrame) {
+        foundFrame.set({
+          selectable: false,
+          evented: true,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true,
+          hoverCursor: 'pointer'
+        });
+        console.log('[EditorCanvas] 已恢复frame的锁定状态');
+      }
+      
+      if (foundBorder) {
+        foundBorder.set({
+          selectable: false,
+          evented: false,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true
+        });
+        console.log('[EditorCanvas] 已恢复border的锁定状态');
+      }
+      
+      // 恢复所有分镜frame和border的锁定状态
+      fabricCanvas.getObjects().forEach(obj => {
+        const objName = (obj as any).name || '';
+        if (objName.startsWith('storyboard-frame-') && objName !== 'storyboard-frame-1') {
+          obj.set({
+            selectable: false,
+            evented: true,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true,
+            hoverCursor: 'pointer'
+          });
+        }
+        if (objName.startsWith('storyboard-border-')) {
+          obj.set({
+            selectable: false,
+            evented: false,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true
+          });
+        }
+        if (objName.startsWith('storyboard-number-')) {
+          obj.set({
+            selectable: false,
+            evented: false,
+            hasControls: false,
+            hasBorders: false,
+            lockMovementX: true,
+            lockMovementY: true
+          });
+        }
+      });
+      
       frameRef.current = foundFrame;
       frameBorderRef.current = foundBorder;
       
@@ -403,6 +465,9 @@ export const EditorCanvas = ({
           after: objectsAfter.length
         });
       }
+      
+      // 强制重新渲染画布
+      fabricCanvas.requestRenderAll();
       console.log('[EditorCanvas] ======== 状态恢复处理完成 ========');
     };
     window.addEventListener('canvasStateRestored', handleStateRestored);

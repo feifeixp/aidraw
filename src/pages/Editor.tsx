@@ -169,8 +169,12 @@ const Editor = () => {
       console.log('[Editor] loadFromJSON 完成');
       // 通知EditorCanvas恢复事件监听器并更新refs
       window.dispatchEvent(new CustomEvent('canvasStateRestored'));
+      // 多次强制渲染确保视图更新
       canvas.renderAll();
-      console.log('[Editor] 撤销操作完成，当前画布对象数量:', canvas.getObjects().length);
+      requestAnimationFrame(() => {
+        canvas.requestRenderAll();
+        console.log('[Editor] 撤销操作完成，当前画布对象数量:', canvas.getObjects().length);
+      });
     });
   }, [canvas, historyIndex, history]);
   const redo = useCallback(() => {
@@ -196,8 +200,12 @@ const Editor = () => {
       console.log('[Editor] loadFromJSON 完成');
       // 通知EditorCanvas恢复事件监听器并更新refs
       window.dispatchEvent(new CustomEvent('canvasStateRestored'));
+      // 多次强制渲染确保视图更新
       canvas.renderAll();
-      console.log('[Editor] 重做操作完成，当前画布对象数量:', canvas.getObjects().length);
+      requestAnimationFrame(() => {
+        canvas.requestRenderAll();
+        console.log('[Editor] 重做操作完成，当前画布对象数量:', canvas.getObjects().length);
+      });
     });
   }, [canvas, historyIndex, history]);
   const startTask = useCallback((taskName: string) => {
