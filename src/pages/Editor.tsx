@@ -109,7 +109,7 @@ const Editor = () => {
   const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState(false);
   const [isPropertiesPanelCollapsed, setIsPropertiesPanelCollapsed] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
-  const [activeFrameId, setActiveFrameId] = useState<string | null>("1");
+  const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
   const [storyboardFrameCount, setStoryboardFrameCount] = useState(1);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
