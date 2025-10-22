@@ -263,62 +263,6 @@ export const EditorCanvas = ({
       // Don't process keyboard shortcuts if user is typing in an input field
       if (isInputField) return;
       
-      // F key: 定位到当前激活的分镜
-      if (e.key === 'f' || e.key === 'F') {
-        e.preventDefault();
-        
-        // 查找当前激活的分镜或第一个分镜
-        const targetFrameId = activeFrameIdRef.current || '1';
-        const targetFrame = fabricCanvas.getObjects().find(
-          obj => (obj as any).name === `storyboard-frame-${targetFrameId}`
-        );
-        
-        if (targetFrame && containerRef.current) {
-          // 使用与按钮相同的容器获取方式
-          const canvasElement = fabricCanvas.getElement();
-          const canvasContainer = canvasElement.parentElement?.parentElement; // 获取外层overflow容器
-          
-          if (!canvasContainer) return;
-          
-          const viewportWidth = canvasContainer.clientWidth;
-          const viewportHeight = canvasContainer.clientHeight;
-          
-          const frameLeft = targetFrame.left || 0;
-          const frameTop = targetFrame.top || 0;
-          const frameWidth = targetFrame.width || 1024;
-          const frameHeight = targetFrame.height || 576;
-          
-          const frameCenterX = frameLeft + frameWidth / 2;
-          const frameCenterY = frameTop + frameHeight / 2;
-          
-          // 使用当前视口变换来获取真实的zoom和pan值
-          const vpt = fabricCanvas.viewportTransform;
-          if (vpt) {
-            const currentZoom = vpt[0]; // zoom存储在变换矩阵的[0]位置
-            
-            const panX = viewportWidth / 2 - frameCenterX * currentZoom;
-            const panY = viewportHeight / 2 - frameCenterY * currentZoom;
-            
-            fabricCanvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
-            fabricCanvas.renderAll();
-            
-            console.log('[EditorCanvas] F键定位:', { 
-              targetFrameId, 
-              frameCenterX, 
-              frameCenterY, 
-              currentZoom, 
-              panX, 
-              panY,
-              viewportWidth,
-              viewportHeight,
-              containerType: 'parentElement.parentElement'
-            });
-            
-            toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);
-          }
-        }
-      }
-      
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const activeObjects = fabricCanvas.getActiveObjects();
         if (activeObjects.length > 0) {
