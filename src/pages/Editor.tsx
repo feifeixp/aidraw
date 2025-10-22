@@ -529,7 +529,7 @@ const Editor = () => {
         result.categoryMask.width,
         result.categoryMask.height,
         {
-          dilation: 0,   // 遮罩膨胀：0 = 不扩大
+          dilation: -2,  // 边缘收缩：负数向内收缩，正数向外扩张，0 = 不变
           feather: 0,    // 边缘羽化：0 = 硬边缘
           padding: 10,   // 裁剪边距：10像素（减小这个值可以让裁剪更紧凑）
           crop: true     // 启用智能裁剪

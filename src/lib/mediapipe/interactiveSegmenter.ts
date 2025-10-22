@@ -81,7 +81,7 @@ export class MediaPipeSegmenter {
     maskWidth: number,
     maskHeight: number,
     options: {
-      dilation?: number;  // 膨胀像素数，扩大选中区域
+      dilation?: number;  // 膨胀/腐蚀像素数，正数=扩大，负数=收缩
       feather?: number;   // 羽化像素数，边缘柔化
       padding?: number;   // 裁剪边距（像素），控制物体周围保留的空白
       crop?: boolean;     // 是否裁剪到物体边界框
@@ -101,10 +101,14 @@ export class MediaPipeSegmenter {
     const imageData = ctx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
     const data = imageData.data;
 
-    // First pass: Create expanded mask if dilation is enabled
-    let expandedMask: Uint8Array = categoryMask;
+    // First pass: Apply dilation (positive) or erosion (negative)
+    let processedMask: Uint8Array = categoryMask;
     if (dilation > 0) {
-      expandedMask = this.dilateMask(categoryMask, maskWidth, maskHeight, dilation);
+      // 膨胀：扩大选中区域
+      processedMask = this.dilateMask(categoryMask, maskWidth, maskHeight, dilation);
+    } else if (dilation < 0) {
+      // 腐蚀：收缩选中区域
+      processedMask = this.erodeMask(categoryMask, maskWidth, maskHeight, Math.abs(dilation));
     }
 
     // Second pass: Apply mask with optional feathering
@@ -114,7 +118,7 @@ export class MediaPipeSegmenter {
         const maskY = Math.floor((y / outputCanvas.height) * maskHeight);
         const maskIdx = maskY * maskWidth + maskX;
         
-        const maskValue = expandedMask[maskIdx];
+        const maskValue = processedMask[maskIdx];
         const idx = (y * outputCanvas.width + x) * 4;
         
         // MediaPipe mask: 0 = foreground (object), non-0 = background
@@ -124,7 +128,7 @@ export class MediaPipeSegmenter {
         } else if (feather > 0) {
           // Background with feathering: calculate edge softness
           const alpha = this.calculateFeatheredAlpha(
-            expandedMask,
+            processedMask,
             maskWidth,
             maskHeight,
             maskX,
@@ -227,6 +231,62 @@ export class MediaPipeSegmenter {
                   newMask[nidx] = 0;
                 }
               }
+            }
+          }
+        }
+      }
+      
+      currentMask = newMask;
+    }
+    
+    return currentMask;
+  }
+
+  private erodeMask(
+    mask: Uint8Array,
+    width: number,
+    height: number,
+    iterations: number
+  ): Uint8Array {
+    let currentMask = new Uint8Array(mask);
+    
+    for (let iter = 0; iter < iterations; iter++) {
+      const newMask = new Uint8Array(currentMask);
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          
+          // If current pixel is object (0), check if all neighbors are also object
+          if (currentMask[idx] === 0) {
+            let hasBackgroundNeighbor = false;
+            
+            // Check 8-connected neighbors
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                  const nidx = ny * width + nx;
+                  if (currentMask[nidx] !== 0) {
+                    hasBackgroundNeighbor = true;
+                    break;
+                  }
+                } else {
+                  // Edge of image counts as background
+                  hasBackgroundNeighbor = true;
+                  break;
+                }
+              }
+              if (hasBackgroundNeighbor) break;
+            }
+            
+            // If has any background neighbor, convert this pixel to background
+            if (hasBackgroundNeighbor) {
+              newMask[idx] = 1;
             }
           }
         }
