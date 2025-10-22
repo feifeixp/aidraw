@@ -3,7 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand, Grid3x3, HelpCircle } from "lucide-react";
 import { StoryboardFrameSettings } from "./StoryboardFrameSettings";
-import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
+import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText, Point } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -218,7 +218,26 @@ export const EditorToolbar = ({
     // 更新frame计数
     setStoryboardFrameCount(frameIndex + 1);
 
-    toast.success(`已创建分镜 ${frameIndex + 1}/${COLS * ROWS}`);
+    // 计算新分镜的中心位置
+    const frameCenterX = x + FRAME_WIDTH / 2;
+    const frameCenterY = y + FRAME_HEIGHT / 2;
+
+    // 获取画布视口尺寸
+    const viewportWidth = canvas.width || 800;
+    const viewportHeight = canvas.height || 600;
+
+    // 计算缩放比例 (zoom是百分比，需要转换为小数)
+    const zoomLevel = zoom / 100;
+
+    // 计算需要平移的距离，使分镜中心对齐到视口中心
+    const newViewportCenterX = frameCenterX - (viewportWidth / 2) / zoomLevel;
+    const newViewportCenterY = frameCenterY - (viewportHeight / 2) / zoomLevel;
+
+    // 使用 absolutePan 平移画布到新分镜
+    canvas.absolutePan(new Point(newViewportCenterX, newViewportCenterY));
+    canvas.requestRenderAll();
+
+    toast.success(`已创建分镜 ${frameIndex + 1}/${MAX_FRAMES}`);
   };
 
   // AI 多分镜生成函数
