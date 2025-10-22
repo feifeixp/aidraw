@@ -3,7 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand, Grid3x3, HelpCircle } from "lucide-react";
 import { StoryboardFrameSettings } from "./StoryboardFrameSettings";
-import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
+import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText, Point } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -217,6 +217,21 @@ export const EditorToolbar = ({
 
     // 更新frame计数
     setStoryboardFrameCount(frameIndex + 1);
+
+    // 自动移动视图到新创建的分镜中心
+    const frameCenterX = x + FRAME_WIDTH / 2;
+    const frameCenterY = y + FRAME_HEIGHT / 2;
+    const viewportCenterX = canvas.getWidth() / 2;
+    const viewportCenterY = canvas.getHeight() / 2;
+    const currentZoom = canvas.getZoom();
+    
+    // 计算需要平移的距离
+    const panX = (frameCenterX * currentZoom) - viewportCenterX;
+    const panY = (frameCenterY * currentZoom) - viewportCenterY;
+    
+    // 使用 absolutePan 移动画布
+    canvas.absolutePan(new Point(panX, panY));
+    canvas.renderAll();
 
     toast.success(`已创建分镜 ${frameIndex + 1}/${COLS * ROWS}`);
   };
