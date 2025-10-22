@@ -1,7 +1,7 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText, util } from "fabric";
 import { Menu, ChevronLeft, ChevronRight } from "lucide-react";
-import { useBeforeUnload, useBlocker } from "react-router-dom";
+import { useBeforeUnload, useLocation, useNavigate } from "react-router-dom";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
@@ -112,24 +112,12 @@ const Editor = () => {
   const [activeFrameId, setActiveFrameId] = useState<string | null>("1");
   const [storyboardFrameCount, setStoryboardFrameCount] = useState(1);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // 页面离开确认
   const [showExitDialog, setShowExitDialog] = useState(false);
-  const [blockedNavigation, setBlockedNavigation] = useState<any>(null);
-
-  // 拦截路由跳转
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      currentLocation.pathname !== nextLocation.pathname
-  );
-
-  // 处理路由拦截
-  useEffect(() => {
-    if (blocker.state === "blocked") {
-      setBlockedNavigation(blocker);
-      setShowExitDialog(true);
-    }
-  }, [blocker]);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   // 拦截浏览器关闭/刷新
   useBeforeUnload(
@@ -138,6 +126,24 @@ const Editor = () => {
       return (event.returnValue = "您确定要离开吗？未保存的更改将丢失。");
     }, [])
   );
+
+  // 拦截浏览器后退/前进按钮
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      event.preventDefault();
+      window.history.pushState(null, "", location.pathname);
+      setShowExitDialog(true);
+      setPendingNavigation("back");
+    };
+
+    // 添加一个历史记录条目以便拦截后退
+    window.history.pushState(null, "", location.pathname);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [location.pathname]);
 
   // Check if tutorial should be shown
   useEffect(() => {
@@ -610,20 +616,19 @@ const Editor = () => {
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => {
-                if (blockedNavigation) {
-                  blockedNavigation.reset();
-                  setBlockedNavigation(null);
-                }
+                setPendingNavigation(null);
               }}
             >
               取消
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (blockedNavigation) {
-                  blockedNavigation.proceed();
-                  setBlockedNavigation(null);
+                if (pendingNavigation === "back") {
+                  window.history.back();
+                } else if (pendingNavigation) {
+                  navigate(pendingNavigation);
                 }
+                setPendingNavigation(null);
               }}
             >
               确认离开
