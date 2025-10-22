@@ -32,6 +32,9 @@ interface EditorToolbarProps {
   onActiveFrameChange: (frameId: string | null) => void;
   storyboardFrameCount: number;
   setStoryboardFrameCount: (count: number) => void;
+  defaultStyle?: string;
+  defaultFrameWidth?: number;
+  defaultFrameHeight?: number;
 }
 export const EditorToolbar = ({
   canvas,
@@ -51,7 +54,10 @@ export const EditorToolbar = ({
   activeFrameId,
   onActiveFrameChange,
   storyboardFrameCount,
-  setStoryboardFrameCount
+  setStoryboardFrameCount,
+  defaultStyle = "auto",
+  defaultFrameWidth = 1024,
+  defaultFrameHeight = 768
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"compose" | "render">("compose");
@@ -60,12 +66,12 @@ export const EditorToolbar = ({
   const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
   const [showStoryboardSettings, setShowStoryboardSettings] = useState(false);
-  const [frameSize, setFrameSize] = useState({ width: 1024, height: 768 });
+  const [frameSize, setFrameSize] = useState({ width: defaultFrameWidth, height: defaultFrameHeight });
   const [showAiStoryboardDialog, setShowAiStoryboardDialog] = useState(false);
   const [scriptText, setScriptText] = useState("");
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
   const [isGeneratingStoryboards, setIsGeneratingStoryboards] = useState(false);
-  const [storyboardStyle, setStoryboardStyle] = useState("auto");
+  const [storyboardStyle, setStoryboardStyle] = useState(defaultStyle);
   const [customStyle, setCustomStyle] = useState("");
   const handleUndo = () => {
     undo();

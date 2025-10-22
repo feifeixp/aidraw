@@ -28,8 +28,8 @@ export const StoryboardFrameSettings = ({
       toast.error("分镜尺寸不能小于50px");
       return;
     }
-    if (frameWidth > 2048 || frameHeight > 2048) {
-      toast.error("分镜尺寸不能大于2048px");
+    if (frameWidth > 4096 || frameHeight > 4096) {
+      toast.error("分镜尺寸不能大于4096px");
       return;
     }
     onApplyFrameSize(frameWidth, frameHeight);
@@ -112,7 +112,7 @@ export const StoryboardFrameSettings = ({
                 value={frameWidth}
                 onChange={(e) => setFrameWidth(Number(e.target.value))}
                 min={50}
-                max={2048}
+                max={4096}
               />
             </div>
             <div className="space-y-2">
@@ -123,7 +123,7 @@ export const StoryboardFrameSettings = ({
                 value={frameHeight}
                 onChange={(e) => setFrameHeight(Number(e.target.value))}
                 min={50}
-                max={2048}
+                max={4096}
               />
             </div>
           </div>

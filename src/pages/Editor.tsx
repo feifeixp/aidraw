@@ -9,6 +9,7 @@ import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { TaskQueueDisplay } from "@/components/editor/TaskQueueDisplay";
 import { DraftsList } from "@/components/editor/DraftsList";
 import { Tutorial } from "@/components/editor/Tutorial";
+import { EditorInitialSetup } from "@/components/editor/EditorInitialSetup";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -119,6 +120,16 @@ const Editor = () => {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
+  // 初始化设置
+  const [showInitialSetup, setShowInitialSetup] = useState(() => {
+    // 检查 localStorage 是否已经完成过初始化
+    const hasCompletedSetup = localStorage.getItem('editorSetupCompleted');
+    return !hasCompletedSetup;
+  });
+  const [defaultStyle, setDefaultStyle] = useState("auto");
+  const [frameWidth, setFrameWidth] = useState(1024);
+  const [frameHeight, setFrameHeight] = useState(576);
+
   // 保存画布为JSON文件
   const handleSaveToLocal = useCallback(() => {
     if (!canvas) return;
@@ -149,6 +160,20 @@ const Editor = () => {
       setPendingNavigation(null);
     }, 300);
   }, [handleSaveToLocal, pendingNavigation, navigate]);
+
+  // 处理初始化设置完成
+  const handleInitialSetupComplete = useCallback((settings: {
+    style: string;
+    width: number;
+    height: number;
+  }) => {
+    setDefaultStyle(settings.style);
+    setFrameWidth(settings.width);
+    setFrameHeight(settings.height);
+    setShowInitialSetup(false);
+    localStorage.setItem('editorSetupCompleted', 'true');
+    toast.success(`初始化完成：${settings.style === 'auto' ? '自动风格' : ''}，分镜尺寸 ${settings.width}×${settings.height}`);
+  }, []);
 
   // 拦截浏览器关闭/刷新
   useBeforeUnload(
@@ -647,6 +672,12 @@ const Editor = () => {
     </div>
   );
   return <div className="h-screen w-full bg-background flex flex-col">
+      {showInitialSetup && (
+        <EditorInitialSetup
+          open={showInitialSetup}
+          onComplete={handleInitialSetupComplete}
+        />
+      )}
       {showTutorial && <Tutorial onComplete={() => setShowTutorial(false)} />}
       <TaskQueueDisplay currentTask={currentTask} />
       
@@ -730,6 +761,9 @@ const Editor = () => {
             onActiveFrameChange={setActiveFrameId}
             storyboardFrameCount={storyboardFrameCount}
             setStoryboardFrameCount={setStoryboardFrameCount}
+            defaultStyle={defaultStyle}
+            defaultFrameWidth={frameWidth}
+            defaultFrameHeight={frameHeight}
           />
         </div>
       </div>
