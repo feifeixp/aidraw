@@ -22,28 +22,70 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   useEffect(() => {
-    if (!open || !canvasRef.current || !imageObject) return;
+    if (!open || !canvasRef.current || !imageObject) {
+      console.log('ImagePixelEraser: Missing requirements', { open, hasCanvas: !!canvasRef.current, hasImage: !!imageObject });
+      return;
+    }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('ImagePixelEraser: Could not get canvas context');
+      return;
+    }
 
     ctxRef.current = ctx;
 
-    // 获取图片元素
-    const imgElement = imageObject.getElement() as HTMLImageElement;
-    
-    // 设置画布尺寸匹配图片
-    canvas.width = imgElement.naturalWidth || imgElement.width;
-    canvas.height = imgElement.naturalHeight || imgElement.height;
+    try {
+      // 获取图片元素 - Fabric.js v6 可能返回 canvas 或 img
+      const imgElement = imageObject.getElement();
+      console.log('ImagePixelEraser: Image element type:', imgElement?.constructor.name, imgElement);
+      
+      if (!imgElement) {
+        console.error('ImagePixelEraser: No image element found');
+        return;
+      }
 
-    // 绘制图片到画布
-    ctx.drawImage(imgElement, 0, 0);
+      // 判断元素类型并获取正确的尺寸和图像数据
+      let width: number;
+      let height: number;
+      
+      if (imgElement instanceof HTMLImageElement) {
+        width = imgElement.naturalWidth || imgElement.width;
+        height = imgElement.naturalHeight || imgElement.height;
+        console.log('ImagePixelEraser: HTMLImageElement dimensions:', width, height);
+      } else if (imgElement instanceof HTMLCanvasElement) {
+        width = imgElement.width;
+        height = imgElement.height;
+        console.log('ImagePixelEraser: HTMLCanvasElement dimensions:', width, height);
+      } else {
+        // 使用 Fabric 对象的尺寸
+        width = Math.round(imageObject.width || 0);
+        height = Math.round(imageObject.height || 0);
+        console.log('ImagePixelEraser: Using Fabric dimensions:', width, height);
+      }
 
-    // 保存初始状态到历史
-    const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    setHistory([initialState]);
-    setHistoryIndex(0);
+      if (!width || !height) {
+        console.error('ImagePixelEraser: Invalid dimensions', width, height);
+        return;
+      }
+
+      // 设置画布尺寸
+      canvas.width = width;
+      canvas.height = height;
+
+      // 绘制图片到画布
+      ctx.drawImage(imgElement as CanvasImageSource, 0, 0, width, height);
+      console.log('ImagePixelEraser: Image drawn successfully');
+
+      // 保存初始状态到历史
+      const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setHistory([initialState]);
+      setHistoryIndex(0);
+      console.log('ImagePixelEraser: History initialized');
+    } catch (error) {
+      console.error('ImagePixelEraser: Error loading image:', error);
+    }
   }, [open, imageObject]);
 
   const saveToHistory = () => {
