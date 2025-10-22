@@ -175,7 +175,7 @@ export const EditorCanvas = ({
       lockMovementX: true,
       lockMovementY: true,
       hoverCursor: 'default',
-      visible: true, // 默认显示第一个分镜边框
+      visible: false, // 初始不显示边框
       name: 'storyboard-border-1',
       data: { 
         isFrameElement: true,
