@@ -228,22 +228,22 @@ export const EditorCanvas = ({
         const viewportWidth = containerRef.current.clientWidth;
         const viewportHeight = containerRef.current.clientHeight;
         
-        // 计算分镜中心位置
+        // 计算分镜中心位置（使用实际的画布坐标）
         const frameCenterX = frameLeft + DEFAULT_FRAME_WIDTH / 2;
         const frameCenterY = frameTop + DEFAULT_FRAME_HEIGHT / 2;
         
         // 计算当前缩放比例（zoom 是百分比，需要转换为小数）
         const currentZoom = zoom / 100;
         
-        // 计算需要的平移量，使分镜中心出现在视口中心
-        const panX = viewportWidth / 2 - frameCenterX * currentZoom;
-        const panY = viewportHeight / 2 - frameCenterY * currentZoom;
+        // 计算需要的滚动位置，使分镜中心出现在视口中心
+        // 注意：这里不使用 setViewportTransform，而是使用 scroll 来定位
+        const targetScrollLeft = frameCenterX * currentZoom - viewportWidth / 2;
+        const targetScrollTop = frameCenterY * currentZoom - viewportHeight / 2;
         
-        // 设置新的视口变换
-        fabricCanvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
-        fabricCanvas.renderAll();
+        containerRef.current.scrollLeft = targetScrollLeft;
+        containerRef.current.scrollTop = targetScrollTop;
         
-        console.log('[EditorCanvas] 视口移动完成', { frameCenterX, frameCenterY, panX, panY, currentZoom, viewportWidth, viewportHeight });
+        console.log('[EditorCanvas] 视口移动完成', { frameCenterX, frameCenterY, targetScrollLeft, targetScrollTop, currentZoom });
         
         // 如果有回调，通知父组件完成
         if (shouldCenterOnFrame && onCenterComplete) {
