@@ -92,23 +92,17 @@ export const EditorCanvas = ({
       console.log('Canvas dimensions after reset:', canvasRef.current.width, canvasRef.current.height);
     }
 
-    // 创建默认第一个分镜（使用统一的网格布局规则）
-    const COLS = 4; // 4列
+    // 创建默认第一个分镜（使用纵向单列布局）
     const MAX_FRAMES = 12; // 最大分镜数量
-    const ROWS = Math.ceil(MAX_FRAMES / COLS); // 3行
     const DEFAULT_FRAME_WIDTH = defaultFrameWidth;
     const DEFAULT_FRAME_HEIGHT = defaultFrameHeight;
     const SPACING = 50; // 间距
     
-    // 计算整个网格的尺寸
-    const totalWidth = COLS * DEFAULT_FRAME_WIDTH + (COLS - 1) * SPACING;
-    const totalHeight = ROWS * DEFAULT_FRAME_HEIGHT + (ROWS - 1) * SPACING;
+    // 计算起始位置（水平居中，垂直从顶部开始）
+    const START_X = (INFINITE_CANVAS_SIZE - DEFAULT_FRAME_WIDTH) / 2;
+    const START_Y = 100; // 从顶部开始，留出一些空间
     
-    // 计算起始位置（居中）
-    const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
-    const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
-    
-    // 第一个分镜在网格的(0,0)位置
+    // 第一个分镜的位置
     const frameLeft = START_X;
     const frameTop = START_Y;
 

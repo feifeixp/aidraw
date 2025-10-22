@@ -3,7 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand, Grid3x3, HelpCircle } from "lucide-react";
 import { StoryboardFrameSettings } from "./StoryboardFrameSettings";
-import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText, Point } from "fabric";
+import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -89,8 +89,7 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 分镜布局配置
-    const COLS = 4; // 4列
+    // 分镜布局配置 - 纵向单列排列
     const MAX_FRAMES = 12; // 最大分镜数量
     const INFINITE_CANVAS_SIZE = 10000;
     
@@ -99,19 +98,12 @@ export const EditorToolbar = ({
     const FRAME_HEIGHT = frameSize.height;
     const SPACING = 50; // 间距
     
-    // 计算整个网格的尺寸（基于最大分镜数量）
-    const ROWS = Math.ceil(MAX_FRAMES / COLS); // 计算需要的行数
-    const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
-    const totalHeight = ROWS * FRAME_HEIGHT + (ROWS - 1) * SPACING;
-    
-    // 计算起始位置（居中）
-    const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
-    const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
+    // 计算起始位置（水平居中，垂直从顶部开始）
+    const START_X = (INFINITE_CANVAS_SIZE - FRAME_WIDTH) / 2;
+    const START_Y = 100; // 从顶部开始，留出一些空间
 
-    // 计算当前frame在网格中的位置
+    // 计算当前frame的索引
     const frameIndex = storyboardFrameCount;
-    const col = frameIndex % COLS;
-    const row = Math.floor(frameIndex / COLS);
 
     // 检查是否超过最大frame数量
     if (frameIndex >= MAX_FRAMES) {
@@ -119,9 +111,9 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 计算frame位置
-    const x = START_X + col * (FRAME_WIDTH + SPACING);
-    const y = START_Y + row * (FRAME_HEIGHT + SPACING);
+    // 计算frame位置 - 纵向排列
+    const x = START_X;
+    const y = START_Y + frameIndex * (FRAME_HEIGHT + SPACING);
 
     // 创建frame矩形（类似workframe，不可选择，放在底层）
     const frame = new FabricRect({
@@ -218,22 +210,7 @@ export const EditorToolbar = ({
     // 更新frame计数
     setStoryboardFrameCount(frameIndex + 1);
 
-    // 自动移动视图到新创建的分镜中心
-    const frameCenterX = x + FRAME_WIDTH / 2;
-    const frameCenterY = y + FRAME_HEIGHT / 2;
-    const viewportCenterX = canvas.getWidth() / 2;
-    const viewportCenterY = canvas.getHeight() / 2;
-    const currentZoom = canvas.getZoom();
-    
-    // 计算需要平移的距离
-    const panX = (frameCenterX * currentZoom) - viewportCenterX;
-    const panY = (frameCenterY * currentZoom) - viewportCenterY;
-    
-    // 使用 absolutePan 移动画布
-    canvas.absolutePan(new Point(panX, panY));
-    canvas.renderAll();
-
-    toast.success(`已创建分镜 ${frameIndex + 1}/${COLS * ROWS}`);
+    toast.success(`已创建分镜 ${frameIndex + 1}/${MAX_FRAMES}`);
   };
 
   // AI 多分镜生成函数
