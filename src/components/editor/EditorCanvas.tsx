@@ -19,6 +19,7 @@ interface EditorCanvasProps {
   defaultFrameHeight?: number;
   shouldCenterOnFrame?: boolean;
   onCenterComplete?: () => void;
+  storyboardFrameCount?: number;
 }
 
 export const EditorCanvas = ({
@@ -34,7 +35,8 @@ export const EditorCanvas = ({
   defaultFrameWidth = 1024,
   defaultFrameHeight = 576,
   shouldCenterOnFrame = false,
-  onCenterComplete
+  onCenterComplete,
+  storyboardFrameCount = 0
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -111,103 +113,109 @@ export const EditorCanvas = ({
     const frameTop = START_Y;
 
     console.log('[EditorCanvas] 准备创建默认分镜，检查是否已存在...画布对象数量:', fabricCanvas.getObjects().length);
+    console.log('[EditorCanvas] storyboardFrameCount:', storyboardFrameCount);
     
-    // 检查是否已经存在这些对象（防止重复创建）
-    const existingFrame = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
-    const existingBorder = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
-    const existingNumber = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-number-1');
-    
-    if (existingFrame || existingBorder || existingNumber) {
-      console.log('[EditorCanvas] 发现已存在的分镜对象，跳过创建:', {
-        hasFrame: !!existingFrame,
-        hasBorder: !!existingBorder,
-        hasNumber: !!existingNumber,
-        当前对象总数: fabricCanvas.getObjects().length
-      });
-      // 更新 refs 指向现有对象
-      frameRef.current = existingFrame as Rect || null;
-      frameBorderRef.current = existingBorder as Rect || null;
+    // 只在 storyboardFrameCount >= 1 时才创建第一个分镜
+    if (storyboardFrameCount >= 1) {
+      // 检查是否已经存在这些对象（防止重复创建）
+      const existingFrame = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
+      const existingBorder = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
+      const existingNumber = fabricCanvas.getObjects().find((obj: any) => obj.name === 'storyboard-number-1');
+      
+      if (existingFrame || existingBorder || existingNumber) {
+        console.log('[EditorCanvas] 发现已存在的分镜对象，跳过创建:', {
+          hasFrame: !!existingFrame,
+          hasBorder: !!existingBorder,
+          hasNumber: !!existingNumber,
+          当前对象总数: fabricCanvas.getObjects().length
+        });
+        // 更新 refs 指向现有对象
+        frameRef.current = existingFrame as Rect || null;
+        frameBorderRef.current = existingBorder as Rect || null;
+      } else {
+        console.log('[EditorCanvas] 未找到现有分镜，创建新的默认分镜:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, 当前对象数: fabricCanvas.getObjects().length });
+
+        // 创建第一个分镜frame（白色背景）
+        const frame = new Rect({
+          left: frameLeft,
+          top: frameTop,
+          width: DEFAULT_FRAME_WIDTH,
+          height: DEFAULT_FRAME_HEIGHT,
+          fill: 'white',
+          stroke: '#d1d5db',
+          strokeWidth: 1,
+          selectable: false,
+          evented: false,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true,
+          hoverCursor: 'default',
+          name: 'storyboard-frame-1',
+          data: { 
+            isFrameElement: true,
+            objectType: 'storyboard-frame',
+            frameId: '1',
+            objectName: 'storyboard-frame-1'
+          },
+        });
+
+        fabricCanvas.add(frame);
+        frameRef.current = frame;
+        
+        // 创建第一个分镜的边界线
+        const frameBorder = new Rect({
+          left: frameLeft,
+          top: frameTop,
+          width: DEFAULT_FRAME_WIDTH,
+          height: DEFAULT_FRAME_HEIGHT,
+          fill: 'transparent',
+          stroke: '#3b82f6',
+          strokeWidth: 2,
+          strokeDashArray: [5, 5],
+          selectable: false,
+          evented: false,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true,
+          hoverCursor: 'default',
+          visible: false, // 初始不显示边框
+          name: 'storyboard-border-1',
+          data: { 
+            isFrameElement: true,
+            objectType: 'storyboard-border',
+            frameId: '1',
+            objectName: 'storyboard-border-1'
+          },
+        });
+        
+        fabricCanvas.add(frameBorder);
+        frameBorderRef.current = frameBorder;
+        
+        // 创建第一个分镜的编号（显示在分镜外左上方，与分镜左边对齐）
+        const frameNumber = new FabricText('Shot-01', {
+          left: frameLeft,
+          top: frameTop - 20,
+          fontSize: 14,
+          fill: '#666666',
+          selectable: false,
+          evented: false,
+          name: 'storyboard-number-1',
+          data: { 
+            isFrameElement: true,
+            objectType: 'storyboard-number',
+            frameId: '1',
+            objectName: 'storyboard-number-1'
+          },
+        });
+        
+        fabricCanvas.add(frameNumber);
+        
+        console.log('[EditorCanvas] 默认分镜创建完成');
+      }
     } else {
-      console.log('[EditorCanvas] 未找到现有分镜，创建新的默认分镜:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, 当前对象数: fabricCanvas.getObjects().length });
-
-      // 创建第一个分镜frame（白色背景）
-    const frame = new Rect({
-      left: frameLeft,
-      top: frameTop,
-      width: DEFAULT_FRAME_WIDTH,
-      height: DEFAULT_FRAME_HEIGHT,
-      fill: 'white',
-      stroke: '#d1d5db',
-      strokeWidth: 1,
-      selectable: false,
-      evented: false,
-      hasControls: false,
-      hasBorders: false,
-      lockMovementX: true,
-      lockMovementY: true,
-      hoverCursor: 'default',
-      name: 'storyboard-frame-1',
-      data: { 
-        isFrameElement: true,
-        objectType: 'storyboard-frame',
-        frameId: '1',
-        objectName: 'storyboard-frame-1'
-      },
-    });
-
-    fabricCanvas.add(frame);
-    frameRef.current = frame;
-    
-    // 创建第一个分镜的边界线
-    const frameBorder = new Rect({
-      left: frameLeft,
-      top: frameTop,
-      width: DEFAULT_FRAME_WIDTH,
-      height: DEFAULT_FRAME_HEIGHT,
-      fill: 'transparent',
-      stroke: '#3b82f6',
-      strokeWidth: 2,
-      strokeDashArray: [5, 5],
-      selectable: false,
-      evented: false,
-      hasControls: false,
-      hasBorders: false,
-      lockMovementX: true,
-      lockMovementY: true,
-      hoverCursor: 'default',
-      visible: false, // 初始不显示边框
-      name: 'storyboard-border-1',
-      data: { 
-        isFrameElement: true,
-        objectType: 'storyboard-border',
-        frameId: '1',
-        objectName: 'storyboard-border-1'
-      },
-    });
-    
-    fabricCanvas.add(frameBorder);
-    frameBorderRef.current = frameBorder;
-    
-    // 创建第一个分镜的编号（显示在分镜外左上方，与分镜左边对齐）
-    const frameNumber = new FabricText('Shot-01', {
-      left: frameLeft,
-      top: frameTop - 20,
-      fontSize: 14,
-      fill: '#666666',
-      selectable: false,
-      evented: false,
-      name: 'storyboard-number-1',
-      data: { 
-        isFrameElement: true,
-        objectType: 'storyboard-number',
-        frameId: '1',
-        objectName: 'storyboard-number-1'
-      },
-    });
-    
-    fabricCanvas.add(frameNumber);
-    
-    console.log('[EditorCanvas] 默认分镜创建完成');
+      console.log('[EditorCanvas] storyboardFrameCount < 1，跳过创建第一个分镜');
     }
     
     // Force immediate render
@@ -220,8 +228,8 @@ export const EditorCanvas = ({
       fabricCanvas.renderAll();
       console.log('[EditorCanvas] 强制第二次渲染完成');
       
-      // 始终将视口移动到第一个分镜中心（无论是否设置了shouldCenterOnFrame）
-      if (containerRef.current) {
+      // 只有当创建了第一个分镜时才移动视口
+      if (containerRef.current && storyboardFrameCount >= 1) {
         console.log('[EditorCanvas] 开始移动视口到分镜中心');
         
         // 获取视口尺寸
@@ -535,7 +543,7 @@ export const EditorCanvas = ({
       frameRef.current = null;
       frameBorderRef.current = null;
     };
-  }, [setCanvas]); // Only run once on mount
+  }, [setCanvas, storyboardFrameCount, defaultFrameWidth, defaultFrameHeight]); // 依赖于分镜数量和尺寸
 
   useEffect(() => {
     if (!canvas) return;

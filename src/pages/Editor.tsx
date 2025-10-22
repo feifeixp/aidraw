@@ -804,6 +804,7 @@ const Editor = () => {
           defaultFrameHeight={frameHeight}
           shouldCenterOnFrame={shouldCenterOnFrame}
           onCenterComplete={() => setShouldCenterOnFrame(false)}
+          storyboardFrameCount={storyboardFrameCount}
         />
         {!isMobile && (
           <div className={`absolute left-4 top-4 ${isLeftToolbarCollapsed ? 'w-16' : 'w-48'} h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden transition-all duration-300 left-toolbar`}>
