@@ -1,6 +1,7 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText, util } from "fabric";
 import { Menu, ChevronLeft, ChevronRight } from "lucide-react";
+import { useBeforeUnload, useBlocker } from "react-router-dom";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
@@ -12,6 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 interface Task {
   id: string;
   name: string;
@@ -101,6 +112,32 @@ const Editor = () => {
   const [activeFrameId, setActiveFrameId] = useState<string | null>("1");
   const [storyboardFrameCount, setStoryboardFrameCount] = useState(1);
   const isMobile = useIsMobile();
+
+  // 页面离开确认
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [blockedNavigation, setBlockedNavigation] = useState<any>(null);
+
+  // 拦截路由跳转
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  // 处理路由拦截
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      setBlockedNavigation(blocker);
+      setShowExitDialog(true);
+    }
+  }, [blocker]);
+
+  // 拦截浏览器关闭/刷新
+  useBeforeUnload(
+    useCallback((event) => {
+      event.preventDefault();
+      return (event.returnValue = "您确定要离开吗？未保存的更改将丢失。");
+    }, [])
+  );
 
   // Check if tutorial should be shown
   useEffect(() => {
@@ -560,6 +597,40 @@ const Editor = () => {
   return <div className="h-screen w-full bg-background flex flex-col">
       {showTutorial && <Tutorial onComplete={() => setShowTutorial(false)} />}
       <TaskQueueDisplay currentTask={currentTask} />
+      
+      {/* 离开确认对话框 */}
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认离开？</AlertDialogTitle>
+            <AlertDialogDescription>
+              您确定要离开编辑器吗？请确保已保存您的工作到草稿。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                if (blockedNavigation) {
+                  blockedNavigation.reset();
+                  setBlockedNavigation(null);
+                }
+              }}
+            >
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (blockedNavigation) {
+                  blockedNavigation.proceed();
+                  setBlockedNavigation(null);
+                }
+              }}
+            >
+              确认离开
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="border-b border-border p-2 flex items-center gap-2 my-[20px] overflow-x-auto editor-toolbar">
         {isMobile && <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
