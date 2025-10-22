@@ -188,6 +188,7 @@ const Editor = () => {
     setFrameHeight(settings.height);
     setShowInitialSetup(false);
     setShouldCenterOnFrame(true); // 标记需要移动到分镜中心
+    setStoryboardFrameCount(1); // EditorCanvas会自动创建第一个分镜，所以设置为1
     toast.success(`初始化完成：${settings.style === 'auto' ? '自动风格' : ''}，分镜尺寸 ${settings.width}×${settings.height}`);
   }, []);
 
