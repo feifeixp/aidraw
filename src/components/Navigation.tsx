@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Sparkles, Settings, Pencil, ChevronDown, Home, ExternalLink, LogOut, User } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -6,8 +6,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [hasHovered, setHasHovered] = useState(false);
+
+  // 处理编辑器页面的导航拦截
+  const handleNavClick = (e: React.MouseEvent, path: string) => {
+    if (location.pathname === "/editor" && path !== "/editor") {
+      e.preventDefault();
+      // 触发自定义事件通知Editor组件
+      const event = new CustomEvent("editor:navigation-blocked", { detail: { path } });
+      window.dispatchEvent(event);
+    }
+  };
 
   // Ensure navigation starts hidden and only shows on hover
   useEffect(() => {
@@ -89,7 +100,11 @@ const Navigation = () => {
             to,
             label,
             icon: Icon
-          }) => <Link key={to} to={to} className={cn("flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0", location.pathname === to ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground")}>
+          }) => <Link 
+                key={to} 
+                to={to} 
+                onClick={(e) => handleNavClick(e, to)}
+                className={cn("flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0", location.pathname === to ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground")}>
                 <Icon className="h-4 w-4 shrink-0" />
                 {label}
               </Link>)}

@@ -119,6 +119,37 @@ const Editor = () => {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
+  // 保存画布为JSON文件
+  const handleSaveToLocal = useCallback(() => {
+    if (!canvas) return;
+    
+    const json = canvas.toJSON();
+    const dataStr = JSON.stringify(json, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `storyboard-${new Date().getTime()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("画布已保存到本地");
+  }, [canvas]);
+
+  // 保存并离开
+  const handleSaveAndExit = useCallback(() => {
+    handleSaveToLocal();
+    setTimeout(() => {
+      if (pendingNavigation === "back") {
+        window.history.back();
+      } else if (pendingNavigation) {
+        navigate(pendingNavigation);
+      }
+      setPendingNavigation(null);
+    }, 300);
+  }, [handleSaveToLocal, pendingNavigation, navigate]);
+
   // 拦截浏览器关闭/刷新
   useBeforeUnload(
     useCallback((event) => {
@@ -144,6 +175,21 @@ const Editor = () => {
       window.removeEventListener("popstate", handlePopState);
     };
   }, [location.pathname]);
+
+  // 拦截导航栏点击跳转
+  useEffect(() => {
+    const handleNavigationClick = (event: CustomEvent) => {
+      event.preventDefault();
+      setShowExitDialog(true);
+      setPendingNavigation(event.detail.path);
+    };
+
+    window.addEventListener("editor:navigation-blocked" as any, handleNavigationClick);
+
+    return () => {
+      window.removeEventListener("editor:navigation-blocked" as any, handleNavigationClick);
+    };
+  }, []);
 
   // Check if tutorial should be shown
   useEffect(() => {
@@ -613,7 +659,7 @@ const Editor = () => {
               您确定要离开编辑器吗？请确保已保存您的工作到草稿。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel
               onClick={() => {
                 setPendingNavigation(null);
@@ -621,6 +667,12 @@ const Editor = () => {
             >
               取消
             </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSaveAndExit}
+              className="bg-primary hover:bg-primary/90"
+            >
+              保存并离开
+            </AlertDialogAction>
             <AlertDialogAction
               onClick={() => {
                 if (pendingNavigation === "back") {
@@ -630,8 +682,9 @@ const Editor = () => {
                 }
                 setPendingNavigation(null);
               }}
+              className="bg-destructive hover:bg-destructive/90"
             >
-              确认离开
+              直接离开
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
