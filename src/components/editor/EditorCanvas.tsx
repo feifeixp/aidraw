@@ -15,6 +15,8 @@ interface EditorCanvasProps {
   eraserBrushSize?: number;
   activeFrameId: string | null;
   onActiveFrameChange: (frameId: string | null) => void;
+  defaultFrameWidth?: number;
+  defaultFrameHeight?: number;
 }
 
 export const EditorCanvas = ({
@@ -26,7 +28,9 @@ export const EditorCanvas = ({
   onZoomChange,
   eraserBrushSize = 20,
   activeFrameId,
-  onActiveFrameChange
+  onActiveFrameChange,
+  defaultFrameWidth = 1024,
+  defaultFrameHeight = 576
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -91,8 +95,8 @@ export const EditorCanvas = ({
     // 创建默认第一个分镜（使用统一的网格布局规则）
     const COLS = 5; // 5列
     const ROWS = 8; // 8行
-    const DEFAULT_FRAME_WIDTH = 1024;
-    const DEFAULT_FRAME_HEIGHT = 768;
+    const DEFAULT_FRAME_WIDTH = defaultFrameWidth;
+    const DEFAULT_FRAME_HEIGHT = defaultFrameHeight;
     const SPACING = 50; // 间距
     
     // 计算整个网格的尺寸
