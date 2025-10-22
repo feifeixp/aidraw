@@ -285,15 +285,30 @@ export const EditorCanvas = ({
           const frameCenterX = frameLeft + frameWidth / 2;
           const frameCenterY = frameTop + frameHeight / 2;
           
-          const currentZoom = fabricCanvas.getZoom();
-          
-          const panX = viewportWidth / 2 - frameCenterX * currentZoom;
-          const panY = viewportHeight / 2 - frameCenterY * currentZoom;
-          
-          fabricCanvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
-          fabricCanvas.renderAll();
-          
-          toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);
+          // 使用当前视口变换来获取真实的zoom和pan值
+          const vpt = fabricCanvas.viewportTransform;
+          if (vpt) {
+            const currentZoom = vpt[0]; // zoom存储在变换矩阵的[0]位置
+            
+            const panX = viewportWidth / 2 - frameCenterX * currentZoom;
+            const panY = viewportHeight / 2 - frameCenterY * currentZoom;
+            
+            fabricCanvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
+            fabricCanvas.renderAll();
+            
+            console.log('[EditorCanvas] F键定位:', { 
+              targetFrameId, 
+              frameCenterX, 
+              frameCenterY, 
+              currentZoom, 
+              panX, 
+              panY,
+              viewportWidth,
+              viewportHeight
+            });
+            
+            toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);
+          }
         }
       }
       
@@ -623,57 +638,8 @@ export const EditorCanvas = ({
     };
   }, [canvas, zoom]);
 
-  // Center view to Shot-01 at 80% zoom on initial load only
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !canvas) return;
-
-    const centerView = () => {
-      // 使用80%的固定缩放
-      const scale = 0.8;
-      
-      // 计算Shot-01的中心位置（与创建分镜时的计算逻辑一致）
-      const COLS = 5;
-      const ROWS = 8;
-      const DEFAULT_FRAME_WIDTH = 1024;
-      const DEFAULT_FRAME_HEIGHT = 768;
-      const SPACING = 50;
-      
-      const totalWidth = COLS * DEFAULT_FRAME_WIDTH + (COLS - 1) * SPACING;
-      const totalHeight = ROWS * DEFAULT_FRAME_HEIGHT + (ROWS - 1) * SPACING;
-      
-      const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
-      const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
-      
-      // Shot-01的中心坐标
-      const shot01CenterX = START_X + DEFAULT_FRAME_WIDTH / 2;
-      const shot01CenterY = START_Y + DEFAULT_FRAME_HEIGHT / 2;
-      
-      // 计算缩放后Shot-01中心的位置
-      const scaledCenterX = shot01CenterX * scale;
-      const scaledCenterY = shot01CenterY * scale;
-      
-      // 将容器滚动到Shot-01的中心
-      container.scrollLeft = scaledCenterX - container.clientWidth / 2;
-      container.scrollTop = scaledCenterY - container.clientHeight / 2;
-      
-      console.log('Centering view to Shot-01:', {
-        scale,
-        shot01CenterX,
-        shot01CenterY,
-        scaledCenterX,
-        scaledCenterY,
-        scrollLeft: container.scrollLeft,
-        scrollTop: container.scrollTop,
-        containerWidth: container.clientWidth,
-        containerHeight: container.clientHeight
-      });
-    };
-
-    // Small delay to ensure DOM is ready - only on initial canvas load
-    const timer = setTimeout(centerView, 100);
-    return () => clearTimeout(timer);
-  }, [canvas]); // Remove zoom dependency to prevent re-centering on zoom
+  // 注意：这里已移除旧的居中逻辑，因为现在使用单列布局而不是网格布局
+  // 居中功能已整合到初始化逻辑中（第223-253行）
 
   // Handle image upload via drag & drop or paste
   useEffect(() => {

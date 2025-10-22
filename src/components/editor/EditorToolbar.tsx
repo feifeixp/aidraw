@@ -108,15 +108,30 @@ export const EditorToolbar = ({
       const frameCenterX = frameLeft + frameWidth / 2;
       const frameCenterY = frameTop + frameHeight / 2;
 
-      const currentZoom = canvas.getZoom();
+      // 使用当前视口变换来获取真实的zoom值
+      const vpt = canvas.viewportTransform;
+      if (vpt) {
+        const currentZoom = vpt[0]; // zoom存储在变换矩阵的[0]位置
 
-      const panX = viewportWidth / 2 - frameCenterX * currentZoom;
-      const panY = viewportHeight / 2 - frameCenterY * currentZoom;
+        const panX = viewportWidth / 2 - frameCenterX * currentZoom;
+        const panY = viewportHeight / 2 - frameCenterY * currentZoom;
 
-      canvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
-      canvas.renderAll();
+        canvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
+        canvas.renderAll();
 
-      toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);
+        console.log('[EditorToolbar] 定位分镜:', { 
+          targetFrameId, 
+          frameCenterX, 
+          frameCenterY, 
+          currentZoom, 
+          panX, 
+          panY,
+          viewportWidth,
+          viewportHeight
+        });
+
+        toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);
+      }
     } else {
       toast.error("未找到分镜");
     }
