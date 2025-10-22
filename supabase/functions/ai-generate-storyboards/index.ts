@@ -7,6 +7,10 @@ const corsHeaders = {
 
 // 风格配置映射
 const styleConfigs: Record<string, { description: string; background: string }> = {
+  auto: {
+    description: '',  // 自动风格不指定，让AI根据参考图片决定
+    background: ''
+  },
   blackWhiteSketch: {
     description: '黑白线稿风格，简洁的手绘线条，白色背景',
     background: '白色背景'
@@ -48,7 +52,7 @@ serve(async (req) => {
   }
 
   try {
-    const { scriptText, referenceImages, style = 'blackWhiteSketch' } = await req.json();
+    const { scriptText, referenceImages, style = 'auto' } = await req.json();
 
     if (!scriptText || typeof scriptText !== 'string') {
       return new Response(
@@ -266,21 +270,32 @@ function buildStoryboardPrompt(sceneText: string, fullScript: string, style: str
     background: '适合的背景'
   };
   
+  // 构建风格要求部分
+  let styleRequirements = '';
+  if (style === 'auto') {
+    // 自动风格：让AI根据参考图片决定风格
+    styleRequirements = `艺术风格要求：
+参考提供的参考图片中的绘画风格、色彩运用和表现手法，生成与参考图风格一致的分镜画面。`;
+  } else if (styleConfig.description) {
+    // 指定风格
+    styleRequirements = `艺术风格要求：
+${styleConfig.description}
+${styleConfig.background}`;
+  }
+  
   return `为以下场景生成一张独立的分镜画面：
 
 ${sceneText}
 
 ${charactersText}
 
-艺术风格要求：
-${styleConfig.description}
-${styleConfig.background}
+${styleRequirements}
 
 重要要求：
 1. 这是单个独立的分镜画面，不要在一张图中包含多个分镜格子或面板
 2. 只显示这一个场景的画面内容
 3. 保持参考图中的角色造型和特征
-4. 严格按照上述风格要求生成
+${style === 'auto' ? '4. 严格参考提供的参考图片风格' : '4. 严格按照上述风格要求生成'}
 5. 构图要完整，适合作为独立的分镜使用
 
 请直接生成一张完整的分镜图片，不要输出文字描述。`;

@@ -65,7 +65,7 @@ export const EditorToolbar = ({
   const [scriptText, setScriptText] = useState("");
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
   const [isGeneratingStoryboards, setIsGeneratingStoryboards] = useState(false);
-  const [storyboardStyle, setStoryboardStyle] = useState("blackWhiteSketch");
+  const [storyboardStyle, setStoryboardStyle] = useState("auto");
   const [customStyle, setCustomStyle] = useState("");
   const handleUndo = () => {
     undo();
@@ -1320,6 +1320,7 @@ export const EditorToolbar = ({
                     <SelectValue placeholder="选择生成风格" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="auto">自动风格（根据参考图）</SelectItem>
                     <SelectItem value="blackWhiteSketch">黑白线稿</SelectItem>
                     <SelectItem value="blackWhiteComic">黑白漫画</SelectItem>
                     <SelectItem value="japaneseAnime">日式动漫</SelectItem>
