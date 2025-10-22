@@ -100,7 +100,7 @@ export const EditorCanvas = ({
     
     // 计算起始位置（水平居中，垂直从顶部开始）
     const START_X = (INFINITE_CANVAS_SIZE - DEFAULT_FRAME_WIDTH) / 2;
-    const START_Y = 100; // 从顶部开始，留出一些空间
+    const START_Y = 500; // 从边界之下500px开始
     
     // 第一个分镜的位置
     const frameLeft = START_X;
@@ -126,15 +126,15 @@ export const EditorCanvas = ({
     } else {
       console.log('[EditorCanvas] 未找到现有分镜，创建新的默认分镜:', { frameLeft, frameTop, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, 当前对象数: fabricCanvas.getObjects().length });
 
-      // 创建第一个分镜frame（透明背景，类似Figma的section）
+      // 创建第一个分镜frame（白色背景）
     const frame = new Rect({
       left: frameLeft,
       top: frameTop,
       width: DEFAULT_FRAME_WIDTH,
       height: DEFAULT_FRAME_HEIGHT,
-      fill: 'transparent',
-      stroke: 'transparent',
-      strokeWidth: 0,
+      fill: 'white',
+      stroke: '#d1d5db',
+      strokeWidth: 1,
       selectable: false,
       evented: false,
       hasControls: false,
