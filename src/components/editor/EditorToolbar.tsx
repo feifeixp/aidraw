@@ -96,9 +96,9 @@ export const EditorToolbar = ({
     const FRAME_HEIGHT = defaultFrameHeight;
     const SPACING = 50; // 间距
     
-    // 计算起始位置（水平居中，垂直从边界之下500px开始）
+    // 计算起始位置（水平和垂直都居中在无限画布中心，与初始分镜位置一致）
     const START_X = (INFINITE_CANVAS_SIZE - FRAME_WIDTH) / 2;
-    const START_Y = 500;
+    const START_Y = (INFINITE_CANVAS_SIZE - FRAME_HEIGHT) / 2;
 
     // 计算当前frame的索引
     const frameIndex = storyboardFrameCount;
