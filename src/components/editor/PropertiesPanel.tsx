@@ -79,7 +79,8 @@ export const PropertiesPanel = ({
       scene: "场景",
       prop: "道具",
       effect: "特效",
-      composite: "合成图"
+      composite: "合成图",
+      "storyboard-reference": "分镜参考图"
     };
     return typeMap[type] || type;
   };

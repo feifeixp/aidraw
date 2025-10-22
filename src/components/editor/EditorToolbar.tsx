@@ -314,7 +314,7 @@ export const EditorToolbar = ({
           scaleX: scale,
           scaleY: scale,
           data: {
-            elementType: 'scene',
+            elementType: 'storyboard-reference',
             frameId: frameId
           }
         });
