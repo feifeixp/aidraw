@@ -397,17 +397,52 @@ export const EditorCanvas = ({
     const START_X = (INFINITE_CANVAS_SIZE - defaultFrameWidth) / 2;
     const START_Y = (INFINITE_CANVAS_SIZE - defaultFrameHeight) / 2;
 
-    // 检查每个分镜是否已存在，如果不存在则创建
+    // 检查每个分镜是否已存在，如果不存在则创建，如果存在但尺寸不对则更新
     for (let i = 1; i <= storyboardFrameCount; i++) {
       const frameId = i.toString();
-      const existingFrame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${frameId}`);
+      const existingFrame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${frameId}`) as any;
+      const existingBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${frameId}`) as any;
+      const existingNumber = canvas.getObjects().find((obj: any) => obj.name === `storyboard-number-${frameId}`) as any;
       
-      if (!existingFrame) {
-        console.log(`[EditorCanvas] 创建分镜 ${frameId}`);
+      // 计算位置（纵向单列布局）
+      const frameLeft = START_X;
+      const frameTop = START_Y + (i - 1) * (defaultFrameHeight + SPACING);
+
+      if (existingFrame) {
+        // 如果分镜已存在，检查尺寸是否需要更新
+        const needsUpdate = 
+          existingFrame.width !== defaultFrameWidth || 
+          existingFrame.height !== defaultFrameHeight ||
+          existingFrame.left !== frameLeft ||
+          existingFrame.top !== frameTop;
         
-        // 计算位置（纵向单列布局）
-        const frameLeft = START_X;
-        const frameTop = START_Y + (i - 1) * (defaultFrameHeight + SPACING);
+        if (needsUpdate) {
+          console.log(`[EditorCanvas] 更新分镜 ${frameId} 尺寸和位置`);
+          existingFrame.set({
+            left: frameLeft,
+            top: frameTop,
+            width: defaultFrameWidth,
+            height: defaultFrameHeight
+          });
+          
+          if (existingBorder) {
+            existingBorder.set({
+              left: frameLeft,
+              top: frameTop,
+              width: defaultFrameWidth,
+              height: defaultFrameHeight
+            });
+          }
+          
+          if (existingNumber) {
+            existingNumber.set({
+              left: frameLeft,
+              top: frameTop - 20
+            });
+          }
+        }
+      } else {
+        console.log(`[EditorCanvas] 创建分镜 ${frameId}`);
 
         // 创建分镜frame
         const frame = new Rect({
