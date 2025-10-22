@@ -1835,6 +1835,16 @@ const ScribbleCanvas = ({ canvas, scribbleCanvasRef, scribblePoints, setScribble
     const coords = getCanvasCoordinates(e);
     if (!coords) return;
     
+    // 优化：只在距离上一个点足够远时才添加新点（减少点的数量，提高性能）
+    const MIN_DISTANCE = 0.01; // 相对坐标系中的最小距离（约为图片宽度的1%）
+    if (scribblePoints.length > 0) {
+      const lastPoint = scribblePoints[scribblePoints.length - 1];
+      const distance = Math.sqrt(
+        Math.pow(coords.x - lastPoint.x, 2) + Math.pow(coords.y - lastPoint.y, 2)
+      );
+      if (distance < MIN_DISTANCE) return; // 距离太近，跳过此点
+    }
+    
     const canvasEl = scribbleCanvasRef.current;
     if (!canvasEl) return;
     
