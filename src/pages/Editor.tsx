@@ -214,9 +214,20 @@ const Editor = () => {
                   crossOrigin: 'anonymous'
                 });
                 
-                // 计算图片位置（画布中心）
-                const centerX = settings.width / 2;
-                const centerY = settings.height / 2;
+                // 计算第一个分镜的中心位置（分镜从5000,5000开始，这是画布的中心偏移）
+                const frameStartX = 5000;
+                const frameStartY = 5000;
+                const centerX = frameStartX + settings.width / 2;
+                const centerY = frameStartY + settings.height / 2;
+                
+                // 调整图片大小适应分镜（先调整大小再设置位置）
+                const maxWidth = settings.width * 0.8;
+                const maxHeight = settings.height * 0.8;
+                const scale = Math.min(
+                  maxWidth / (img.width || 1),
+                  maxHeight / (img.height || 1)
+                );
+                img.scale(scale);
                 
                 // 设置图片属性
                 img.set({
@@ -226,16 +237,9 @@ const Editor = () => {
                   originY: 'center',
                 });
                 
-                // 调整图片大小适应画布
-                const maxWidth = settings.width * 0.8;
-                const maxHeight = settings.height * 0.8;
-                const scale = Math.min(
-                  maxWidth / (img.width || 1),
-                  maxHeight / (img.height || 1)
-                );
-                img.scale(scale);
-                
                 canvas.add(img);
+                // 确保图片在分镜边框之上
+                canvas.bringObjectToFront(img);
                 canvas.renderAll();
                 
                 toast.success(`已加载图片`);
