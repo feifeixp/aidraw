@@ -22,58 +22,72 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   useEffect(() => {
-    if (!open || !canvasRef.current || !imageObject) {
-      console.log('ImagePixelEraser: Missing requirements', { open, hasCanvas: !!canvasRef.current, hasImage: !!imageObject });
+    if (!open || !imageObject) {
       return;
     }
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) {
-      console.error('ImagePixelEraser: Could not get canvas context');
-      return;
-    }
+    // 等待 canvas ref 准备好
+    const initCanvas = async () => {
+      // 给 Dialog 一点时间完成渲染
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        console.error('ImagePixelEraser: Canvas ref not ready');
+        return;
+      }
 
-    ctxRef.current = ctx;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        console.error('ImagePixelEraser: Could not get canvas context');
+        return;
+      }
 
-    try {
-      // 获取图片数据URL
-      const imgDataUrl = imageObject.toDataURL({
-        format: 'png',
-        quality: 1,
-        multiplier: 1
-      });
+      ctxRef.current = ctx;
 
-      const img = new Image();
-      img.onload = () => {
-        const width = img.width;
-        const height = img.height;
+      try {
+        // 获取图片数据URL
+        const imgDataUrl = imageObject.toDataURL({
+          format: 'png',
+          quality: 1,
+          multiplier: 1
+        });
 
-        console.log('ImagePixelEraser: Image dimensions:', width, height);
+        console.log('ImagePixelEraser: Got image data URL');
 
-        // 设置画布尺寸
-        canvas.width = width;
-        canvas.height = height;
+        const img = new Image();
+        img.onload = () => {
+          const width = img.width;
+          const height = img.height;
 
-        // 绘制图片到画布
-        ctx.drawImage(img, 0, 0, width, height);
-        console.log('ImagePixelEraser: Image drawn successfully');
+          console.log('ImagePixelEraser: Image dimensions:', width, height);
 
-        // 保存初始状态到历史
-        const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        setHistory([initialState]);
-        setHistoryIndex(0);
-        console.log('ImagePixelEraser: History initialized');
-      };
+          // 设置画布尺寸
+          canvas.width = width;
+          canvas.height = height;
 
-      img.onerror = (error) => {
+          // 绘制图片到画布
+          ctx.drawImage(img, 0, 0, width, height);
+          console.log('ImagePixelEraser: Image drawn successfully');
+
+          // 保存初始状态到历史
+          const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          setHistory([initialState]);
+          setHistoryIndex(0);
+          console.log('ImagePixelEraser: History initialized');
+        };
+
+        img.onerror = (error) => {
+          console.error('ImagePixelEraser: Error loading image:', error);
+        };
+
+        img.src = imgDataUrl;
+      } catch (error) {
         console.error('ImagePixelEraser: Error loading image:', error);
-      };
+      }
+    };
 
-      img.src = imgDataUrl;
-    } catch (error) {
-      console.error('ImagePixelEraser: Error loading image:', error);
-    }
+    initCanvas();
   }, [open, imageObject]);
 
   const saveToHistory = () => {
