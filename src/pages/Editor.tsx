@@ -1,7 +1,7 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText, util } from "fabric";
 import { Menu, ChevronLeft, ChevronRight } from "lucide-react";
-import { useBeforeUnload, useLocation, useNavigate } from "react-router-dom";
+import { useBeforeUnload, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
@@ -94,6 +94,7 @@ const historyReducer = (state: HistoryState, action: HistoryAction): HistoryStat
 const Editor = () => {
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
   const [zoom, setZoom] = useState<number>(80);
+  const [searchParams] = useSearchParams();
   const [{
     history,
     historyIndex
@@ -176,7 +177,7 @@ const Editor = () => {
   }, [handleSaveToLocal, pendingNavigation, navigate]);
 
   // 处理初始化设置完成
-  const handleInitialSetupComplete = useCallback((settings: {
+  const handleInitialSetupComplete = useCallback(async (settings: {
     style: string;
     width: number;
     height: number;
@@ -191,8 +192,64 @@ const Editor = () => {
     setTimeout(() => {
       setStoryboardFrameCount(1);
     }, 0);
+    
     toast.success(`初始化完成：${settings.style === 'auto' ? '自动风格' : ''}，分镜尺寸 ${settings.width}×${settings.height}`);
-  }, []);
+
+    // 检查URL参数中是否有预设图片
+    const imageUrls = searchParams.get('images');
+    if (imageUrls && canvas) {
+      try {
+        const urls = imageUrls.split(',');
+        console.log('加载预设图片:', urls);
+        
+        // 等待画布和分镜完全初始化
+        setTimeout(async () => {
+          for (const url of urls) {
+            if (url.trim()) {
+              try {
+                console.log('正在加载图片:', url);
+                const img = await FabricImage.fromURL(url.trim(), {
+                  crossOrigin: 'anonymous'
+                });
+                
+                // 计算图片位置（画布中心）
+                const centerX = settings.width / 2;
+                const centerY = settings.height / 2;
+                
+                // 设置图片属性
+                img.set({
+                  left: centerX,
+                  top: centerY,
+                  originX: 'center',
+                  originY: 'center',
+                });
+                
+                // 调整图片大小适应画布
+                const maxWidth = settings.width * 0.8;
+                const maxHeight = settings.height * 0.8;
+                const scale = Math.min(
+                  maxWidth / (img.width || 1),
+                  maxHeight / (img.height || 1)
+                );
+                img.scale(scale);
+                
+                canvas.add(img);
+                canvas.renderAll();
+                
+                toast.success(`已加载图片`);
+              } catch (error) {
+                console.error('加载图片失败:', url, error);
+                toast.error(`加载图片失败: ${url}`);
+              }
+            }
+          }
+        }, 500); // 等待500ms确保分镜完全创建
+      } catch (error) {
+        console.error('处理预设图片失败:', error);
+        toast.error('加载预设图片失败');
+      }
+    }
+  }, [searchParams, canvas]);
 
   // 手动显示教程
   const handleShowTutorial = useCallback(() => {
