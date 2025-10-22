@@ -12,6 +12,7 @@ interface DraftsListProps {
   onDraftIdChange?: (draftId: string | undefined) => void;
   onActiveFrameIdChange?: (frameId: string | null) => void;
   onFrameCountChange?: (count: number) => void;
+  onRequestInitialSetup?: () => void;
 }
 
 export const DraftsList = ({ 
@@ -19,7 +20,8 @@ export const DraftsList = ({
   onLoadDraft, 
   onDraftIdChange, 
   onActiveFrameIdChange, 
-  onFrameCountChange 
+  onFrameCountChange,
+  onRequestInitialSetup
 }: DraftsListProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,7 +126,7 @@ export const DraftsList = ({
     }
   }, [onLoadDraft, onDraftIdChange, onActiveFrameIdChange, onFrameCountChange]);
 
-  // 创建新草稿（清除所有缓存和画布）
+  // 创建新草稿（清除所有缓存和画布，并触发初始化窗口）
   const createNewDraft = useCallback(() => {
     if (!canvas) {
       toast.error("画布未初始化");
@@ -149,93 +151,17 @@ export const DraftsList = ({
     // 清空整个画布
     canvas.clear();
     
-    // 重新创建默认第一个分镜
-    const INFINITE_CANVAS_SIZE = 10000;
-    const COLS = 5;
-    const ROWS = 8;
-    const DEFAULT_FRAME_WIDTH = 1024;
-    const DEFAULT_FRAME_HEIGHT = 768;
-    const SPACING = 50;
-    
-    const totalWidth = COLS * DEFAULT_FRAME_WIDTH + (COLS - 1) * SPACING;
-    const totalHeight = ROWS * DEFAULT_FRAME_HEIGHT + (ROWS - 1) * SPACING;
-    
-    const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
-    const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
-    
-    const frameLeft = START_X;
-    const frameTop = START_Y;
-
-    // 创建背景方形
-    const frame = new Rect({
-      left: frameLeft,
-      top: frameTop,
-      width: DEFAULT_FRAME_WIDTH,
-      height: DEFAULT_FRAME_HEIGHT,
-      fill: "#ffffff",
-      stroke: "#d1d5db",
-      strokeWidth: 1,
-      selectable: false,
-      evented: true,
-      hasControls: false,
-      hasBorders: false,
-      lockMovementX: true,
-      lockMovementY: true,
-      hoverCursor: 'pointer',
-      name: 'storyboard-frame-1',
-    });
-    (frame as any).data = { isFrameElement: true };
-
-    canvas.add(frame);
-    canvas.sendObjectToBack(frame);
-    
-    // 创建边框
-    const frameBorder = new Rect({
-      left: frameLeft,
-      top: frameTop,
-      width: DEFAULT_FRAME_WIDTH,
-      height: DEFAULT_FRAME_HEIGHT,
-      fill: 'transparent',
-      stroke: '#3b82f6',
-      strokeWidth: 2,
-      strokeDashArray: [5, 5],
-      selectable: false,
-      evented: false,
-      hasControls: false,
-      hasBorders: false,
-      lockMovementX: true,
-      lockMovementY: true,
-      hoverCursor: 'default',
-      name: 'storyboard-border-1',
-      visible: true,
-    });
-    (frameBorder as any).data = { isFrameElement: true };
-    
-    canvas.add(frameBorder);
-    
-    // 创建编号
-    const frameNumber = new FabricText('Shot-01', {
-      left: frameLeft,
-      top: frameTop - 20,
-      fontSize: 14,
-      fill: '#666666',
-      selectable: false,
-      evented: false,
-      name: 'storyboard-number-1'
-    });
-    (frameNumber as any).data = { isFrameElement: true };
-    
-    canvas.add(frameNumber);
-    
-    canvas.discardActiveObject();
-    canvas.renderAll();
+    // 触发初始化设置窗口
+    if (onRequestInitialSetup) {
+      onRequestInitialSetup();
+    }
     
     onDraftIdChange?.(undefined);
     onActiveFrameIdChange?.("1");
-    onFrameCountChange?.(1);
+    onFrameCountChange?.(0); // 设置为0，等待初始化完成后创建第一个分镜
     
-    toast.success("已创建新草稿，所有缓存已清除");
-  }, [canvas, onDraftIdChange, onActiveFrameIdChange, onFrameCountChange]);
+    toast.success("已创建新草稿，请进行初始化设置");
+  }, [canvas, onDraftIdChange, onActiveFrameIdChange, onFrameCountChange, onRequestInitialSetup]);
 
   return (
     <Dialog>

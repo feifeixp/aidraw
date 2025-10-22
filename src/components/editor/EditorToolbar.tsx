@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand, Grid3x3 } from "lucide-react";
+import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand, Grid3x3, HelpCircle } from "lucide-react";
 import { StoryboardFrameSettings } from "./StoryboardFrameSettings";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ interface EditorToolbarProps {
   defaultStyle?: string;
   defaultFrameWidth?: number;
   defaultFrameHeight?: number;
+  onShowTutorial?: () => void;
 }
 export const EditorToolbar = ({
   canvas,
@@ -57,7 +58,8 @@ export const EditorToolbar = ({
   setStoryboardFrameCount,
   defaultStyle = "auto",
   defaultFrameWidth = 1024,
-  defaultFrameHeight = 768
+  defaultFrameHeight = 768,
+  onShowTutorial
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [composeMode, setComposeMode] = useState<"compose" | "render">("compose");
@@ -1029,6 +1031,19 @@ export const EditorToolbar = ({
       <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 whitespace-nowrap" title="导出">
         <Download className="h-4 w-4" />
         <span className="ml-1">导出</span>
+      </Button>
+
+      <Separator orientation="vertical" className="h-6 shrink-0" />
+
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={onShowTutorial}
+        className="shrink-0 whitespace-nowrap" 
+        title="显示帮助教程"
+      >
+        <HelpCircle className="h-4 w-4" />
+        <span className="ml-1">帮助</span>
       </Button>
 
       {/* Storyboard Frame Settings Dialog */}

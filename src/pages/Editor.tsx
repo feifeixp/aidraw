@@ -175,15 +175,16 @@ const Editor = () => {
     setShowInitialSetup(false);
     localStorage.setItem('editorSetupCompleted', 'true');
     toast.success(`初始化完成：${settings.style === 'auto' ? '自动风格' : ''}，分镜尺寸 ${settings.width}×${settings.height}`);
-    
-    // 初始化完成后，如果是首次使用则显示教程
-    const hasTutorialCompleted = localStorage.getItem('editor-tutorial-completed');
-    if (!hasTutorialCompleted) {
-      // 延迟一点显示教程，让用户看到初始化完成的提示
-      setTimeout(() => {
-        setShowTutorial(true);
-      }, 500);
-    }
+  }, []);
+
+  // 手动显示教程
+  const handleShowTutorial = useCallback(() => {
+    setShowTutorial(true);
+  }, []);
+
+  // 请求显示初始化设置
+  const handleRequestInitialSetup = useCallback(() => {
+    setShowInitialSetup(true);
   }, []);
 
   // 拦截浏览器关闭/刷新
@@ -227,15 +228,7 @@ const Editor = () => {
     };
   }, []);
 
-  // Check if tutorial should be shown
-  useEffect(() => {
-    const tutorialCompleted = localStorage.getItem("editor-tutorial-completed");
-    if (!tutorialCompleted) {
-      // Show tutorial after a short delay to let the UI settle
-      const timer = setTimeout(() => setShowTutorial(true), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, []);
+  // 移除自动显示教程的逻辑
 
   // 移除自动保存功能 - 不再使用localStorage缓存
 
@@ -743,13 +736,14 @@ const Editor = () => {
             </SheetContent>
           </Sheet>}
         <div className="drafts-list">
-          <DraftsList
-            canvas={canvas}
+          <DraftsList 
+            canvas={canvas} 
             onLoadDraft={handleLoadDraft}
             currentDraftId={currentDraftId}
             onDraftIdChange={setCurrentDraftId}
             onActiveFrameIdChange={setActiveFrameId}
             onFrameCountChange={setStoryboardFrameCount}
+            onRequestInitialSetup={handleRequestInitialSetup}
           />
         </div>
         <div className="flex-1 min-w-0 overflow-x-auto">
@@ -775,6 +769,7 @@ const Editor = () => {
             defaultStyle={defaultStyle}
             defaultFrameWidth={frameWidth}
             defaultFrameHeight={frameHeight}
+            onShowTutorial={handleShowTutorial}
           />
         </div>
       </div>
