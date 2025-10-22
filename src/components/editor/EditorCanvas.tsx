@@ -136,12 +136,12 @@ export const EditorCanvas = ({
       stroke: 'transparent',
       strokeWidth: 0,
       selectable: false,
-      evented: true,
+      evented: false,
       hasControls: false,
       hasBorders: false,
       lockMovementX: true,
       lockMovementY: true,
-      hoverCursor: 'pointer',
+      hoverCursor: 'default',
       name: 'storyboard-frame-1',
       data: { 
         isFrameElement: true,
@@ -152,7 +152,6 @@ export const EditorCanvas = ({
     });
 
     fabricCanvas.add(frame);
-    fabricCanvas.sendObjectToBack(frame);
     frameRef.current = frame;
     
     // 创建第一个分镜的边界线

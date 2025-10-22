@@ -43,8 +43,8 @@ export const setObjectLayerType = (obj: FabricObject, type: LayerType) => {
 export const sortCanvasByLayerType = (canvas: FabricCanvas) => {
   const objects = canvas.getObjects();
   
-  // Separate frame (workframe) from regular objects
-  const frame = objects.find(obj => obj.selectable === false && obj.evented === false);
+  // Separate frames (workframe and storyboard frames) from regular objects
+  const frames = objects.filter(obj => obj.selectable === false && obj.evented === false);
   const regularObjects = objects.filter(obj => obj.selectable !== false || obj.evented !== false);
   
   // Group objects by type
@@ -64,10 +64,10 @@ export const sortCanvasByLayerType = (canvas: FabricCanvas) => {
   // Clear canvas
   canvas.remove(...objects);
   
-  // Re-add frame first (always at bottom)
-  if (frame) {
+  // Re-add frames first (always at bottom)
+  frames.forEach(frame => {
     canvas.add(frame);
-  }
+  });
   
   // Add objects in the correct order
   const typeOrder: LayerType[] = ['scene', 'character', 'prop', 'effect', 'composite'];
@@ -104,11 +104,9 @@ export const insertObjectWithLayerType = (canvas: FabricCanvas, obj: FabricObjec
   // Find the insertion index
   let insertIndex = 0;
   
-  // Skip the frame (should always be at index 0)
-  const frame = objects.find(obj => obj.selectable === false && obj.evented === false);
-  if (frame) {
-    insertIndex = 1;
-  }
+  // Skip all frames (should always be at the bottom)
+  const frames = objects.filter(obj => obj.selectable === false && obj.evented === false);
+  insertIndex = frames.length;
   
   // Find the last object of the same or lower type
   for (let i = insertIndex; i < objects.length; i++) {

@@ -184,25 +184,12 @@ export const EditorToolbar = ({
       }
     });
 
-    // 添加到画布，确保frame在底层
+    // 添加到画布
+    // 分镜框架设置了 selectable: false 和 evented: false
+    // 会被图层排序系统自动排除并保持在底层
     canvas.add(frame);
     canvas.add(frameBorder);
     canvas.add(frameNumber);
-    
-    // 确保所有分镜frame在底层，所有border和number在顶层
-    canvas.getObjects().forEach(obj => {
-      const objName = (obj as any).name || '';
-      if (objName.startsWith('storyboard-frame-')) {
-        canvas.sendObjectToBack(obj);
-      }
-    });
-    
-    canvas.getObjects().forEach(obj => {
-      const objName = (obj as any).name || '';
-      if (objName.startsWith('storyboard-border-') || objName.startsWith('storyboard-number-')) {
-        canvas.bringObjectToFront(obj);
-      }
-    });
     
     canvas.renderAll();
     saveState();
