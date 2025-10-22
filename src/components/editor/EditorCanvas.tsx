@@ -220,8 +220,8 @@ export const EditorCanvas = ({
       fabricCanvas.renderAll();
       console.log('[EditorCanvas] 强制第二次渲染完成');
       
-      // 如果需要移动视口到分镜中心
-      if (shouldCenterOnFrame && containerRef.current && onCenterComplete) {
+      // 始终将视口移动到第一个分镜中心（无论是否设置了shouldCenterOnFrame）
+      if (containerRef.current) {
         console.log('[EditorCanvas] 开始移动视口到分镜中心');
         
         // 获取视口尺寸
@@ -243,10 +243,12 @@ export const EditorCanvas = ({
         fabricCanvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
         fabricCanvas.renderAll();
         
-        console.log('[EditorCanvas] 视口移动完成', { frameCenterX, frameCenterY, panX, panY, currentZoom });
+        console.log('[EditorCanvas] 视口移动完成', { frameCenterX, frameCenterY, panX, panY, currentZoom, viewportWidth, viewportHeight });
         
-        // 通知父组件完成
-        onCenterComplete();
+        // 如果有回调，通知父组件完成
+        if (shouldCenterOnFrame && onCenterComplete) {
+          onCenterComplete();
+        }
       }
     }, 100);
 
