@@ -8,6 +8,7 @@ import { convertMagentaToTransparent } from "@/lib/colorToTransparent";
 import { moveObjectToEdgeInLayer, moveObjectInLayer } from "@/lib/layerSorting";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -1307,10 +1308,10 @@ export const LeftToolbar = ({
         </DialogContent>
       </Dialog>
 
-      {/* Scribble Overlay - 中间区域涂抹界面 */}
-      {isScribbling && (
+      {/* Scribble Overlay - 使用 Portal 渲染到 body */}
+      {isScribbling && createPortal(
         <div 
-          className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-2 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center p-2 backdrop-blur-sm"
           onClick={(e) => {
             // 点击背景关闭
             if (e.target === e.currentTarget) {
@@ -1382,7 +1383,8 @@ export const LeftToolbar = ({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Eraser Settings Dialog */}
