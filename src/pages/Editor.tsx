@@ -109,7 +109,6 @@ const Editor = () => {
   const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState(false);
   const [isPropertiesPanelCollapsed, setIsPropertiesPanelCollapsed] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
-  const [showTutorial, setShowTutorial] = useState(false);
   const [activeFrameId, setActiveFrameId] = useState<string | null>("1");
   const [storyboardFrameCount, setStoryboardFrameCount] = useState(1);
   const isMobile = useIsMobile();
@@ -129,6 +128,9 @@ const Editor = () => {
   const [defaultStyle, setDefaultStyle] = useState("auto");
   const [frameWidth, setFrameWidth] = useState(1024);
   const [frameHeight, setFrameHeight] = useState(576);
+  
+  // 教程状态 - 只在初始化设置完成后且首次使用时显示
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // 保存画布为JSON文件
   const handleSaveToLocal = useCallback(() => {
@@ -173,6 +175,15 @@ const Editor = () => {
     setShowInitialSetup(false);
     localStorage.setItem('editorSetupCompleted', 'true');
     toast.success(`初始化完成：${settings.style === 'auto' ? '自动风格' : ''}，分镜尺寸 ${settings.width}×${settings.height}`);
+    
+    // 初始化完成后，如果是首次使用则显示教程
+    const hasTutorialCompleted = localStorage.getItem('editor-tutorial-completed');
+    if (!hasTutorialCompleted) {
+      // 延迟一点显示教程，让用户看到初始化完成的提示
+      setTimeout(() => {
+        setShowTutorial(true);
+      }, 500);
+    }
   }, []);
 
   // 拦截浏览器关闭/刷新
