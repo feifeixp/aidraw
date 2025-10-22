@@ -64,6 +64,8 @@ export const EditorToolbar = ({
   const [scriptText, setScriptText] = useState("");
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
   const [isGeneratingStoryboards, setIsGeneratingStoryboards] = useState(false);
+  const [storyboardStyle, setStoryboardStyle] = useState("blackWhiteSketch");
+  const [customStyle, setCustomStyle] = useState("");
   const handleUndo = () => {
     undo();
   };
@@ -259,7 +261,8 @@ export const EditorToolbar = ({
       const { data, error } = await supabase.functions.invoke('ai-generate-storyboards', {
         body: {
           scriptText,
-          referenceImages: imageDataUrls
+          referenceImages: imageDataUrls,
+          style: storyboardStyle === 'custom' ? customStyle : storyboardStyle
         }
       });
 
@@ -386,6 +389,8 @@ export const EditorToolbar = ({
       // 清空表单
       setScriptText("");
       setReferenceImages([]);
+      setStoryboardStyle("blackWhiteSketch");
+      setCustomStyle("");
       
     } catch (error) {
       console.error("AI分镜生成错误:", error);
@@ -1282,15 +1287,104 @@ export const EditorToolbar = ({
               )}
             </div>
 
+            {/* 风格选择 */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">生成风格</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={storyboardStyle === 'blackWhiteSketch' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('blackWhiteSketch')}
+                  className="h-auto py-2"
+                >
+                  黑白线稿
+                </Button>
+                <Button
+                  variant={storyboardStyle === 'blackWhiteComic' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('blackWhiteComic')}
+                  className="h-auto py-2"
+                >
+                  黑白漫画
+                </Button>
+                <Button
+                  variant={storyboardStyle === 'japaneseAnime' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('japaneseAnime')}
+                  className="h-auto py-2"
+                >
+                  日式动漫
+                </Button>
+                <Button
+                  variant={storyboardStyle === 'americanComic' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('americanComic')}
+                  className="h-auto py-2"
+                >
+                  美式漫画
+                </Button>
+                <Button
+                  variant={storyboardStyle === 'chineseAnime' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('chineseAnime')}
+                  className="h-auto py-2"
+                >
+                  国风动漫
+                </Button>
+                <Button
+                  variant={storyboardStyle === '3dCartoon' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('3dCartoon')}
+                  className="h-auto py-2"
+                >
+                  3D卡通
+                </Button>
+                <Button
+                  variant={storyboardStyle === '3dUnreal' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('3dUnreal')}
+                  className="h-auto py-2"
+                >
+                  虚幻引擎
+                </Button>
+                <Button
+                  variant={storyboardStyle === 'cinematic' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('cinematic')}
+                  className="h-auto py-2"
+                >
+                  电影写实
+                </Button>
+                <Button
+                  variant={storyboardStyle === 'custom' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStoryboardStyle('custom')}
+                  className="h-auto py-2"
+                >
+                  自定义
+                </Button>
+              </div>
+              
+              {/* 自定义风格输入 */}
+              {storyboardStyle === 'custom' && (
+                <Input
+                  placeholder="输入自定义风格描述，如：水彩风格、油画风格等"
+                  value={customStyle}
+                  onChange={(e) => setCustomStyle(e.target.value)}
+                  className="mt-2"
+                />
+              )}
+            </div>
+
             {/* 生成说明 */}
             <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <h4 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">AI 生成说明</h4>
               <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                <li>• 生成干净的手绘动画电影分镜线稿</li>
+                <li>• 根据选择的风格生成相应的分镜画面</li>
                 <li>• 自动识别参考图片中的角色特征</li>
                 <li>• 保持角色画风和造型一致性</li>
-                <li>• 白色背景，画面简洁清晰</li>
                 <li>• 根据剧本自动生成多个分镜场景</li>
+                <li>• 支持自定义风格描述</li>
               </ul>
             </div>
 

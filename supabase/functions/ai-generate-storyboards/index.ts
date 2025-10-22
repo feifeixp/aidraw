@@ -5,6 +5,42 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// 风格配置映射
+const styleConfigs: Record<string, { description: string; background: string }> = {
+  blackWhiteSketch: {
+    description: '黑白线稿风格，简洁的手绘线条，白色背景',
+    background: '白色背景'
+  },
+  blackWhiteComic: {
+    description: '黑白漫画风格，有明暗对比和阴影，经典漫画质感',
+    background: '白色或灰色背景'
+  },
+  japaneseAnime: {
+    description: '日式动漫风格，清晰的轮廓线，赛璐璐上色，明亮色彩',
+    background: '简洁背景'
+  },
+  americanComic: {
+    description: '美式漫画风格，粗犷的线条，强烈的明暗对比，动感十足',
+    background: '戏剧性背景'
+  },
+  chineseAnime: {
+    description: '国风动漫风格，水墨韵味，传统美学，柔和色彩',
+    background: '中国风背景元素'
+  },
+  '3dCartoon': {
+    description: '3D卡通风格，类似皮克斯动画，圆润可爱，色彩鲜艳',
+    background: '3D场景背景'
+  },
+  '3dUnreal': {
+    description: '虚幻引擎风格，高质量3D渲染，真实光影效果，精细材质',
+    background: '逼真场景'
+  },
+  cinematic: {
+    description: '电影写实风格，真实摄影感，电影级光影，细腻质感',
+    background: '真实场景环境'
+  }
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -12,7 +48,7 @@ serve(async (req) => {
   }
 
   try {
-    const { scriptText, referenceImages } = await req.json();
+    const { scriptText, referenceImages, style = 'blackWhiteSketch' } = await req.json();
 
     if (!scriptText || typeof scriptText !== 'string') {
       return new Response(
@@ -40,7 +76,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log('开始生成AI分镜，剧本长度:', scriptText.length, '参考图片数量:', referenceImages.length);
+    console.log('开始生成AI分镜，剧本长度:', scriptText.length, '参考图片数量:', referenceImages.length, '风格:', style);
 
     // 分析剧本，将其分割成多个场景
     const scenes = analyzeScriptScenes(scriptText);
@@ -53,8 +89,8 @@ serve(async (req) => {
       const scene = scenes[i];
       console.log(`生成第 ${i + 1}/${scenes.length} 个场景分镜...`);
 
-      // 构建提示词
-      const prompt = buildStoryboardPrompt(scene, scriptText);
+      // 构建提示词（包含风格信息）
+      const prompt = buildStoryboardPrompt(scene, scriptText, style);
 
       // 构建消息内容
       const content: any[] = [
@@ -216,25 +252,35 @@ function analyzeScriptScenes(scriptText: string): string[] {
   return scenes.slice(0, 8);
 }
 
-// 构建分镜生成提示词
-function buildStoryboardPrompt(sceneText: string, fullScript: string): string {
+// 构建分镜生成提示词（根据风格）
+function buildStoryboardPrompt(sceneText: string, fullScript: string, style: string): string {
   // 从完整剧本中识别角色
   const characters = extractCharacters(fullScript);
   const charactersText = characters.length > 0 
     ? `主要角色：${characters.join('、')}` 
     : '';
   
-  return `为以下场景生成一张独立的手绘动画分镜线稿图：
+  // 获取风格配置
+  const styleConfig = styleConfigs[style] || {
+    description: style, // 自定义风格直接使用用户输入
+    background: '适合的背景'
+  };
+  
+  return `为以下场景生成一张独立的分镜画面：
 
 ${sceneText}
 
 ${charactersText}
 
+艺术风格要求：
+${styleConfig.description}
+${styleConfig.background}
+
 重要要求：
 1. 这是单个独立的分镜画面，不要在一张图中包含多个分镜格子或面板
 2. 只显示这一个场景的画面内容
-3. 保持参考图中的角色造型和风格
-4. 白色背景，黑白线稿，画面简洁清晰
+3. 保持参考图中的角色造型和特征
+4. 严格按照上述风格要求生成
 5. 构图要完整，适合作为独立的分镜使用
 
 请直接生成一张完整的分镜图片，不要输出文字描述。`;
