@@ -190,29 +190,18 @@ function buildStoryboardPrompt(sceneText: string, fullScript: string): string {
   // 从完整剧本中识别角色
   const characters = extractCharacters(fullScript);
   const charactersText = characters.length > 0 
-    ? `角色包括：${characters.join('、')}。` 
+    ? `主要角色：${characters.join('、')}` 
     : '';
   
-  return `根据以下剧本场景内容生成干净的手绘动画电影分镜线稿。
+  return `生成这个场景的手绘动画分镜线稿图：
 
-场景内容：${sceneText}
+${sceneText}
 
-参考图片展示了本剧的角色造型。${charactersText}请仔细观察参考图片中每个角色的：
-- 脸型、五官特征
-- 发型、发色
-- 服装风格
-- 身体比例和姿态
+${charactersText}
 
-要求：
-1. 严格保持参考图片中角色的画风和造型特征
-2. 根据场景描述安排角色的动作、表情和位置
-3. 使用纯白色背景，不绘制任何场景元素
-4. 画面简洁清晰，只包含必要的角色和动作
-5. 线条流畅，符合动画分镜的绘画风格
-6. 不要添加文字、标注或其他多余内容
-7. 保持黑白线稿风格，清晰易读
+风格要求：保持参考图中的角色造型，白色背景，黑白线稿，画面简洁。
 
-请生成该场景的分镜线稿图。`;
+请直接生成图片，不要输出文字描述。`;
 }
 
 // 从剧本中提取角色名称
