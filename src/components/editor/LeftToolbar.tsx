@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
-import { ImagePixelEraser } from "./ImagePixelEraser";
+
 
 interface LeftToolbarProps {
   canvas: FabricCanvas | null;
@@ -75,8 +75,6 @@ export const LeftToolbar = ({
   const [selectedElementType, setSelectedElementType] = useState<'character' | 'scene' | 'prop' | 'effect' | null>(null);
   const [isObjectLocked, setIsObjectLocked] = useState(false);
   const [showEraserSettings, setShowEraserSettings] = useState(false);
-  const [showPixelEraser, setShowPixelEraser] = useState(false);
-  const [selectedImageForEraser, setSelectedImageForEraser] = useState<FabricImage | null>(null);
   const activeFrameIdRef = useRef(activeFrameId);
 
   // Update activeFrameIdRef when activeFrameId changes
@@ -690,55 +688,6 @@ export const LeftToolbar = ({
       toast.error("请先选择一个对象");
     }
   };
-  
-  const handleOpenPixelEraser = () => {
-    if (!canvas) return;
-    const activeObject = canvas.getActiveObject();
-    
-    if (!activeObject || activeObject.type !== 'image') {
-      toast.error("请先选择一个图片对象");
-      return;
-    }
-    
-    setSelectedImageForEraser(activeObject as FabricImage);
-    setShowPixelEraser(true);
-  };
-
-  const handleSaveErasedImage = async (imageDataUrl: string) => {
-    if (!canvas || !selectedImageForEraser) return;
-
-    try {
-      // 创建新的图片对象
-      const { FabricImage } = await import("fabric");
-      const newImg = await FabricImage.fromURL(imageDataUrl, {
-        crossOrigin: 'anonymous'
-      });
-      
-      // 保持原始位置和缩放
-      newImg.set({
-        left: selectedImageForEraser.left,
-        top: selectedImageForEraser.top,
-        scaleX: selectedImageForEraser.scaleX,
-        scaleY: selectedImageForEraser.scaleY,
-        angle: selectedImageForEraser.angle,
-        data: (selectedImageForEraser as any).data,
-        name: (selectedImageForEraser as any).name
-      });
-      
-      // 替换旧图片
-      canvas.remove(selectedImageForEraser);
-      canvas.add(newImg);
-      canvas.setActiveObject(newImg);
-      canvas.renderAll();
-      saveState();
-      
-      toast.success("图片擦除完成");
-      setSelectedImageForEraser(null);
-    } catch (error) {
-      console.error("保存擦除图片失败:", error);
-      toast.error("保存擦除图片失败");
-    }
-  };
 
   const handleDuplicate = async () => {
     const activeObject = canvas?.getActiveObject();
@@ -1201,16 +1150,6 @@ export const LeftToolbar = ({
           </Button>
         </div>
 
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`}
-          onClick={handleOpenPixelEraser}
-          title="像素擦除"
-        >
-          <Eraser className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">像素擦除</span>}
-        </Button>
 
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleFlip}>
           <FlipHorizontal className="h-4 w-4" />
@@ -1482,13 +1421,6 @@ export const LeftToolbar = ({
         </DialogContent>
       </Dialog>
 
-      {/* Image Pixel Eraser Dialog */}
-      <ImagePixelEraser
-        open={showPixelEraser}
-        onOpenChange={setShowPixelEraser}
-        imageObject={selectedImageForEraser}
-        onSave={handleSaveErasedImage}
-      />
 
       {/* AI Generate Dialog */}
       <Dialog open={showAiGenerateDialog} onOpenChange={setShowAiGenerateDialog}>
