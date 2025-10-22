@@ -478,6 +478,16 @@ export const EditorToolbar = ({
         throw new Error(`AI服务错误: ${aiError.message || '未知错误'}`);
       }
       if (aiData?.imageUrl) {
+        // 清理边缘不干净的像素
+        toast.info("正在优化边缘...");
+        const { cleanImageEdges } = await import("@/lib/edgeCleanup");
+        const cleanedImageUrl = await cleanImageEdges(aiData.imageUrl, {
+          threshold: 30,      // 边缘检测阈值
+          smoothRadius: 2,    // 平滑半径
+          colorTolerance: 25, // 颜色容差
+          featherWidth: 2     // 羽化宽度
+        });
+        
         const {
           FabricImage
         } = await import("fabric");
@@ -497,7 +507,7 @@ export const EditorToolbar = ({
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = reject;
-          img.src = aiData.imageUrl;
+          img.src = cleanedImageUrl;
         });
         const fabricImg = new FabricImage(img, {
           left: frame.left,
@@ -733,10 +743,20 @@ export const EditorToolbar = ({
       });
       if (aiError) throw aiError;
       if (aiData?.imageUrl) {
+        // 清理边缘不干净的像素
+        toast.info("正在优化边缘...");
+        const { cleanImageEdges } = await import("@/lib/edgeCleanup");
+        const cleanedImageUrl = await cleanImageEdges(aiData.imageUrl, {
+          threshold: 30,      // 边缘检测阈值
+          smoothRadius: 2,    // 平滑半径
+          colorTolerance: 25, // 颜色容差
+          featherWidth: 2     // 羽化宽度
+        });
+        
         const {
           FabricImage
         } = await import("fabric");
-        const img = await FabricImage.fromURL(aiData.imageUrl, {
+        const img = await FabricImage.fromURL(cleanedImageUrl, {
           crossOrigin: 'anonymous'
         });
         
@@ -865,6 +885,16 @@ export const EditorToolbar = ({
       if (aiError) throw aiError;
 
       if (aiData?.imageUrl) {
+        // 清理边缘不干净的像素
+        toast.info("正在优化边缘...");
+        const { cleanImageEdges } = await import("@/lib/edgeCleanup");
+        const cleanedImageUrl = await cleanImageEdges(aiData.imageUrl, {
+          threshold: 30,      // 边缘检测阈值
+          smoothRadius: 2,    // 平滑半径
+          colorTolerance: 25, // 颜色容差
+          featherWidth: 2     // 羽化宽度
+        });
+        
         const { FabricImage } = await import("fabric");
         
         // 先移除画布上所有非frame的对象
@@ -876,7 +906,7 @@ export const EditorToolbar = ({
           }
         });
         
-        const img = await FabricImage.fromURL(aiData.imageUrl, {
+        const img = await FabricImage.fromURL(cleanedImageUrl, {
           crossOrigin: 'anonymous'
         });
 
