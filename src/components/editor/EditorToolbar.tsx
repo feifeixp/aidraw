@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Maximize2, Hand, Grid3x3, HelpCircle } from "lucide-react";
-import { StoryboardFrameSettings } from "./StoryboardFrameSettings";
+import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Hand, Grid3x3, HelpCircle } from "lucide-react";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,8 +66,6 @@ export const EditorToolbar = ({
   const [isComposing, setIsComposing] = useState(false);
   const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
-  const [showStoryboardSettings, setShowStoryboardSettings] = useState(false);
-  const [frameSize, setFrameSize] = useState({ width: defaultFrameWidth, height: defaultFrameHeight });
   const [showAiStoryboardDialog, setShowAiStoryboardDialog] = useState(false);
   const [scriptText, setScriptText] = useState("");
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
@@ -93,9 +90,9 @@ export const EditorToolbar = ({
     const MAX_FRAMES = 12; // 最大分镜数量
     const INFINITE_CANVAS_SIZE = 10000;
     
-    // 使用可配置的分镜尺寸
-    const FRAME_WIDTH = frameSize.width;
-    const FRAME_HEIGHT = frameSize.height;
+    // 使用初始化设置的分镜尺寸
+    const FRAME_WIDTH = defaultFrameWidth;
+    const FRAME_HEIGHT = defaultFrameHeight;
     const SPACING = 50; // 间距
     
     // 计算起始位置（水平居中，垂直从边界之下500px开始）
@@ -267,8 +264,8 @@ export const EditorToolbar = ({
       const COLS = 5;
       const ROWS = 8;
       const INFINITE_CANVAS_SIZE = 10000;
-      const FRAME_WIDTH = frameSize.width;
-      const FRAME_HEIGHT = frameSize.height;
+      const FRAME_WIDTH = defaultFrameWidth;
+      const FRAME_HEIGHT = defaultFrameHeight;
       const SPACING = 50;
       const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
       const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
@@ -985,9 +982,6 @@ export const EditorToolbar = ({
           <Grid3x3 className="h-4 w-4" />
           <span className="ml-1">创建分镜</span>
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setShowStoryboardSettings(true)} className="px-2" title="分镜设置">
-          <Maximize2 className="h-4 w-4" />
-        </Button>
       </div>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
@@ -1025,14 +1019,6 @@ export const EditorToolbar = ({
         <span className="ml-1">帮助</span>
       </Button>
 
-      {/* Storyboard Frame Settings Dialog */}
-      <StoryboardFrameSettings
-        open={showStoryboardSettings}
-        onOpenChange={setShowStoryboardSettings}
-        onApplyFrameSize={(width, height) => setFrameSize({ width, height })}
-        currentFrameWidth={frameSize.width}
-        currentFrameHeight={frameSize.height}
-      />
 
       {/* Smart Compose Dialog */}
       <Dialog open={showSmartComposeDialog} onOpenChange={setShowSmartComposeDialog}>
