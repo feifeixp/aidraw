@@ -119,18 +119,31 @@ const Editor = () => {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
-  // 初始化设置
-  const [showInitialSetup, setShowInitialSetup] = useState(() => {
-    // 检查 localStorage 是否已经完成过初始化
-    const hasCompletedSetup = localStorage.getItem('editorSetupCompleted');
-    return !hasCompletedSetup;
-  });
+  // 初始化设置 - 每次进入编辑器都需要初始化
+  const [showInitialSetup, setShowInitialSetup] = useState(true);
   const [defaultStyle, setDefaultStyle] = useState("auto");
   const [frameWidth, setFrameWidth] = useState(1024);
   const [frameHeight, setFrameHeight] = useState(576);
   
-  // 教程状态 - 只在初始化设置完成后且首次使用时显示
+  // 教程状态
   const [showTutorial, setShowTutorial] = useState(false);
+
+  // 在组件挂载时清除所有缓存
+  useEffect(() => {
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('editor-') || key.startsWith('canvas-') || key === 'editorSetupCompleted')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log(`已清除 ${keysToRemove.length} 个缓存项`);
+    } catch (error) {
+      console.error("清除缓存失败:", error);
+    }
+  }, []);
 
   // 保存画布为JSON文件
   const handleSaveToLocal = useCallback(() => {
@@ -173,7 +186,6 @@ const Editor = () => {
     setFrameWidth(settings.width);
     setFrameHeight(settings.height);
     setShowInitialSetup(false);
-    localStorage.setItem('editorSetupCompleted', 'true');
     toast.success(`初始化完成：${settings.style === 'auto' ? '自动风格' : ''}，分镜尺寸 ${settings.width}×${settings.height}`);
   }, []);
 

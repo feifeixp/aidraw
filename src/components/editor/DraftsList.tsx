@@ -1,7 +1,7 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Download, Upload, PlusCircle } from "lucide-react";
+import { Download, Upload, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas, Rect, FabricText } from "fabric";
 
@@ -163,49 +163,55 @@ export const DraftsList = ({
     toast.success("已创建新草稿，请进行初始化设置");
   }, [canvas, onDraftIdChange, onActiveFrameIdChange, onFrameCountChange, onRequestInitialSetup]);
 
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <FileText className="h-4 w-4 mr-2" />
-          草稿
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>草稿管理</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            使用JSON文件管理您的草稿，无需云端存储或缓存。
-          </p>
-          
-          <div className="flex flex-col gap-2">
-            <Button onClick={exportDraft} className="w-full justify-start">
-              <Download className="h-4 w-4 mr-2" />
-              导出当前草稿为JSON文件
-            </Button>
-            
-            <Button onClick={importDraft} variant="outline" className="w-full justify-start">
-              <Upload className="h-4 w-4 mr-2" />
-              从JSON文件导入草稿
-            </Button>
-            
-            <Button onClick={createNewDraft} variant="secondary" className="w-full justify-start">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              创建新草稿（清除所有缓存）
-            </Button>
-          </div>
+  const [showImportExportDialog, setShowImportExportDialog] = useState(false);
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileImport}
-            className="hidden"
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
+  return (
+    <>
+      {/* 新建草稿按钮 */}
+      <Button variant="outline" size="sm" onClick={createNewDraft}>
+        <PlusCircle className="h-4 w-4 mr-2" />
+        新建草稿
+      </Button>
+
+      {/* 导入/导出对话框 */}
+      <Dialog open={showImportExportDialog} onOpenChange={setShowImportExportDialog}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            导入/导出
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>导入/导出草稿</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              使用JSON文件管理您的草稿，无需云端存储或缓存。
+            </p>
+            
+            <div className="flex flex-col gap-2">
+              <Button onClick={exportDraft} className="w-full justify-start">
+                <Download className="h-4 w-4 mr-2" />
+                导出当前草稿为JSON文件
+              </Button>
+              
+              <Button onClick={importDraft} variant="outline" className="w-full justify-start">
+                <Upload className="h-4 w-4 mr-2" />
+                从JSON文件导入草稿
+              </Button>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleFileImport}
+              className="hidden"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
