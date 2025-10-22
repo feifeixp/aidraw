@@ -17,6 +17,8 @@ interface EditorCanvasProps {
   onActiveFrameChange: (frameId: string | null) => void;
   defaultFrameWidth?: number;
   defaultFrameHeight?: number;
+  shouldCenterOnFrame?: boolean;
+  onCenterComplete?: () => void;
 }
 
 export const EditorCanvas = ({
@@ -30,7 +32,9 @@ export const EditorCanvas = ({
   activeFrameId,
   onActiveFrameChange,
   defaultFrameWidth = 1024,
-  defaultFrameHeight = 576
+  defaultFrameHeight = 576,
+  shouldCenterOnFrame = false,
+  onCenterComplete
 }: EditorCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -215,6 +219,35 @@ export const EditorCanvas = ({
     setTimeout(() => {
       fabricCanvas.renderAll();
       console.log('[EditorCanvas] 强制第二次渲染完成');
+      
+      // 如果需要移动视口到分镜中心
+      if (shouldCenterOnFrame && containerRef.current && onCenterComplete) {
+        console.log('[EditorCanvas] 开始移动视口到分镜中心');
+        
+        // 获取视口尺寸
+        const viewportWidth = containerRef.current.clientWidth;
+        const viewportHeight = containerRef.current.clientHeight;
+        
+        // 计算分镜中心位置
+        const frameCenterX = frameLeft + DEFAULT_FRAME_WIDTH / 2;
+        const frameCenterY = frameTop + DEFAULT_FRAME_HEIGHT / 2;
+        
+        // 计算当前缩放比例（zoom 是百分比，需要转换为小数）
+        const currentZoom = zoom / 100;
+        
+        // 计算需要的平移量，使分镜中心出现在视口中心
+        const panX = viewportWidth / 2 - frameCenterX * currentZoom;
+        const panY = viewportHeight / 2 - frameCenterY * currentZoom;
+        
+        // 设置新的视口变换
+        fabricCanvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
+        fabricCanvas.renderAll();
+        
+        console.log('[EditorCanvas] 视口移动完成', { frameCenterX, frameCenterY, panX, panY, currentZoom });
+        
+        // 通知父组件完成
+        onCenterComplete();
+      }
     }, 100);
 
     // Add keyboard event listener for Delete key

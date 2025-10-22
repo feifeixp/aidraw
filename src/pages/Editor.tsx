@@ -124,6 +124,7 @@ const Editor = () => {
   const [defaultStyle, setDefaultStyle] = useState("auto");
   const [frameWidth, setFrameWidth] = useState(1024);
   const [frameHeight, setFrameHeight] = useState(576);
+  const [shouldCenterOnFrame, setShouldCenterOnFrame] = useState(false);
   
   // 教程状态
   const [showTutorial, setShowTutorial] = useState(false);
@@ -186,6 +187,7 @@ const Editor = () => {
     setFrameWidth(settings.width);
     setFrameHeight(settings.height);
     setShowInitialSetup(false);
+    setShouldCenterOnFrame(true); // 标记需要移动到分镜中心
     toast.success(`初始化完成：${settings.style === 'auto' ? '自动风格' : ''}，分镜尺寸 ${settings.width}×${settings.height}`);
   }, []);
 
@@ -799,6 +801,8 @@ const Editor = () => {
           onActiveFrameChange={setActiveFrameId}
           defaultFrameWidth={frameWidth}
           defaultFrameHeight={frameHeight}
+          shouldCenterOnFrame={shouldCenterOnFrame}
+          onCenterComplete={() => setShouldCenterOnFrame(false)}
         />
         {!isMobile && (
           <div className={`absolute left-4 top-4 ${isLeftToolbarCollapsed ? 'w-16' : 'w-48'} h-[calc(100%-2rem)] flex flex-col bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-10 overflow-hidden transition-all duration-300 left-toolbar`}>
