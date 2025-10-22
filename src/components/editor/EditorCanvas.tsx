@@ -274,8 +274,14 @@ export const EditorCanvas = ({
         );
         
         if (targetFrame && containerRef.current) {
-          const viewportWidth = containerRef.current.clientWidth;
-          const viewportHeight = containerRef.current.clientHeight;
+          // 使用与按钮相同的容器获取方式
+          const canvasElement = fabricCanvas.getElement();
+          const canvasContainer = canvasElement.parentElement?.parentElement; // 获取外层overflow容器
+          
+          if (!canvasContainer) return;
+          
+          const viewportWidth = canvasContainer.clientWidth;
+          const viewportHeight = canvasContainer.clientHeight;
           
           const frameLeft = targetFrame.left || 0;
           const frameTop = targetFrame.top || 0;
@@ -304,7 +310,8 @@ export const EditorCanvas = ({
               panX, 
               panY,
               viewportWidth,
-              viewportHeight
+              viewportHeight,
+              containerType: 'parentElement.parentElement'
             });
             
             toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);

@@ -86,8 +86,9 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 获取画布容器
-    const canvasContainer = canvas.getElement().parentElement;
+    // 获取画布容器 - 需要获取外层的overflow容器
+    const canvasElement = canvas.getElement();
+    const canvasContainer = canvasElement.parentElement?.parentElement; // 跳过中间wrapper，获取外层overflow容器
     if (!canvasContainer) return;
 
     // 查找当前激活的分镜或第一个分镜
@@ -127,7 +128,8 @@ export const EditorToolbar = ({
           panX, 
           panY,
           viewportWidth,
-          viewportHeight
+          viewportHeight,
+          containerType: 'parentElement.parentElement'
         });
 
         toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);
