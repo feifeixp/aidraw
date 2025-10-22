@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
   activeTool: string;
@@ -1287,94 +1288,17 @@ export const EditorToolbar = ({
               )}
             </div>
 
-            {/* 风格选择 */}
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">生成风格</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  variant={storyboardStyle === 'blackWhiteSketch' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('blackWhiteSketch')}
-                  className="h-auto py-2"
-                >
-                  黑白线稿
-                </Button>
-                <Button
-                  variant={storyboardStyle === 'blackWhiteComic' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('blackWhiteComic')}
-                  className="h-auto py-2"
-                >
-                  黑白漫画
-                </Button>
-                <Button
-                  variant={storyboardStyle === 'japaneseAnime' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('japaneseAnime')}
-                  className="h-auto py-2"
-                >
-                  日式动漫
-                </Button>
-                <Button
-                  variant={storyboardStyle === 'americanComic' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('americanComic')}
-                  className="h-auto py-2"
-                >
-                  美式漫画
-                </Button>
-                <Button
-                  variant={storyboardStyle === 'chineseAnime' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('chineseAnime')}
-                  className="h-auto py-2"
-                >
-                  国风动漫
-                </Button>
-                <Button
-                  variant={storyboardStyle === '3dCartoon' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('3dCartoon')}
-                  className="h-auto py-2"
-                >
-                  3D卡通
-                </Button>
-                <Button
-                  variant={storyboardStyle === '3dUnreal' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('3dUnreal')}
-                  className="h-auto py-2"
-                >
-                  虚幻引擎
-                </Button>
-                <Button
-                  variant={storyboardStyle === 'cinematic' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('cinematic')}
-                  className="h-auto py-2"
-                >
-                  电影写实
-                </Button>
-                <Button
-                  variant={storyboardStyle === 'custom' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStoryboardStyle('custom')}
-                  className="h-auto py-2"
-                >
-                  自定义
-                </Button>
-              </div>
-              
-              {/* 自定义风格输入 */}
-              {storyboardStyle === 'custom' && (
+            {/* 自定义风格输入（仅当选择自定义时显示） */}
+            {storyboardStyle === 'custom' && (
+              <div className="space-y-2">
+                <Label className="text-sm">自定义风格描述</Label>
                 <Input
                   placeholder="输入自定义风格描述，如：水彩风格、油画风格等"
                   value={customStyle}
                   onChange={(e) => setCustomStyle(e.target.value)}
-                  className="mt-2"
                 />
-              )}
-            </div>
+              </div>
+            )}
 
             {/* 生成说明 */}
             <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -1388,19 +1312,36 @@ export const EditorToolbar = ({
               </ul>
             </div>
 
-            {/* 生成按钮 */}
-            <div className="flex gap-2">
+            {/* 风格选择和生成按钮 */}
+            <div className="flex gap-2 items-center">
+              <div className="flex-1">
+                <Select value={storyboardStyle} onValueChange={setStoryboardStyle}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择生成风格" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blackWhiteSketch">黑白线稿</SelectItem>
+                    <SelectItem value="blackWhiteComic">黑白漫画</SelectItem>
+                    <SelectItem value="japaneseAnime">日式动漫</SelectItem>
+                    <SelectItem value="americanComic">美式漫画</SelectItem>
+                    <SelectItem value="chineseAnime">国风动漫</SelectItem>
+                    <SelectItem value="3dCartoon">3D卡通</SelectItem>
+                    <SelectItem value="3dUnreal">虚幻引擎</SelectItem>
+                    <SelectItem value="cinematic">电影写实</SelectItem>
+                    <SelectItem value="custom">自定义</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
                 onClick={() => setShowAiStoryboardDialog(false)}
                 variant="outline"
-                className="flex-1"
               >
                 取消
               </Button>
               <Button
                 onClick={handleAiStoryboardGeneration}
                 disabled={!scriptText.trim() || referenceImages.length === 0 || isGeneratingStoryboards}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
                 {isGeneratingStoryboards ? "生成中..." : "开始生成分镜"}
               </Button>
