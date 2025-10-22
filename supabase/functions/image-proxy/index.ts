@@ -39,7 +39,8 @@ serve(async (req) => {
       'lovable.dev',
       'lovableproject.com',
       'supabase.co',
-      'amazonaws.com'
+      'amazonaws.com',
+      'neodomain.ai'
     ];
 
     const isAllowed = allowedDomains.some(domain => 

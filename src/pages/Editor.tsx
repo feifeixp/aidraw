@@ -208,7 +208,9 @@ const Editor = () => {
             if (url.trim()) {
               try {
                 console.log('正在加载图片:', url);
-                const img = await FabricImage.fromURL(url.trim(), {
+                // 使用image-proxy代理外部图片
+                const proxyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(url.trim())}`;
+                const img = await FabricImage.fromURL(proxyUrl, {
                   crossOrigin: 'anonymous'
                 });
                 
