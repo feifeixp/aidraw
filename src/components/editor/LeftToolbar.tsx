@@ -1310,7 +1310,7 @@ export const LeftToolbar = ({
       {/* Scribble Overlay - 中间区域涂抹界面 */}
       {isScribbling && (
         <div 
-          className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-2 backdrop-blur-sm"
           onClick={(e) => {
             // 点击背景关闭
             if (e.target === e.currentTarget) {
@@ -1318,7 +1318,7 @@ export const LeftToolbar = ({
             }
           }}
         >
-          <div className="bg-background rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col border-2 border-primary/20">
+          <div className="bg-background rounded-xl shadow-2xl max-w-[95vw] w-full max-h-[95vh] flex flex-col border-2 border-primary/20">
             {/* 头部 */}
             <div className="flex items-center justify-between p-4 border-b bg-muted/50">
               <div>
@@ -1362,7 +1362,7 @@ export const LeftToolbar = ({
             </div>
             
             {/* 画布区域 */}
-            <div className="flex-1 overflow-auto p-6">
+            <div className="flex-1 overflow-auto p-4">
               <ScribbleCanvas
                 canvas={canvas}
                 scribbleCanvasRef={scribbleCanvasRef}
@@ -1868,12 +1868,12 @@ const ScribbleCanvas = ({ canvas, scribbleCanvasRef, scribblePoints, setScribble
 
   return (
     <div ref={containerRef} className="relative w-full bg-muted rounded-lg overflow-hidden">
-      <div className="relative w-full max-h-[70vh] flex items-center justify-center">
+      <div className="relative w-full max-h-[80vh] flex items-center justify-center">
         <img
           ref={imageRef}
           src={imageData}
           alt="提取对象"
-          className="max-w-full max-h-[70vh] object-contain"
+          className="max-w-full max-h-[80vh] object-contain"
         />
         <canvas
           ref={scribbleCanvasRef}
