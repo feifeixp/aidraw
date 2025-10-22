@@ -271,35 +271,86 @@ export const EditorToolbar = ({
 
       toast.success(`成功生成 ${data.images.length} 张分镜！`);
       
-      // 为每张生成的图片创建独立的分镜框架
+      // 批量创建分镜框架和添加图片
       const COLS = 5;
+      const ROWS = 8;
       const INFINITE_CANVAS_SIZE = 10000;
       const FRAME_WIDTH = frameSize.width;
       const FRAME_HEIGHT = frameSize.height;
       const SPACING = 50;
       const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
       const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
-      const totalHeight = 8 * FRAME_HEIGHT + 7 * SPACING;
+      const totalHeight = ROWS * FRAME_HEIGHT + (ROWS - 1) * SPACING;
       const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
       
-      for (let i = 0; i < data.images.length; i++) {
-        const imageUrl = data.images[i];
-        
-        // 记录当前的分镜索引（创建之前）
-        const currentFrameIndex = storyboardFrameCount + i;
+      // 记录初始的分镜数量
+      const initialFrameCount = storyboardFrameCount;
+      
+      // 批量加载所有图片
+      const imageLoadPromises = data.images.map((imageUrl: string) => 
+        FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' })
+      );
+      const loadedImages = await Promise.all(imageLoadPromises);
+      
+      // 为每张图片创建分镜框架并添加图片
+      for (let i = 0; i < loadedImages.length; i++) {
+        const img = loadedImages[i];
+        const currentFrameIndex = initialFrameCount + i;
         const frameId = `${currentFrameIndex + 1}`;
         
-        // 先创建分镜框架（这会更新 storyboardFrameCount）
-        handleCreateStoryboardFrame();
+        // 检查是否超过最大frame数量
+        if (currentFrameIndex >= COLS * ROWS) {
+          toast.error(`已达到最大分镜数量 (${COLS * ROWS})`);
+          break;
+        }
         
-        // 加载图片
-        const img = await FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
-        
-        // 计算该分镜框架的位置
+        // 计算frame在网格中的位置
         const col = currentFrameIndex % COLS;
         const row = Math.floor(currentFrameIndex / COLS);
         const frameLeft = START_X + col * (FRAME_WIDTH + SPACING);
         const frameTop = START_Y + row * (FRAME_HEIGHT + SPACING);
+        
+        // 创建分镜框架
+        const frame = new FabricRect({
+          left: frameLeft,
+          top: frameTop,
+          width: FRAME_WIDTH,
+          height: FRAME_HEIGHT,
+          fill: 'white',
+          selectable: false,
+          evented: false,
+          name: `storyboard-frame-${frameId}`
+        });
+        
+        // 创建边框
+        const frameBorder = new FabricRect({
+          left: frameLeft,
+          top: frameTop,
+          width: FRAME_WIDTH,
+          height: FRAME_HEIGHT,
+          fill: 'transparent',
+          stroke: '#666',
+          strokeWidth: 2,
+          selectable: false,
+          evented: false,
+          name: `storyboard-border-${frameId}`
+        });
+        
+        // 创建帧编号标签
+        const frameLabel = new FabricText(`${frameId}`, {
+          left: frameLeft + 10,
+          top: frameTop + 10,
+          fontSize: 16,
+          fill: '#333',
+          selectable: false,
+          evented: false,
+          name: `storyboard-label-${frameId}`
+        });
+        
+        // 添加frame和border到canvas
+        canvas.add(frame);
+        canvas.add(frameBorder);
+        canvas.add(frameLabel);
         
         // 缩放图片以适应分镜框架
         const scale = Math.min(
@@ -323,6 +374,9 @@ export const EditorToolbar = ({
         
         toast.info(`已添加分镜 ${i + 1}/${data.images.length}`);
       }
+      
+      // 更新分镜计数
+      setStoryboardFrameCount(initialFrameCount + loadedImages.length);
       
       canvas.renderAll();
       saveState();
