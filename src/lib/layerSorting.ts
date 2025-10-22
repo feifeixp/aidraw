@@ -18,9 +18,13 @@ const LAYER_TYPE_RANGES: Record<LayerType, { min: number; max: number }> = {
 export const getObjectLayerType = (obj: FabricObject): LayerType => {
   const data = (obj as any).data;
   if (data?.elementType) {
-    return data.elementType as LayerType;
+    const type = data.elementType as string;
+    // Validate that the type is in LAYER_TYPE_RANGES
+    if (type in LAYER_TYPE_RANGES) {
+      return type as LayerType;
+    }
   }
-  // Default to prop if no type is set
+  // Default to prop if no valid type is set
   return 'prop';
 };
 
@@ -88,6 +92,15 @@ export const insertObjectWithLayerType = (canvas: FabricCanvas, obj: FabricObjec
   const objectType = getObjectLayerType(obj);
   const objects = canvas.getObjects();
   
+  // Validate that the object type exists in LAYER_TYPE_RANGES
+  const targetRange = LAYER_TYPE_RANGES[objectType];
+  if (!targetRange) {
+    console.error(`Invalid layer type: ${objectType}`);
+    canvas.add(obj);
+    canvas.renderAll();
+    return;
+  }
+  
   // Find the insertion index
   let insertIndex = 0;
   
@@ -102,7 +115,11 @@ export const insertObjectWithLayerType = (canvas: FabricCanvas, obj: FabricObjec
     const currentObj = objects[i];
     const currentType = getObjectLayerType(currentObj);
     const currentRange = LAYER_TYPE_RANGES[currentType];
-    const targetRange = LAYER_TYPE_RANGES[objectType];
+    
+    // Skip objects with invalid types
+    if (!currentRange) {
+      continue;
+    }
     
     if (currentRange.min < targetRange.min) {
       insertIndex = i + 1;
