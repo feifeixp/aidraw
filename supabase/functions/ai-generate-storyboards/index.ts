@@ -142,29 +142,46 @@ serve(async (req) => {
 function analyzeScriptScenes(scriptText: string): string[] {
   const scenes: string[] = [];
   
-  // 按照换行、场景标记等分割剧本
+  // 按照换行分割剧本
   const lines = scriptText.split(/\n+/);
   let currentScene = '';
+  let sceneHeader = ''; // 保存场景、人物、时间等信息
   
   for (const line of lines) {
     const trimmedLine = line.trim();
     
     if (!trimmedLine) continue;
     
-    // 检测场景分隔符（如：场景1、镜头1、Scene 1等）
+    // 检测场景标记（如：场景1、镜头1、Scene 1、△等）
     const isSceneMarker = /^(场景|镜头|分镜|Scene|Shot)\s*\d+/i.test(trimmedLine);
+    const isShotMarker = trimmedLine.startsWith('△'); // 分镜标记
+    const isMetaInfo = trimmedLine.startsWith('场景：') || 
+                       trimmedLine.startsWith('人物：') || 
+                       trimmedLine.startsWith('时间：');
     
-    if (isSceneMarker && currentScene) {
-      // 保存当前场景，开始新场景
-      scenes.push(currentScene.trim());
+    // 保存场景头信息（场景、人物、时间）
+    if (isMetaInfo) {
+      sceneHeader += (sceneHeader ? ' ' : '') + trimmedLine;
+      continue;
+    }
+    
+    // 遇到镜头标记（△）或场景标记时，如果已有内容则保存当前场景
+    if ((isShotMarker || isSceneMarker) && currentScene) {
+      // 将场景头信息加入到每个镜头
+      const fullScene = sceneHeader ? `${sceneHeader} ${currentScene}` : currentScene;
+      scenes.push(fullScene.trim());
+      currentScene = trimmedLine;
+    } else if (isShotMarker) {
+      // 新的镜头开始
       currentScene = trimmedLine;
     } else {
       // 累积到当前场景
       currentScene += (currentScene ? ' ' : '') + trimmedLine;
       
-      // 如果当前场景太长（超过500字），自动分割
-      if (currentScene.length > 500) {
-        scenes.push(currentScene.trim());
+      // 如果当前场景太长（超过300字），自动分割
+      if (currentScene.length > 300) {
+        const fullScene = sceneHeader ? `${sceneHeader} ${currentScene}` : currentScene;
+        scenes.push(fullScene.trim());
         currentScene = '';
       }
     }
@@ -172,13 +189,27 @@ function analyzeScriptScenes(scriptText: string): string[] {
   
   // 添加最后一个场景
   if (currentScene.trim()) {
-    scenes.push(currentScene.trim());
+    const fullScene = sceneHeader ? `${sceneHeader} ${currentScene}` : currentScene;
+    scenes.push(fullScene.trim());
   }
   
-  // 如果没有明确的场景分割，按段落自动分割
-  if (scenes.length === 0) {
+  // 如果没有明确的场景分割，尝试按对话和描述分割
+  if (scenes.length === 0 || scenes.length === 1) {
+    // 按双换行符分段
     const paragraphs = scriptText.split(/\n\n+/).filter(p => p.trim());
-    return paragraphs.length > 0 ? paragraphs : [scriptText];
+    if (paragraphs.length > 1) {
+      return paragraphs.slice(0, 8);
+    }
+    
+    // 如果还是只有一个场景，尝试按△符号分割
+    const shotMarkerSplit = scriptText.split(/△/).filter(s => s.trim());
+    if (shotMarkerSplit.length > 1) {
+      // 保留场景头信息
+      const header = shotMarkerSplit[0];
+      return shotMarkerSplit.slice(1).map((shot, i) => {
+        return i === 0 ? `${header} △${shot}` : `${header.split(/\n/)[0]} △${shot}`;
+      }).slice(0, 8);
+    }
   }
   
   // 最多生成8个场景
