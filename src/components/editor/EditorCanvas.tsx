@@ -49,6 +49,7 @@ export const EditorCanvas = ({
   const frameBorderRef = useRef<Rect | null>(null);
   
   const prevZoomRef = useRef(zoom);
+  const hasInitialCenteredRef = useRef(false); // 追踪是否已完成初始居中
   
   // Keep saveStateRef and activeToolRef up to date
   useEffect(() => {
@@ -499,13 +500,17 @@ export const EditorCanvas = ({
 
     canvas.renderAll();
 
-    // 如果是第一次创建分镜（从 0 到 1），移动视口
-    if (storyboardFrameCount === 1 && containerRef.current) {
+    // 只在第一次创建第一个分镜时居中一次
+    if (storyboardFrameCount === 1 && !hasInitialCenteredRef.current && containerRef.current) {
+      hasInitialCenteredRef.current = true; // 标记已完成初始居中
+      
       setTimeout(() => {
+        if (!containerRef.current) return;
+        
         console.log('[EditorCanvas] 首次创建分镜，移动视口到分镜中心');
         
-        const viewportWidth = containerRef.current!.clientWidth;
-        const viewportHeight = containerRef.current!.clientHeight;
+        const viewportWidth = containerRef.current.clientWidth;
+        const viewportHeight = containerRef.current.clientHeight;
         
         const frameCenterX = START_X + defaultFrameWidth / 2;
         const frameCenterY = START_Y + defaultFrameHeight / 2;
@@ -515,8 +520,8 @@ export const EditorCanvas = ({
         const targetScrollLeft = frameCenterX * currentZoom - viewportWidth / 2;
         const targetScrollTop = frameCenterY * currentZoom - viewportHeight / 2;
         
-        containerRef.current!.scrollLeft = targetScrollLeft;
-        containerRef.current!.scrollTop = targetScrollTop;
+        containerRef.current.scrollLeft = targetScrollLeft;
+        containerRef.current.scrollTop = targetScrollTop;
         
         console.log('[EditorCanvas] 视口移动完成');
         
@@ -525,7 +530,7 @@ export const EditorCanvas = ({
         }
       }, 100);
     }
-  }, [canvas, storyboardFrameCount, defaultFrameWidth, defaultFrameHeight, zoom, shouldCenterOnFrame, onCenterComplete]);
+  }, [canvas, storyboardFrameCount, defaultFrameWidth, defaultFrameHeight]);
 
   useEffect(() => {
     if (!canvas) return;
