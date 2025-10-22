@@ -195,38 +195,6 @@ export const EditorToolbar = ({
     // 更新frame计数
     setStoryboardFrameCount(frameIndex + 1);
 
-    // 自动将视口居中到新创建的分镜
-    const canvasElement = canvas.getElement();
-    const canvasContainer = canvasElement.parentElement?.parentElement;
-    if (canvasContainer) {
-      const viewportWidth = canvasContainer.clientWidth;
-      const viewportHeight = canvasContainer.clientHeight;
-      
-      const frameCenterX = x + FRAME_WIDTH / 2;
-      const frameCenterY = y + FRAME_HEIGHT / 2;
-      
-      // 获取当前zoom值
-      const vpt = canvas.viewportTransform;
-      if (vpt) {
-        const currentZoom = vpt[0];
-        
-        const panX = viewportWidth / 2 - frameCenterX * currentZoom;
-        const panY = viewportHeight / 2 - frameCenterY * currentZoom;
-        
-        canvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
-        canvas.renderAll();
-        
-        console.log('[EditorToolbar] 自动居中到新分镜:', { 
-          frameIndex: frameIndex + 1, 
-          frameCenterX, 
-          frameCenterY, 
-          currentZoom, 
-          panX, 
-          panY 
-        });
-      }
-    }
-
     toast.success(`已创建分镜 ${frameIndex + 1}/${MAX_FRAMES}`);
   };
 
