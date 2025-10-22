@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Palette, FlipHorizontal, Upload, Sparkles, Type, Square, Circle, Triangle, Wand2, MessageCircle, MessageSquare, Cloud, Crop, Check, X, ChevronLeft, ChevronRight, ImageIcon, Copy, User, Box, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Lock, Unlock, Scissors, Settings, Eraser } from "lucide-react";
+import { ImagePixelEraser } from "./ImagePixelEraser";
 import { Canvas as FabricCanvas, FabricText, Rect as FabricRect, Circle as FabricCircle, Triangle as FabricTriangle, Path, Group, FabricImage } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,10 +33,6 @@ interface LeftToolbarProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onSmartExtract?: () => Promise<void>;
-  activeTool?: string;
-  setActiveTool?: (tool: string) => void;
-  eraserBrushSize?: number;
-  setEraserBrushSize?: (size: number) => void;
   activeFrameId?: string | null;
 }
 export const LeftToolbar = ({
@@ -49,10 +46,6 @@ export const LeftToolbar = ({
   isCollapsed = false,
   onToggleCollapse,
   onSmartExtract,
-  activeTool,
-  setActiveTool,
-  eraserBrushSize = 20,
-  setEraserBrushSize,
   activeFrameId
 }: LeftToolbarProps) => {
   const navigate = useNavigate();
@@ -74,7 +67,8 @@ export const LeftToolbar = ({
   const [showAddElementDialog, setShowAddElementDialog] = useState(false);
   const [selectedElementType, setSelectedElementType] = useState<'character' | 'scene' | 'prop' | 'effect' | null>(null);
   const [isObjectLocked, setIsObjectLocked] = useState(false);
-  const [showEraserSettings, setShowEraserSettings] = useState(false);
+  const [showPixelEraser, setShowPixelEraser] = useState(false);
+  const [selectedImageForEraser, setSelectedImageForEraser] = useState<FabricImage | null>(null);
   const activeFrameIdRef = useRef(activeFrameId);
 
   // Update activeFrameIdRef when activeFrameId changes
@@ -688,6 +682,55 @@ export const LeftToolbar = ({
       toast.error("请先选择一个对象");
     }
   };
+  
+  const handleOpenPixelEraser = () => {
+    if (!canvas) return;
+    const activeObject = canvas.getActiveObject();
+    
+    if (!activeObject || activeObject.type !== 'image') {
+      toast.error("请先选择一个图片对象");
+      return;
+    }
+    
+    setSelectedImageForEraser(activeObject as FabricImage);
+    setShowPixelEraser(true);
+  };
+
+  const handleSaveErasedImage = async (imageDataUrl: string) => {
+    if (!canvas || !selectedImageForEraser) return;
+
+    try {
+      // 创建新的图片对象
+      const { FabricImage } = await import("fabric");
+      const newImg = await FabricImage.fromURL(imageDataUrl, {
+        crossOrigin: 'anonymous'
+      });
+      
+      // 保持原始位置和缩放
+      newImg.set({
+        left: selectedImageForEraser.left,
+        top: selectedImageForEraser.top,
+        scaleX: selectedImageForEraser.scaleX,
+        scaleY: selectedImageForEraser.scaleY,
+        angle: selectedImageForEraser.angle,
+        data: (selectedImageForEraser as any).data,
+        name: (selectedImageForEraser as any).name
+      });
+      
+      // 替换旧图片
+      canvas.remove(selectedImageForEraser);
+      canvas.add(newImg);
+      canvas.setActiveObject(newImg);
+      canvas.renderAll();
+      saveState();
+      
+      toast.success("图片擦除完成");
+      setSelectedImageForEraser(null);
+    } catch (error) {
+      console.error("保存擦除图片失败:", error);
+      toast.error("保存擦除图片失败");
+    }
+  };
 
   const handleDuplicate = async () => {
     const activeObject = canvas?.getActiveObject();
@@ -1128,28 +1171,16 @@ export const LeftToolbar = ({
           </Button>
         </div>
 
-        <div className={`flex gap-1 ${isCollapsed ? 'flex-col' : ''}`}>
-          <Button 
-            variant={activeTool === "eraser" ? "default" : "outline"}
-            size="sm" 
-            className={`${isCollapsed ? 'w-full px-0' : 'flex-1 justify-start'}`} 
-            onClick={() => setActiveTool?.("eraser")}
-            title="擦除工具"
-          >
-            <Eraser className="h-4 w-4" />
-            {!isCollapsed && <span className="ml-2">擦除</span>}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className={`${isCollapsed ? 'w-full px-0' : ''}`}
-            onClick={() => setShowEraserSettings(true)}
-            title="擦除设置"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
-
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`}
+          onClick={handleOpenPixelEraser}
+          title="像素擦除"
+        >
+          <Eraser className="h-4 w-4" />
+          {!isCollapsed && <span className="ml-2">像素擦除</span>}
+        </Button>
 
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleFlip}>
           <FlipHorizontal className="h-4 w-4" />
@@ -1395,32 +1426,13 @@ export const LeftToolbar = ({
         document.body
       )}
 
-      {/* Eraser Settings Dialog */}
-      <Dialog open={showEraserSettings} onOpenChange={setShowEraserSettings}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>擦除设置</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="eraser-brush-size">笔刷大小: {eraserBrushSize} 像素</Label>
-              <Slider 
-                id="eraser-brush-size" 
-                min={5} 
-                max={100} 
-                step={5} 
-                value={[eraserBrushSize]} 
-                onValueChange={value => setEraserBrushSize?.(value[0])} 
-                className="w-full" 
-              />
-              <p className="text-sm text-muted-foreground">
-                调节擦除笔刷的大小以控制擦除范围
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
+      {/* Image Pixel Eraser Dialog */}
+      <ImagePixelEraser
+        open={showPixelEraser}
+        onOpenChange={setShowPixelEraser}
+        imageObject={selectedImageForEraser}
+        onSave={handleSaveErasedImage}
+      />
 
       {/* AI Generate Dialog */}
       <Dialog open={showAiGenerateDialog} onOpenChange={setShowAiGenerateDialog}>

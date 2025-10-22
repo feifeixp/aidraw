@@ -93,9 +93,7 @@ const historyReducer = (state: HistoryState, action: HistoryAction): HistoryStat
 };
 const Editor = () => {
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
-  const [activeTool, setActiveTool] = useState<string>("select");
   const [zoom, setZoom] = useState<number>(80);
-  const [eraserBrushSize, setEraserBrushSize] = useState<number>(20);
   const [{
     history,
     historyIndex
@@ -469,10 +467,6 @@ const Editor = () => {
                           target.isContentEditable;
       
       if (isInputField) return;
-      
-      if (e.key === 'h' || e.key === 'H') {
-        setActiveTool(prev => prev === "pan" ? "select" : "pan");
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -686,10 +680,6 @@ const Editor = () => {
         isCollapsed={isLeftToolbarCollapsed}
         onToggleCollapse={() => setIsLeftToolbarCollapsed(!isLeftToolbarCollapsed)}
         onSmartExtract={handleSmartExtract}
-        activeTool={activeTool}
-        setActiveTool={setActiveTool}
-        eraserBrushSize={eraserBrushSize}
-        setEraserBrushSize={setEraserBrushSize}
         activeFrameId={activeFrameId}
       />
     </div>
@@ -768,8 +758,6 @@ const Editor = () => {
         <div className="flex-1 min-w-0 overflow-x-auto">
           <EditorToolbar
             canvas={canvas} 
-            activeTool={activeTool} 
-            setActiveTool={setActiveTool} 
             undo={undo} 
             redo={redo} 
             canUndo={historyIndex > 0} 
@@ -797,11 +785,9 @@ const Editor = () => {
         <EditorCanvas 
           canvas={canvas} 
           setCanvas={setCanvas} 
-          activeTool={activeTool} 
           saveState={saveState}
           zoom={zoom}
           onZoomChange={setZoom}
-          eraserBrushSize={eraserBrushSize}
           activeFrameId={activeFrameId}
           onActiveFrameChange={setActiveFrameId}
           defaultFrameWidth={frameWidth}

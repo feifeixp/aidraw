@@ -8,11 +8,9 @@ const INFINITE_CANVAS_SIZE = 10000;
 interface EditorCanvasProps {
   canvas: FabricCanvas | null;
   setCanvas: (canvas: FabricCanvas) => void;
-  activeTool: string;
   saveState: () => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
-  eraserBrushSize?: number;
   activeFrameId: string | null;
   onActiveFrameChange: (frameId: string | null) => void;
   defaultFrameWidth?: number;
@@ -25,11 +23,9 @@ interface EditorCanvasProps {
 export const EditorCanvas = ({
   canvas,
   setCanvas,
-  activeTool,
   saveState,
   zoom,
   onZoomChange,
-  eraserBrushSize = 20,
   activeFrameId,
   onActiveFrameChange,
   defaultFrameWidth = 1024,
@@ -41,7 +37,6 @@ export const EditorCanvas = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveStateRef = useRef(saveState);
-  const activeToolRef = useRef(activeTool);
   const activeFrameIdRef = useRef(activeFrameId);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
@@ -51,14 +46,10 @@ export const EditorCanvas = ({
   const prevZoomRef = useRef(zoom);
   const hasInitialCenteredRef = useRef(false); // 追踪是否已完成初始居中
   
-  // Keep saveStateRef and activeToolRef up to date
+  // Keep saveStateRef up to date
   useEffect(() => {
     saveStateRef.current = saveState;
   }, [saveState]);
-
-  useEffect(() => {
-    activeToolRef.current = activeTool;
-  }, [activeTool]);
 
   useEffect(() => {
     activeFrameIdRef.current = activeFrameId;
@@ -270,13 +261,7 @@ export const EditorCanvas = ({
     const handlePathCreated = (e: any) => {
       const path = e.path;
       if (path) {
-        // Set globalCompositeOperation on the path object itself
-        // This is crucial for eraser to work properly
-        if (activeToolRef.current === 'eraser') {
-          (path as any).globalCompositeOperation = 'destination-out';
-        } else {
-          (path as any).globalCompositeOperation = 'source-over';
-        }
+        console.log(`[EditorCanvas] Path created with ${path.path?.length} points`);
       }
     };
 
@@ -567,32 +552,6 @@ export const EditorCanvas = ({
     }
   }, [canvas, storyboardFrameCount, defaultFrameWidth, defaultFrameHeight]);
 
-  useEffect(() => {
-    if (!canvas) return;
-
-    canvas.isDrawingMode = activeTool === "draw" || activeTool === "eraser";
-    canvas.selection = activeTool === "select";
-
-    if (activeTool === "draw") {
-      if (!canvas.freeDrawingBrush || canvas.freeDrawingBrush.constructor.name !== 'PencilBrush') {
-        canvas.freeDrawingBrush = new PencilBrush(canvas);
-      }
-      canvas.freeDrawingBrush.color = "#000000";
-      canvas.freeDrawingBrush.width = 2;
-      // @ts-ignore
-      canvas.freeDrawingBrush.globalCompositeOperation = "source-over";
-    } else if (activeTool === "eraser") {
-      // 强制重新创建brush以确保擦除模式正确
-      canvas.freeDrawingBrush = new PencilBrush(canvas);
-      // 设置擦除参数
-      canvas.freeDrawingBrush.color = "rgba(0,0,0,1)"; // 颜色在destination-out模式下不重要，但需要设置
-      canvas.freeDrawingBrush.width = eraserBrushSize;
-      // @ts-ignore - 设置为destination-out以实现真正的擦除（在透明通道绘制）
-      canvas.freeDrawingBrush.globalCompositeOperation = "destination-out";
-      canvas.isDrawingMode = true;
-    }
-  }, [activeTool, canvas, eraserBrushSize]);
-
   // 修正 Fabric.js 的鼠标坐标以匹配 CSS 缩放
   useEffect(() => {
     if (!canvas) return;
@@ -871,18 +830,8 @@ export const EditorCanvas = ({
     if (!container) return;
 
     const handleCanvasMouseDown = (e: any) => {
-      // Pan mode: pan on any click
-      if (activeTool === "pan" && e.e.button === 0) {
-        isPanningRef.current = true;
-        panStartRef.current = {
-          x: e.e.clientX + container.scrollLeft,
-          y: e.e.clientY + container.scrollTop
-        };
-        container.style.cursor = 'grabbing';
-        canvas.selection = false;
-      }
-      // Select mode: pan only on empty area
-      else if (activeTool === "select" && !e.target && e.e.button === 0) {
+      // Pan only on empty area
+      if (!e.target && e.e.button === 0) {
         isPanningRef.current = true;
         panStartRef.current = {
           x: e.e.clientX + container.scrollLeft,
@@ -906,25 +855,18 @@ export const EditorCanvas = ({
     const handleMouseUp = () => {
       if (isPanningRef.current) {
         isPanningRef.current = false;
-        container.style.cursor = activeTool === "pan" ? 'grab' : '';
-        canvas.selection = activeTool === "select";
+        container.style.cursor = '';
+        canvas.selection = true;
       }
     };
 
     const handleMouseLeave = () => {
       if (isPanningRef.current) {
         isPanningRef.current = false;
-        container.style.cursor = activeTool === "pan" ? 'grab' : '';
-        canvas.selection = activeTool === "select";
+        container.style.cursor = '';
+        canvas.selection = true;
       }
     };
-
-    // Set cursor based on active tool
-    if (activeTool === "pan") {
-      container.style.cursor = 'grab';
-    } else {
-      container.style.cursor = '';
-    }
 
     canvas.on('mouse:down', handleCanvasMouseDown);
     container.addEventListener('mousemove', handleMouseMove);
@@ -938,7 +880,7 @@ export const EditorCanvas = ({
       container.removeEventListener('mouseleave', handleMouseLeave);
       container.style.cursor = '';
     };
-  }, [canvas, activeTool]);
+  }, [canvas]);
 
   const scale = zoom / 100;
   

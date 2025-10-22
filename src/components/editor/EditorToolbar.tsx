@@ -14,8 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 interface EditorToolbarProps {
   canvas: FabricCanvas | null;
-  activeTool: string;
-  setActiveTool: (tool: string) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -38,8 +36,6 @@ interface EditorToolbarProps {
 }
 export const EditorToolbar = ({
   canvas,
-  activeTool,
-  setActiveTool,
   undo,
   redo,
   canUndo,
@@ -939,15 +935,6 @@ export const EditorToolbar = ({
   };
 
   return <div className="flex items-center gap-2 flex-nowrap">
-      <Button variant={activeTool === "select" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("select")} className="bg-white hover:bg-white/90 shrink-0" title="选择工具">
-        <MousePointer2 className="h-4 w-4" />
-        <span className="ml-1">选择</span>
-      </Button>
-      <Button variant={activeTool === "pan" ? "default" : "outline"} size="sm" onClick={() => setActiveTool("pan")} className="shrink-0" title="平移画布 (H)">
-        <Hand className="h-4 w-4" />
-        <span className="ml-1">平移</span>
-      </Button>
-
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
       <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo} className="shrink-0" title="撤销">
