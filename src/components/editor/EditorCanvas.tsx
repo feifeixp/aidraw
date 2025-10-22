@@ -690,32 +690,11 @@ export const EditorCanvas = ({
         data: { elementType: elementType || 'character' }
       });
       
-      // Use layer sorting system to insert at correct position
-      const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
-      insertObjectWithLayerType(canvas, img, (elementType || 'character') as any);
-      
-      canvas.setActiveObject(img);
-      canvas.renderAll();
-      
-      // Ensure frame stays at the back and frameBorder on top
-      if (frameRef.current) {
-        canvas.sendObjectToBack(frameRef.current);
-        // 重新应用锁定状态
-        frameRef.current.set({
-          selectable: false,
-          evented: true,
-          hasControls: false,
-          hasBorders: false,
-          lockMovementX: true,
-          lockMovementY: true,
-          hoverCursor: 'pointer'
-        });
-      }
-      
-      // 确保所有分镜frame也在底层，并重新应用锁定状态
-      canvas.getObjects().forEach(obj => {
+      // First, ensure all frames are at the bottom
+      const allObjects = canvas.getObjects();
+      allObjects.forEach(obj => {
         const objName = (obj as any).name || '';
-        if (objName.startsWith('storyboard-frame-')) {
+        if (objName.startsWith('storyboard-frame-') || obj === frameRef.current) {
           canvas.sendObjectToBack(obj);
           obj.set({
             selectable: false,
@@ -728,6 +707,12 @@ export const EditorCanvas = ({
           });
         }
       });
+      
+      // Use layer sorting system to insert at correct position
+      const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+      insertObjectWithLayerType(canvas, img, (elementType || 'character') as any);
+      
+      canvas.setActiveObject(img);
       
       if (frameBorderRef.current) {
         canvas.bringObjectToFront(frameBorderRef.current);
