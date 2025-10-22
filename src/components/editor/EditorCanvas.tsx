@@ -93,8 +93,9 @@ export const EditorCanvas = ({
     }
 
     // 创建默认第一个分镜（使用统一的网格布局规则）
-    const COLS = 5; // 5列
-    const ROWS = 8; // 8行
+    const COLS = 4; // 4列
+    const MAX_FRAMES = 12; // 最大分镜数量
+    const ROWS = Math.ceil(MAX_FRAMES / COLS); // 3行
     const DEFAULT_FRAME_WIDTH = defaultFrameWidth;
     const DEFAULT_FRAME_HEIGHT = defaultFrameHeight;
     const SPACING = 50; // 间距

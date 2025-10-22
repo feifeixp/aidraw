@@ -88,8 +88,8 @@ export const EditorToolbar = ({
     }
 
     // 分镜布局配置
-    const COLS = 5; // 5列
-    const ROWS = 8; // 8行
+    const COLS = 4; // 4列
+    const MAX_FRAMES = 12; // 最大分镜数量
     const INFINITE_CANVAS_SIZE = 10000;
     
     // 使用可配置的分镜尺寸
@@ -97,7 +97,8 @@ export const EditorToolbar = ({
     const FRAME_HEIGHT = frameSize.height;
     const SPACING = 50; // 间距
     
-    // 计算整个网格的尺寸
+    // 计算整个网格的尺寸（基于最大分镜数量）
+    const ROWS = Math.ceil(MAX_FRAMES / COLS); // 计算需要的行数
     const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
     const totalHeight = ROWS * FRAME_HEIGHT + (ROWS - 1) * SPACING;
     
@@ -111,8 +112,8 @@ export const EditorToolbar = ({
     const row = Math.floor(frameIndex / COLS);
 
     // 检查是否超过最大frame数量
-    if (frameIndex >= COLS * ROWS) {
-      toast.error(`已达到最大分镜数量 (${COLS * ROWS})`);
+    if (frameIndex >= MAX_FRAMES) {
+      toast.error(`已达到最大分镜数量 (${MAX_FRAMES})`);
       return;
     }
 
