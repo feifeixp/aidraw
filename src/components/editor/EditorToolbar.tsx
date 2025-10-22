@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Hand, Grid3x3, HelpCircle } from "lucide-react";
+import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Hand, Grid3x3, HelpCircle, Focus } from "lucide-react";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,6 +77,49 @@ export const EditorToolbar = ({
   };
   const handleRedo = () => {
     redo();
+  };
+
+  // 定位到当前激活的分镜
+  const handleFocusOnFrame = () => {
+    if (!canvas) {
+      toast.error("画布未初始化");
+      return;
+    }
+
+    // 获取画布容器
+    const canvasContainer = canvas.getElement().parentElement;
+    if (!canvasContainer) return;
+
+    // 查找当前激活的分镜或第一个分镜
+    const targetFrameId = activeFrameId || '1';
+    const targetFrame = canvas.getObjects().find(
+      obj => (obj as any).name === `storyboard-frame-${targetFrameId}`
+    );
+
+    if (targetFrame) {
+      const viewportWidth = canvasContainer.clientWidth;
+      const viewportHeight = canvasContainer.clientHeight;
+
+      const frameLeft = targetFrame.left || 0;
+      const frameTop = targetFrame.top || 0;
+      const frameWidth = targetFrame.width || 1024;
+      const frameHeight = targetFrame.height || 576;
+
+      const frameCenterX = frameLeft + frameWidth / 2;
+      const frameCenterY = frameTop + frameHeight / 2;
+
+      const currentZoom = canvas.getZoom();
+
+      const panX = viewportWidth / 2 - frameCenterX * currentZoom;
+      const panY = viewportHeight / 2 - frameCenterY * currentZoom;
+
+      canvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
+      canvas.renderAll();
+
+      toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);
+    } else {
+      toast.error("未找到分镜");
+    }
   };
 
   // 创建分镜frame的函数
@@ -981,6 +1024,11 @@ export const EditorToolbar = ({
         <Button variant="outline" size="sm" onClick={handleCreateStoryboardFrame} className="whitespace-nowrap" title="创建分镜">
           <Grid3x3 className="h-4 w-4" />
           <span className="ml-1">创建分镜</span>
+        </Button>
+        
+        <Button variant="outline" size="sm" onClick={handleFocusOnFrame} className="whitespace-nowrap" title="定位到分镜 (快捷键: F)">
+          <Focus className="h-4 w-4" />
+          <span className="ml-1">定位分镜</span>
         </Button>
       </div>
 

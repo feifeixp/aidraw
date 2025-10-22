@@ -252,7 +252,7 @@ export const EditorCanvas = ({
       }
     }, 100);
 
-    // Add keyboard event listener for Delete key
+    // Add keyboard event listener for Delete key and frame navigation
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check if user is typing in an input field
       const target = e.target as HTMLElement;
@@ -260,8 +260,42 @@ export const EditorCanvas = ({
                           target.tagName === 'TEXTAREA' || 
                           target.isContentEditable;
       
-      // Don't delete objects if user is typing in an input field
+      // Don't process keyboard shortcuts if user is typing in an input field
       if (isInputField) return;
+      
+      // F key: 定位到当前激活的分镜
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        
+        // 查找当前激活的分镜或第一个分镜
+        const targetFrameId = activeFrameIdRef.current || '1';
+        const targetFrame = fabricCanvas.getObjects().find(
+          obj => (obj as any).name === `storyboard-frame-${targetFrameId}`
+        );
+        
+        if (targetFrame && containerRef.current) {
+          const viewportWidth = containerRef.current.clientWidth;
+          const viewportHeight = containerRef.current.clientHeight;
+          
+          const frameLeft = targetFrame.left || 0;
+          const frameTop = targetFrame.top || 0;
+          const frameWidth = targetFrame.width || 1024;
+          const frameHeight = targetFrame.height || 576;
+          
+          const frameCenterX = frameLeft + frameWidth / 2;
+          const frameCenterY = frameTop + frameHeight / 2;
+          
+          const currentZoom = fabricCanvas.getZoom();
+          
+          const panX = viewportWidth / 2 - frameCenterX * currentZoom;
+          const panY = viewportHeight / 2 - frameCenterY * currentZoom;
+          
+          fabricCanvas.setViewportTransform([currentZoom, 0, 0, currentZoom, panX, panY]);
+          fabricCanvas.renderAll();
+          
+          toast.success(`已定位到 Shot-${String(targetFrameId).padStart(2, '0')}`);
+        }
+      }
       
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const activeObjects = fabricCanvas.getActiveObjects();
