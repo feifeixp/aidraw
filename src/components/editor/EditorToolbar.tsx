@@ -530,18 +530,20 @@ export const EditorToolbar = ({
       toast.error(`重绘失败: ${errorMessage}`);
     }
   };
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!canvas) return;
     
     // 根据activeFrameId查找对应的frame
-    let frame, frameBorder;
+    let frame, frameBorder, frameNumber;
     if (activeFrameId) {
       frame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${activeFrameId}`);
       frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId}`);
+      frameNumber = canvas.getObjects().find((obj: any) => obj.name === `storyboard-number-${activeFrameId}`);
     } else {
       // 如果没有激活的分镜，使用第一个分镜
       frame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
       frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
+      frameNumber = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-number-1');
     }
     
     if (!frame) {
@@ -549,12 +551,19 @@ export const EditorToolbar = ({
       return;
     }
     
-    // 临时隐藏frameBorder
+    // 临时隐藏frameBorder和frameNumber
     const originalBorderVisible = frameBorder?.visible;
+    const originalNumberVisible = frameNumber?.visible;
     if (frameBorder) {
       frameBorder.set({ visible: false });
     }
+    if (frameNumber) {
+      frameNumber.set({ visible: false });
+    }
     canvas.renderAll();
+    
+    // 等待一小段时间确保渲染完成
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // 只导出frame区域内的内容
     const dataURL = canvas.toDataURL({
@@ -567,9 +576,12 @@ export const EditorToolbar = ({
       height: frame.height,
     });
     
-    // 恢复frameBorder
+    // 恢复frameBorder和frameNumber
     if (frameBorder) {
       frameBorder.set({ visible: originalBorderVisible });
+    }
+    if (frameNumber) {
+      frameNumber.set({ visible: originalNumberVisible });
     }
     canvas.renderAll();
     
