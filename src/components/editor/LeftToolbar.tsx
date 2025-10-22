@@ -61,7 +61,7 @@ export const LeftToolbar = ({
   const [featherStrength, setFeatherStrength] = useState(50);
   const [isCropMode, setIsCropMode] = useState(false);
   const [showExtractDialog, setShowExtractDialog] = useState(false);
-  const [extractDilation, setExtractDilation] = useState(0);
+  const [extractDilation, setExtractDilation] = useState(-2);
   const [extractFeather, setExtractFeather] = useState(0);
   const [extractPadding, setExtractPadding] = useState(10);
   const [extractMode, setExtractMode] = useState<'auto' | 'scribble'>('auto');
@@ -1335,10 +1335,12 @@ export const LeftToolbar = ({
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="extract-dilation">边缘扩张: {extractDilation} 像素</Label>
+              <Label htmlFor="extract-dilation">
+                边缘调整: {extractDilation > 0 ? '+' : ''}{extractDilation} 像素
+              </Label>
               <Slider 
                 id="extract-dilation" 
-                min={0} 
+                min={-10} 
                 max={10} 
                 step={1} 
                 value={[extractDilation]} 
@@ -1346,7 +1348,11 @@ export const LeftToolbar = ({
                 className="w-full" 
               />
               <p className="text-sm text-muted-foreground">
-                增加此值可以包含更多主体边缘区域，避免丢失细节
+                {extractDilation > 0 
+                  ? '向外扩张，包含更多边缘区域' 
+                  : extractDilation < 0 
+                    ? '向内收缩，裁掉边缘像素' 
+                    : '不调整边缘'}
               </p>
             </div>
             <div className="space-y-2">
