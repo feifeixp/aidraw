@@ -271,42 +271,43 @@ export const EditorToolbar = ({
 
       toast.success(`成功生成 ${data.images.length} 张分镜！`);
       
-      // 将生成的图片添加到画布
+      // 为每张生成的图片创建独立的分镜框架
+      const COLS = 5;
+      const INFINITE_CANVAS_SIZE = 10000;
+      const FRAME_WIDTH = frameSize.width;
+      const FRAME_HEIGHT = frameSize.height;
+      const SPACING = 50;
+      const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
+      const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
+      const totalHeight = 8 * FRAME_HEIGHT + 7 * SPACING;
+      const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
+      
       for (let i = 0; i < data.images.length; i++) {
         const imageUrl = data.images[i];
         
-        // 创建分镜框架
-        handleCreateStoryboardFrame();
-        
-        // 加载图片到当前分镜
-        const img = await FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
-        
-        // 获取当前激活的分镜框架
+        // 记录当前的分镜索引（创建之前）
         const currentFrameIndex = storyboardFrameCount + i;
-        const COLS = 5;
         const frameId = `${currentFrameIndex + 1}`;
         
-        // 将图片添加到对应的分镜中
-        const INFINITE_CANVAS_SIZE = 10000;
-        const FRAME_WIDTH = frameSize.width;
-        const FRAME_HEIGHT = frameSize.height;
-        const SPACING = 50;
-        const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
-        const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
-        const totalHeight = 8 * FRAME_HEIGHT + 7 * SPACING;
-        const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
+        // 先创建分镜框架（这会更新 storyboardFrameCount）
+        handleCreateStoryboardFrame();
         
+        // 加载图片
+        const img = await FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
+        
+        // 计算该分镜框架的位置
         const col = currentFrameIndex % COLS;
         const row = Math.floor(currentFrameIndex / COLS);
         const frameLeft = START_X + col * (FRAME_WIDTH + SPACING);
         const frameTop = START_Y + row * (FRAME_HEIGHT + SPACING);
         
-        // 缩放图片以适应分镜
+        // 缩放图片以适应分镜框架
         const scale = Math.min(
           FRAME_WIDTH / img.width,
           FRAME_HEIGHT / img.height
         );
         
+        // 设置图片位置和大小，居中放置在分镜框架中
         img.set({
           left: frameLeft + (FRAME_WIDTH - img.width * scale) / 2,
           top: frameTop + (FRAME_HEIGHT - img.height * scale) / 2,
@@ -319,6 +320,8 @@ export const EditorToolbar = ({
         });
         
         canvas.add(img);
+        
+        toast.info(`已添加分镜 ${i + 1}/${data.images.length}`);
       }
       
       canvas.renderAll();
