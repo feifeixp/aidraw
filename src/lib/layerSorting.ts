@@ -1,15 +1,15 @@
 import { Canvas as FabricCanvas, FabricObject } from "fabric";
 
-// Layer type definitions and their z-index ranges
+// Layer type definitions
 export type LayerType = 'scene' | 'character' | 'prop' | 'effect' | 'composite';
 
-// Each type has a base z-index range (100 slots per type)
-const LAYER_TYPE_RANGES: Record<LayerType, { min: number; max: number }> = {
-  scene: { min: 0, max: 99 },
-  character: { min: 100, max: 199 },
-  prop: { min: 200, max: 299 },
-  effect: { min: 300, max: 399 },
-  composite: { min: 400, max: 499 },
+// Base offset for each layer type (multiplied by 1000 to leave room for custom depth values)
+const LAYER_TYPE_BASE_OFFSET: Record<LayerType, number> = {
+  scene: 0,
+  character: 1000,
+  prop: 2000,
+  effect: 3000,
+  composite: 4000,
 };
 
 /**
@@ -19,8 +19,8 @@ export const getObjectLayerType = (obj: FabricObject): LayerType => {
   const data = (obj as any).data;
   if (data?.elementType) {
     const type = data.elementType as string;
-    // Validate that the type is in LAYER_TYPE_RANGES
-    if (type in LAYER_TYPE_RANGES) {
+    // Validate that the type is in LAYER_TYPE_BASE_OFFSET
+    if (type in LAYER_TYPE_BASE_OFFSET) {
       return type as LayerType;
     }
   }
@@ -37,8 +37,35 @@ export const setObjectLayerType = (obj: FabricObject, type: LayerType) => {
 };
 
 /**
- * Sort all objects in the canvas by their layer type
- * This ensures the correct stacking order: scene < character < prop < effect < composite
+ * Get the custom depth value for an object (within its layer type)
+ * Default is 0 if not set
+ */
+export const getObjectDepth = (obj: FabricObject): number => {
+  const data = (obj as any).data;
+  return data?.layerDepth ?? 0;
+};
+
+/**
+ * Set the custom depth value for an object (within its layer type)
+ */
+export const setObjectDepth = (obj: FabricObject, depth: number) => {
+  const data = (obj as any).data || {};
+  (obj as any).data = { ...data, layerDepth: depth };
+};
+
+/**
+ * Get the final depth value for an object (base offset + custom depth)
+ */
+export const getFinalDepth = (obj: FabricObject): number => {
+  const type = getObjectLayerType(obj);
+  const baseOffset = LAYER_TYPE_BASE_OFFSET[type];
+  const customDepth = getObjectDepth(obj);
+  return baseOffset + customDepth;
+};
+
+/**
+ * Sort all objects in the canvas by their final depth value
+ * This ensures the correct stacking order based on base offset + custom depth
  */
 export const sortCanvasByLayerType = (canvas: FabricCanvas) => {
   const objects = canvas.getObjects();
@@ -47,18 +74,11 @@ export const sortCanvasByLayerType = (canvas: FabricCanvas) => {
   const frames = objects.filter(obj => obj.selectable === false && obj.evented === false);
   const regularObjects = objects.filter(obj => obj.selectable !== false || obj.evented !== false);
   
-  // Group objects by type
-  const objectsByType: Record<LayerType, FabricObject[]> = {
-    scene: [],
-    character: [],
-    prop: [],
-    effect: [],
-    composite: [],
-  };
-  
-  regularObjects.forEach(obj => {
-    const type = getObjectLayerType(obj);
-    objectsByType[type].push(obj);
+  // Sort regular objects by their final depth value
+  regularObjects.sort((a, b) => {
+    const depthA = getFinalDepth(a);
+    const depthB = getFinalDepth(b);
+    return depthA - depthB;
   });
   
   // Clear canvas
@@ -69,19 +89,16 @@ export const sortCanvasByLayerType = (canvas: FabricCanvas) => {
     canvas.add(frame);
   });
   
-  // Add objects in the correct order
-  const typeOrder: LayerType[] = ['scene', 'character', 'prop', 'effect', 'composite'];
-  typeOrder.forEach(type => {
-    objectsByType[type].forEach(obj => {
-      canvas.add(obj);
-    });
+  // Add objects in sorted order
+  regularObjects.forEach(obj => {
+    canvas.add(obj);
   });
   
   canvas.renderAll();
 };
 
 /**
- * Insert an object at the correct position based on its layer type
+ * Insert an object at the correct position based on its final depth
  */
 export const insertObjectWithLayerType = (canvas: FabricCanvas, obj: FabricObject, type?: LayerType) => {
   // Set type if provided
@@ -89,17 +106,8 @@ export const insertObjectWithLayerType = (canvas: FabricCanvas, obj: FabricObjec
     setObjectLayerType(obj, type);
   }
   
-  const objectType = getObjectLayerType(obj);
+  const objDepth = getFinalDepth(obj);
   const objects = canvas.getObjects();
-  
-  // Validate that the object type exists in LAYER_TYPE_RANGES
-  const targetRange = LAYER_TYPE_RANGES[objectType];
-  if (!targetRange) {
-    console.error(`Invalid layer type: ${objectType}`);
-    canvas.add(obj);
-    canvas.renderAll();
-    return;
-  }
   
   // Find the insertion index
   let insertIndex = 0;
@@ -108,24 +116,15 @@ export const insertObjectWithLayerType = (canvas: FabricCanvas, obj: FabricObjec
   const frames = objects.filter(obj => obj.selectable === false && obj.evented === false);
   insertIndex = frames.length;
   
-  // Find the last object of the same or lower type
+  // Find the correct position based on final depth
   for (let i = insertIndex; i < objects.length; i++) {
     const currentObj = objects[i];
-    const currentType = getObjectLayerType(currentObj);
-    const currentRange = LAYER_TYPE_RANGES[currentType];
+    const currentDepth = getFinalDepth(currentObj);
     
-    // Skip objects with invalid types
-    if (!currentRange) {
-      continue;
-    }
-    
-    if (currentRange.min < targetRange.min) {
-      insertIndex = i + 1;
-    } else if (currentRange.min === targetRange.min) {
-      // Same type, insert after
+    if (currentDepth <= objDepth) {
       insertIndex = i + 1;
     } else {
-      // Found a higher type, insert before
+      // Found an object with higher depth, insert before it
       break;
     }
   }
@@ -135,38 +134,14 @@ export const insertObjectWithLayerType = (canvas: FabricCanvas, obj: FabricObjec
 };
 
 /**
- * Move an object within its type range (up or down)
+ * Move an object up or down by adjusting its depth
  */
 export const moveObjectInLayer = (canvas: FabricCanvas, obj: FabricObject, direction: 'up' | 'down') => {
-  const objectType = getObjectLayerType(obj);
-  const objects = canvas.getObjects();
-  const currentIndex = objects.indexOf(obj);
+  const currentDepth = getObjectDepth(obj);
+  const newDepth = direction === 'up' ? currentDepth + 1 : currentDepth - 1;
   
-  if (currentIndex === -1) return;
-  
-  // Find objects of the same type
-  const sameTypeIndices: number[] = [];
-  objects.forEach((o, i) => {
-    if (getObjectLayerType(o) === objectType) {
-      sameTypeIndices.push(i);
-    }
-  });
-  
-  const positionInType = sameTypeIndices.indexOf(currentIndex);
-  
-  if (direction === 'up' && positionInType < sameTypeIndices.length - 1) {
-    // Swap with next same-type object
-    const targetIndex = sameTypeIndices[positionInType + 1];
-    canvas.remove(obj);
-    canvas.insertAt(targetIndex, obj);
-  } else if (direction === 'down' && positionInType > 0) {
-    // Swap with previous same-type object
-    const targetIndex = sameTypeIndices[positionInType - 1];
-    canvas.remove(obj);
-    canvas.insertAt(targetIndex, obj);
-  }
-  
-  canvas.renderAll();
+  setObjectDepth(obj, newDepth);
+  sortCanvasByLayerType(canvas);
 };
 
 /**
@@ -176,21 +151,23 @@ export const moveObjectToEdgeInLayer = (canvas: FabricCanvas, obj: FabricObject,
   const objectType = getObjectLayerType(obj);
   const objects = canvas.getObjects();
   
-  // Find the range of same-type objects
-  let firstSameTypeIndex = -1;
-  let lastSameTypeIndex = -1;
+  // Find all objects of the same type
+  const sameTypeObjects = objects.filter(o => 
+    getObjectLayerType(o) === objectType &&
+    (o.selectable !== false || o.evented !== false)
+  );
   
-  objects.forEach((o, i) => {
-    if (getObjectLayerType(o) === objectType) {
-      if (firstSameTypeIndex === -1) firstSameTypeIndex = i;
-      lastSameTypeIndex = i;
-    }
-  });
+  if (sameTypeObjects.length === 0) return;
   
-  if (firstSameTypeIndex === -1) return;
+  if (edge === 'top') {
+    // Find the max depth among same type objects
+    const maxDepth = Math.max(...sameTypeObjects.map(o => getObjectDepth(o)));
+    setObjectDepth(obj, maxDepth + 1);
+  } else {
+    // Find the min depth among same type objects
+    const minDepth = Math.min(...sameTypeObjects.map(o => getObjectDepth(o)));
+    setObjectDepth(obj, minDepth - 1);
+  }
   
-  const targetIndex = edge === 'top' ? lastSameTypeIndex : firstSameTypeIndex;
-  canvas.remove(obj);
-  canvas.insertAt(targetIndex, obj);
-  canvas.renderAll();
+  sortCanvasByLayerType(canvas);
 };

@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Type, Bold, Italic, Underline, Square, Image, Upload, Sparkles, Users, PersonStanding, RotateCw, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Cloud, Palette, Check, Camera } from "lucide-react";
+import { Type, Bold, Italic, Underline, Square, Image, Upload, Sparkles, Users, PersonStanding, RotateCw, Sun, Moon, CloudRain, CloudSnow, CloudFog, Sunrise, Sunset, Droplets, Cloud, Palette, Check, Camera, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ColorAdjustmentPanel } from "./ColorAdjustmentPanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getObjectDepth, setObjectDepth, sortCanvasByLayerType, getFinalDepth } from "@/lib/layerSorting";
 interface PropertiesPanelProps {
   canvas: FabricCanvas | null;
   saveState: () => void;
@@ -54,6 +55,7 @@ export const PropertiesPanel = ({
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [elementType, setElementType] = useState<string>("character");
+  const [layerDepth, setLayerDepth] = useState<number>(0);
 
   // Adjustment dialogs
   const [showCameraDialog, setShowCameraDialog] = useState(false);
@@ -138,6 +140,7 @@ export const PropertiesPanel = ({
   const updateProperties = (obj: any) => {
     // Common properties
     setOpacity(obj.opacity || 1);
+    setLayerDepth(getObjectDepth(obj));
 
     // Text properties
     if (obj.type === 'text') {
@@ -281,7 +284,16 @@ export const PropertiesPanel = ({
       selectedObject.data = {};
     }
     selectedObject.data.elementType = value;
-    canvas.renderAll();
+    sortCanvasByLayerType(canvas);
+    saveState();
+  };
+
+  const updateLayerDepth = (value: string) => {
+    if (!selectedObject || !canvas) return;
+    const depth = parseInt(value) || 0;
+    setLayerDepth(depth);
+    setObjectDepth(selectedObject, depth);
+    sortCanvasByLayerType(canvas);
     saveState();
   };
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -912,6 +924,28 @@ export const PropertiesPanel = ({
       
       {/* Common properties for all objects */}
       <div className="border-t pt-3 space-y-3">
+        <div>
+          <Label htmlFor="layer-depth" className="flex items-center gap-2">
+            <Layers className="w-4 h-4" />
+            图层深度: {layerDepth} (最终: {getFinalDepth(selectedObject)})
+          </Label>
+          <div className="flex gap-2 mt-2">
+            <Input 
+              id="layer-depth" 
+              type="number" 
+              value={layerDepth} 
+              onChange={e => updateLayerDepth(e.target.value)}
+              className="flex-1"
+            />
+            <div className="text-xs text-muted-foreground self-center">
+              类型: {getElementTypeName(elementType)}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            较小的值在下层，较大的值在上层。同类型元素按此值排序。
+          </p>
+        </div>
+        
         <div>
           <Label htmlFor="opacity">透明度: {Math.round(opacity * 100)}%</Label>
           <Slider id="opacity" value={[opacity]} onValueChange={updateOpacity} min={0} max={1} step={0.01} className="mt-2" />
