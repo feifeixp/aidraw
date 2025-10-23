@@ -451,7 +451,33 @@ export const EditorToolbar = ({
         frameBorder.set({ visible: originalBorderVisible });
       }
       canvas.renderAll();
-      const instruction = `Redraw this image with professional lighting and shading. Enhance the lighting, add proper shadows and highlights based on the environment and composition. Make it look more polished and professionally lit while keeping all subjects and elements in their exact positions.`;
+      const instruction = `Professionally render and composite this image with realistic lighting integration:
+
+LIGHTING & SHADOWS:
+- Analyze the environment lighting (direction, color temperature, intensity) and apply it consistently to ALL elements
+- Add realistic shadows cast by characters onto the background and vice versa
+- Create contact shadows where objects meet surfaces for better grounding
+- Add ambient occlusion in corners and between objects
+- Ensure highlight directions match the main light source across all elements
+
+COLOR & ATMOSPHERE:
+- Harmonize colors between characters and background to match the scene's atmosphere
+- Apply atmospheric perspective if there's depth in the scene
+- Match color temperature across all elements (warm/cool tones)
+- Add subtle color bleeding where surfaces are close to each other
+
+INTEGRATION & REALISM:
+- Seamlessly blend characters into the environment as if they naturally belong there
+- Add appropriate depth of field if elements are at different distances
+- Ensure consistent material properties (matte, glossy, etc.) across similar surfaces
+- Refine edges where different elements meet for natural transitions
+
+PRESERVATION:
+- Keep the exact composition, poses, and positions unchanged
+- Maintain all character details, expressions, and gestures
+- Preserve the original style and artistic intent
+
+The goal is photorealistic integration where all elements feel like they were captured in the same scene with unified lighting.`;
       const {
         data: aiData,
         error: aiError
