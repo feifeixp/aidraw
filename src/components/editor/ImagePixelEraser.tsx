@@ -47,7 +47,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
         return;
       }
 
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: true });
       if (!ctx) {
         console.error('ImagePixelEraser: Could not get canvas context');
         return;
@@ -76,7 +76,10 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
           canvas.width = width;
           canvas.height = height;
 
-          // 绘制图片到画布
+          // 清除画布并确保透明背景
+          ctx.clearRect(0, 0, width, height);
+          
+          // 绘制图片到画布，保留透明通道
           ctx.drawImage(img, 0, 0, width, height);
           console.log('ImagePixelEraser: Image drawn successfully');
 
