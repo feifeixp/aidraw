@@ -257,6 +257,49 @@ const Editor = () => {
     }
   }, [searchParams, canvas]);
 
+  // 自动初始化：如果URL中有图片参数，自动获取尺寸并初始化
+  useEffect(() => {
+    const imageUrls = searchParams.get('images');
+    if (imageUrls && showInitialSetup) {
+      const urls = imageUrls.split(',').filter(url => url.trim());
+      if (urls.length > 0) {
+        console.log('检测到URL图片参数，自动初始化画布');
+        
+        // 加载第一张图片获取尺寸
+        const firstImageUrl = urls[0].trim();
+        const proxyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(firstImageUrl)}`;
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          console.log('图片加载成功，尺寸:', img.width, 'x', img.height);
+          
+          // 使用图片的实际尺寸作为画布尺寸
+          const width = img.width;
+          const height = img.height;
+          
+          // 自动完成初始化
+          handleInitialSetupComplete({
+            style: 'auto',
+            width,
+            height
+          });
+        };
+        img.onerror = () => {
+          console.error('无法加载图片，使用默认尺寸');
+          toast.error('无法加载预设图片，使用默认尺寸');
+          // 使用默认尺寸
+          handleInitialSetupComplete({
+            style: 'auto',
+            width: 1024,
+            height: 576
+          });
+        };
+        img.src = proxyUrl;
+      }
+    }
+  }, [searchParams, showInitialSetup, handleInitialSetupComplete]);
+
   // 手动显示教程
   const handleShowTutorial = useCallback(() => {
     setShowTutorial(true);
