@@ -71,8 +71,9 @@ export const sortCanvasByLayerType = (canvas: FabricCanvas) => {
   const objects = canvas.getObjects();
   
   // Separate frames (workframe and storyboard frames) from regular objects
-  const frames = objects.filter(obj => obj.selectable === false && obj.evented === false);
-  const regularObjects = objects.filter(obj => obj.selectable !== false || obj.evented !== false);
+  // Use data.isFrameElement for accurate identification
+  const frames = objects.filter(obj => (obj as any).data?.isFrameElement === true);
+  const regularObjects = objects.filter(obj => (obj as any).data?.isFrameElement !== true);
   
   // Sort regular objects by their final depth value
   regularObjects.sort((a, b) => {
@@ -107,7 +108,7 @@ export const insertObjectWithLayerType = (canvas: FabricCanvas, obj: FabricObjec
   let insertIndex = 0;
   
   // Skip all frames (should always be at the bottom)
-  const frames = objects.filter(obj => obj.selectable === false && obj.evented === false);
+  const frames = objects.filter(obj => (obj as any).data?.isFrameElement === true);
   insertIndex = frames.length;
   
   // Find the correct position based on final depth
@@ -148,7 +149,7 @@ export const moveObjectToEdgeInLayer = (canvas: FabricCanvas, obj: FabricObject,
   // Find all objects of the same type
   const sameTypeObjects = objects.filter(o => 
     getObjectLayerType(o) === objectType &&
-    (o.selectable !== false || o.evented !== false)
+    (o as any).data?.isFrameElement !== true
   );
   
   if (sameTypeObjects.length === 0) return;
