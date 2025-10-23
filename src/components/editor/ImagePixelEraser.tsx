@@ -177,11 +177,14 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     const ctx = ctxRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // 计算鼠标在画布上的实际位置，考虑缩放
-    const scaleX = canvas.width / (rect.width / zoom);
-    const scaleY = canvas.height / (rect.height / zoom);
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
+    // 计算鼠标在画布上的实际位置
+    // rect.width/height 已经是缩放后的显示尺寸，直接映射到画布坐标即可
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // 将显示坐标转换为实际画布坐标
+    const x = (mouseX / rect.width) * canvas.width;
+    const y = (mouseY / rect.height) * canvas.height;
 
     // 使用 destination-out 混合模式来擦除像素
     ctx.globalCompositeOperation = 'destination-out';
