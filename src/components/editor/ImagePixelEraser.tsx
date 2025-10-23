@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Eraser, Undo, Redo, ZoomIn, ZoomOut } from "lucide-react";
+import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move } from "lucide-react";
 import { FabricImage } from "fabric";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface ImagePixelEraserProps {
   open: boolean;
@@ -13,13 +14,21 @@ interface ImagePixelEraserProps {
   onSave: (imageDataUrl: string) => void;
 }
 
+type BackgroundMode = 'checkered' | 'light' | 'dark';
+
 export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: ImagePixelEraserProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [brushSize, setBrushSize] = useState(20);
   const [isErasing, setIsErasing] = useState(false);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [zoom, setZoom] = useState(1);
+  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('checkered');
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [tool, setTool] = useState<'erase' | 'pan'>('erase');
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   useEffect(() => {
@@ -129,14 +138,34 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   };
 
   const startErasing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsErasing(true);
-    erase(e);
+    if (tool === 'pan') {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+    } else {
+      setIsErasing(true);
+      erase(e);
+    }
   };
 
   const stopErasing = () => {
     if (isErasing) {
       setIsErasing(false);
       saveToHistory();
+    }
+    if (isPanning) {
+      setIsPanning(false);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isPanning && tool === 'pan') {
+      const newOffset = {
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y
+      };
+      setPanOffset(newOffset);
+    } else {
+      erase(e);
     }
   };
 
@@ -183,6 +212,19 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     setZoom(prev => Math.max(prev - 0.25, 0.5));
   };
 
+  const getBackgroundClass = () => {
+    switch (backgroundMode) {
+      case 'checkered':
+        return 'bg-checkered';
+      case 'light':
+        return 'bg-white';
+      case 'dark':
+        return 'bg-gray-900';
+      default:
+        return 'bg-checkered';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
@@ -197,8 +239,8 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-auto">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
               <Label>画笔大小: {brushSize}px</Label>
               <Slider
                 value={[brushSize]}
@@ -209,7 +251,16 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                 className="mt-2"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center flex-wrap">
+              <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as 'erase' | 'pan')}>
+                <ToggleGroupItem value="erase" aria-label="擦除工具" title="擦除工具">
+                  <Eraser className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="pan" aria-label="拖动工具" title="拖动工具">
+                  <Move className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <div className="w-px h-6 bg-border" />
               <Button
                 variant="outline"
                 size="sm"
@@ -228,11 +279,13 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
               >
                 <ZoomIn className="h-4 w-4" />
               </Button>
+              <div className="w-px h-6 bg-border" />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={undo}
                 disabled={historyIndex <= 0}
+                title="撤销"
               >
                 <Undo className="h-4 w-4" />
               </Button>
@@ -241,22 +294,48 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                 size="sm"
                 onClick={redo}
                 disabled={historyIndex >= history.length - 1}
+                title="重做"
               >
                 <Redo className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          <div className="border rounded-lg overflow-auto max-h-[60vh] bg-checkered p-4 flex items-center justify-center">
-            <canvas
-              ref={canvasRef}
-              className="max-w-full max-h-full cursor-crosshair"
-              style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-              onMouseDown={startErasing}
-              onMouseMove={erase}
-              onMouseUp={stopErasing}
-              onMouseLeave={stopErasing}
-            />
+          <div className="flex items-center gap-2">
+            <Label>背景:</Label>
+            <ToggleGroup type="single" value={backgroundMode} onValueChange={(value) => value && setBackgroundMode(value as BackgroundMode)}>
+              <ToggleGroupItem value="checkered" aria-label="棋盘格" title="棋盘格">
+                棋盘格
+              </ToggleGroupItem>
+              <ToggleGroupItem value="light" aria-label="亮色" title="亮色">
+                亮色
+              </ToggleGroupItem>
+              <ToggleGroupItem value="dark" aria-label="暗色" title="暗色">
+                暗色
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          <div 
+            ref={containerRef}
+            className={`border rounded-lg overflow-hidden max-h-[60vh] ${getBackgroundClass()} p-4 flex items-center justify-center relative`}
+          >
+            <div 
+              style={{ 
+                transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+                transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+              }}
+            >
+              <canvas
+                ref={canvasRef}
+                className={tool === 'pan' ? 'cursor-move' : 'cursor-crosshair'}
+                style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                onMouseDown={startErasing}
+                onMouseMove={handleMouseMove}
+                onMouseUp={stopErasing}
+                onMouseLeave={stopErasing}
+              />
+            </div>
           </div>
         </div>
 
