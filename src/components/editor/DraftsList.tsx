@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Download, Upload, PlusCircle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Download, Upload, PlusCircle, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas, Rect, FabricText } from "fabric";
 
@@ -126,8 +127,8 @@ export const DraftsList = ({
     }
   }, [onLoadDraft, onDraftIdChange, onActiveFrameIdChange, onFrameCountChange]);
 
-  // 创建新草稿（清除所有缓存和画布，并触发初始化窗口）
-  const createNewDraft = useCallback(() => {
+  // 执行清空画布的核心逻辑
+  const executeClearCanvas = useCallback(() => {
     if (!canvas) {
       toast.error("画布未初始化");
       return;
@@ -158,12 +159,42 @@ export const DraftsList = ({
     
     onDraftIdChange?.(undefined);
     onActiveFrameIdChange?.("1");
-    onFrameCountChange?.(0); // 设置为0，等待初始化完成后创建第一个分镜
+    onFrameCountChange?.(0);
     
     toast.success("已创建新草稿，请进行初始化设置");
   }, [canvas, onDraftIdChange, onActiveFrameIdChange, onFrameCountChange, onRequestInitialSetup]);
 
+  // 保存并新建
+  const handleSaveAndNew = useCallback(() => {
+    exportDraft();
+    setShowSaveDialog(false);
+    executeClearCanvas();
+  }, [exportDraft, executeClearCanvas]);
+
+  // 不保存直接新建
+  const handleNewWithoutSave = useCallback(() => {
+    setShowSaveDialog(false);
+    executeClearCanvas();
+  }, [executeClearCanvas]);
+
+  // 创建新草稿（先弹出保存提醒）
+  const createNewDraft = useCallback(() => {
+    if (!canvas) {
+      toast.error("画布未初始化");
+      return;
+    }
+    
+    // 检查画布是否有内容
+    const hasContent = canvas.getObjects().length > 0;
+    if (hasContent) {
+      setShowSaveDialog(true);
+    } else {
+      executeClearCanvas();
+    }
+  }, [canvas, executeClearCanvas]);
+
   const [showImportExportDialog, setShowImportExportDialog] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
 
   return (
     <>
@@ -172,6 +203,27 @@ export const DraftsList = ({
         <PlusCircle className="h-4 w-4 mr-2" />
         新建草稿
       </Button>
+
+      {/* 保存提醒对话框 */}
+      <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>是否保存当前草稿？</AlertDialogTitle>
+            <AlertDialogDescription>
+              创建新草稿前，建议先保存当前工作。草稿将以JSON文件保存到本地。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleNewWithoutSave}>
+              不保存
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveAndNew}>
+              <Save className="h-4 w-4 mr-2" />
+              保存并新建
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 导入/导出对话框 */}
       <Dialog open={showImportExportDialog} onOpenChange={setShowImportExportDialog}>
