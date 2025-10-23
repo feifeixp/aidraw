@@ -8,6 +8,7 @@ import Generate from "./pages/Generate";
 import Admin from "./pages/Admin";
 import Editor from "./pages/Editor";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import Navigation from "./components/Navigation";
 import NotFound from "./pages/NotFound";
 import logo from "@/assets/logo.png";
@@ -27,6 +28,7 @@ const App = () => <QueryClientProvider client={queryClient}>
         <div>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/" element={<Home />} />
             <Route path="/generate" element={<Generate />} />
             <Route path="/admin" element={<Admin />} />
