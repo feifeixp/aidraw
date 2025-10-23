@@ -81,18 +81,12 @@ export const sortCanvasByLayerType = (canvas: FabricCanvas) => {
     return depthA - depthB;
   });
   
-  // Clear canvas
-  canvas.remove(...objects);
+  // Build the correct order: frames first, then sorted regular objects
+  const correctOrder = [...frames, ...regularObjects];
   
-  // Re-add frames first (always at bottom)
-  frames.forEach(frame => {
-    canvas.add(frame);
-  });
-  
-  // Add objects in sorted order
-  regularObjects.forEach(obj => {
-    canvas.add(obj);
-  });
+  // Replace the canvas objects with the correctly sorted array
+  // Using Fabric's internal _objects array for direct control
+  (canvas as any)._objects = correctOrder;
   
   canvas.renderAll();
 };
