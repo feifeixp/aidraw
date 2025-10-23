@@ -1,9 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Settings, Pencil, ChevronDown, Home, ExternalLink, LogOut, User } from "lucide-react";
+import { Sparkles, Settings, Pencil, ChevronDown, Home, ExternalLink, LogOut, User, Briefcase } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { exportAuthToProject } from "@/utils/crossProjectAuth";
+import { toast } from "sonner";
 const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,6 +36,15 @@ const Navigation = () => {
     isAdmin,
     signOut
   } = useAuth();
+
+  const handleJumpToWorkspace = async () => {
+    try {
+      await exportAuthToProject("https://workspace.neodomain.ai");
+    } catch (error) {
+      console.error("跳转失败:", error);
+      toast.error("跳转失败，请确保已登录");
+    }
+  };
   const links = [{
     to: "/",
     label: "首页",
@@ -93,6 +104,16 @@ const Navigation = () => {
               <ExternalLink className="h-4 w-4 shrink-0" />
               正式产品
             </a>
+            
+            {user && (
+              <button 
+                onClick={handleJumpToWorkspace}
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap shrink-0"
+              >
+                <Briefcase className="h-4 w-4 shrink-0" />
+                前往工作台
+              </button>
+            )}
           </div>
 
           <div className="flex gap-1 items-center shrink-0">
