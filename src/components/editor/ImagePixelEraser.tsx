@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Eraser, Undo, Redo } from "lucide-react";
+import { Eraser, Undo, Redo, ZoomIn, ZoomOut } from "lucide-react";
 import { FabricImage } from "fabric";
 
 interface ImagePixelEraserProps {
@@ -19,6 +19,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const [isErasing, setIsErasing] = useState(false);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [zoom, setZoom] = useState(1);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   useEffect(() => {
@@ -147,9 +148,9 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     const ctx = ctxRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // 计算鼠标在画布上的实际位置
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    // 计算鼠标在画布上的实际位置，考虑缩放
+    const scaleX = canvas.width / (rect.width / zoom);
+    const scaleY = canvas.height / (rect.height / zoom);
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
@@ -172,6 +173,14 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
 
   const handleCancel = () => {
     onOpenChange(false);
+  };
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 0.25, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 0.25, 0.5));
   };
 
   return (
@@ -204,6 +213,24 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.5}
+                title="缩小"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleZoomIn}
+                disabled={zoom >= 3}
+                title="放大"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={undo}
                 disabled={historyIndex <= 0}
               >
@@ -224,6 +251,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             <canvas
               ref={canvasRef}
               className="max-w-full max-h-full cursor-crosshair"
+              style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
               onMouseDown={startErasing}
               onMouseMove={erase}
               onMouseUp={stopErasing}
