@@ -451,33 +451,15 @@ export const EditorToolbar = ({
         frameBorder.set({ visible: originalBorderVisible });
       }
       canvas.renderAll();
-      const instruction = `Professionally render and composite this image with realistic lighting integration:
+      const instruction = `Professionally render this image with unified realistic lighting and seamless compositing:
 
-LIGHTING & SHADOWS:
-- Analyze the environment lighting (direction, color temperature, intensity) and apply it consistently to ALL elements
-- Add realistic shadows cast by characters onto the background and vice versa
-- Create contact shadows where objects meet surfaces for better grounding
-- Add ambient occlusion in corners and between objects
-- Ensure highlight directions match the main light source across all elements
+LIGHTING: Analyze environment light (direction, temperature, intensity) and apply consistently to all elements. Add realistic cast shadows, contact shadows where objects meet surfaces, ambient occlusion in corners, and ensure highlights match the main light source.
 
-COLOR & ATMOSPHERE:
-- Harmonize colors between characters and background to match the scene's atmosphere
-- Apply atmospheric perspective if there's depth in the scene
-- Match color temperature across all elements (warm/cool tones)
-- Add subtle color bleeding where surfaces are close to each other
+INTEGRATION: Harmonize colors between characters and background to match atmosphere. Add color bleeding between close surfaces. Blend all elements seamlessly as if naturally captured together. Refine edges for smooth transitions.
 
-INTEGRATION & REALISM:
-- Seamlessly blend characters into the environment as if they naturally belong there
-- Add appropriate depth of field if elements are at different distances
-- Ensure consistent material properties (matte, glossy, etc.) across similar surfaces
-- Refine edges where different elements meet for natural transitions
+DEPTH & MATERIAL: Apply atmospheric perspective for depth. Ensure consistent material properties (matte/glossy) across similar surfaces.
 
-PRESERVATION:
-- Keep the exact composition, poses, and positions unchanged
-- Maintain all character details, expressions, and gestures
-- Preserve the original style and artistic intent
-
-The goal is photorealistic integration where all elements feel like they were captured in the same scene with unified lighting.`;
+PRESERVE: Keep exact composition, poses, positions, character details, expressions, and original artistic style unchanged.`;
       const {
         data: aiData,
         error: aiError
