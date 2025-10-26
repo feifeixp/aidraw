@@ -31,11 +31,17 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [tool, setTool] = useState<'erase' | 'pan' | 'restore'>('erase');
-  const [isExtracting, setIsExtracting] = useState(false);
+  const [tool, setTool] = useState<'erase' | 'pan' | 'restore' | 'preview'>('erase');
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const originalImageDataRef = useRef<ImageData | null>(null);
   const originalImageUrlRef = useRef<string | null>(null);
+  
+  // 预览相关状态
+  const [previewMask, setPreviewMask] = useState<Uint8Array | null>(null);
+  const [previewMaskSize, setPreviewMaskSize] = useState<{width: number, height: number} | null>(null);
+  const [previewPoints, setPreviewPoints] = useState<Array<{x: number, y: number}>>([]);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (!open || !imageObject) {
@@ -99,6 +105,13 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
           // 绘制图片到画布，保留透明通道
           ctx.drawImage(img, 0, 0, width, height);
           console.log('ImagePixelEraser: Image drawn successfully');
+          
+          // 同步预览canvas尺寸
+          if (previewCanvasRef.current) {
+            previewCanvasRef.current.width = width;
+            previewCanvasRef.current.height = height;
+            console.log('ImagePixelEraser: Preview canvas initialized');
+          }
 
           // 保存初始状态到历史
           const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -289,86 +302,182 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     ctx.putImageData(currentImageData, 0, 0);
   };
 
-  const handleSmartExtract = async () => {
-    if (!canvasRef.current || !ctxRef.current) return;
-
-    setIsExtracting(true);
+  const generatePreview = async (clickX: number, clickY: number) => {
+    if (!canvasRef.current || !previewCanvasRef.current) return;
+    
+    setIsGeneratingPreview(true);
+    
     try {
       const canvas = canvasRef.current;
-      const ctx = ctxRef.current;
-
-      // Get current canvas as image
-      const currentDataUrl = canvas.toDataURL('image/png');
-      const img = new Image();
       
+      // 获取当前canvas图像
+      const img = new Image();
+      img.src = canvas.toDataURL('image/png');
       await new Promise<void>((resolve, reject) => {
         img.onload = () => resolve();
         img.onerror = reject;
-        img.src = currentDataUrl;
       });
-
-      // Initialize MediaPipe segmenter
+      
+      // 初始化 MediaPipe segmenter
       const segmenter = new MediaPipeSegmenter();
       await segmenter.initialize();
-
-      // Use center point for segmentation
-      const centerX = img.width / 2;
-      const centerY = img.height / 2;
-
-      const result = await segmenter.segmentWithPoint(img, centerX, centerY);
-
-      if (!result || !result.categoryMask) {
-        toast.info("未检测到需要提取的物体");
-        segmenter.close();
-        setIsExtracting(false);
-        return;
-      }
-
-      // Create source canvas
-      const sourceCanvas = document.createElement('canvas');
-      sourceCanvas.width = img.width;
-      sourceCanvas.height = img.height;
-      const sourceCtx = sourceCanvas.getContext('2d')!;
-      sourceCtx.drawImage(img, 0, 0);
-
-      // Extract the masked object
-      const maskData = result.categoryMask.getAsUint8Array();
-      const extractedCanvas = segmenter.extractMaskedImage(
-        sourceCanvas,
-        maskData,
-        result.categoryMask.width,
-        result.categoryMask.height,
-        {
-          dilation: -2,
-          feather: 0,
-          padding: 10,
-          crop: false  // Don't crop in pixel editor
-        }
-      );
-
-      // Draw extracted image back to main canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(extractedCanvas, 0, 0);
-
-      // Save to history
-      const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push(newImageData);
-      if (newHistory.length > 50) {
-        newHistory.shift();
+      
+      // 记录点击点
+      const newPoints = [...previewPoints, { x: clickX, y: clickY }];
+      setPreviewPoints(newPoints);
+      
+      // 使用单点或多点进行分割
+      let result;
+      if (newPoints.length === 1) {
+        result = await segmenter.segmentWithPoint(img, clickX, clickY);
       } else {
-        setHistoryIndex(historyIndex + 1);
+        result = await segmenter.segmentWithScribbles(img, newPoints);
       }
-      setHistory(newHistory);
-
+      
+      if (result?.categoryMask) {
+        const maskData = result.categoryMask.getAsUint8Array();
+        const maskWidth = result.categoryMask.width;
+        const maskHeight = result.categoryMask.height;
+        
+        // 如果已有预览掩码，进行合并（取并集）
+        if (previewMask && previewMaskSize) {
+          const mergedMask = new Uint8Array(maskData.length);
+          for (let i = 0; i < maskData.length; i++) {
+            // MediaPipe: 0 = 前景（要提取的区域），非0 = 背景
+            // 合并：两个掩码只要有一个是前景(0)，结果就是前景(0)
+            mergedMask[i] = (maskData[i] === 0 || previewMask[i] === 0) ? 0 : 1;
+          }
+          setPreviewMask(mergedMask);
+        } else {
+          setPreviewMask(maskData);
+        }
+        
+        setPreviewMaskSize({ width: maskWidth, height: maskHeight });
+        
+        // 绘制预览
+        drawPreviewMask(maskData, maskWidth, maskHeight);
+        
+        toast.success(`已添加选择区域 (${newPoints.length}个点)`);
+      } else {
+        toast.info("未检测到物体");
+      }
+      
       segmenter.close();
-      toast.success("智能提取成功");
     } catch (error) {
-      console.error("Smart extract error:", error);
-      toast.error("智能提取失败");
+      console.error('Preview generation error:', error);
+      toast.error('预览生成失败');
     } finally {
-      setIsExtracting(false);
+      setIsGeneratingPreview(false);
     }
+  };
+
+  const drawPreviewMask = (maskData?: Uint8Array, maskWidth?: number, maskHeight?: number) => {
+    const mask = maskData || previewMask;
+    const size = (maskWidth && maskHeight) ? { width: maskWidth, height: maskHeight } : previewMaskSize;
+    
+    if (!previewCanvasRef.current || !mask || !size) return;
+    
+    const canvas = previewCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // 清空预览canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 创建半透明红色遮罩
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        // 将canvas坐标映射到mask坐标
+        const maskX = Math.floor((x / canvas.width) * size.width);
+        const maskY = Math.floor((y / canvas.height) * size.height);
+        const maskIdx = maskY * size.width + maskX;
+        
+        // MediaPipe: 0 = 前景（要提取的区域）
+        if (mask[maskIdx] === 0) {
+          const idx = (y * canvas.width + x) * 4;
+          data[idx] = 255;      // R - 红色
+          data[idx + 1] = 0;    // G
+          data[idx + 2] = 0;    // B
+          data[idx + 3] = 128;  // A - 50%透明度
+        }
+      }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+  };
+
+  const handleCanvasClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool !== 'preview' || isGeneratingPreview) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const x = (mouseX / rect.width) * canvas.width;
+    const y = (mouseY / rect.height) * canvas.height;
+    
+    await generatePreview(x, y);
+  };
+
+  const applyExtraction = () => {
+    if (!canvasRef.current || !ctxRef.current || !previewMask || !previewMaskSize) {
+      toast.error('没有可应用的预览');
+      return;
+    }
+    
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    
+    // 应用掩码到主canvas的alpha通道
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const maskX = Math.floor((x / canvas.width) * previewMaskSize.width);
+        const maskY = Math.floor((y / canvas.height) * previewMaskSize.height);
+        const maskIdx = maskY * previewMaskSize.width + maskX;
+        const idx = (y * canvas.width + x) * 4;
+        
+        // MediaPipe: 0 = 前景（保留），非0 = 背景（删除）
+        if (previewMask[maskIdx] !== 0) {
+          data[idx + 3] = 0; // 设置为透明
+        }
+      }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    
+    // 清除预览
+    clearPreview();
+    
+    // 保存到历史
+    saveToHistory();
+    
+    // 切换回擦除工具
+    setTool('erase');
+    
+    toast.success('智能提取已应用');
+  };
+
+  const clearPreview = () => {
+    setPreviewMask(null);
+    setPreviewMaskSize(null);
+    setPreviewPoints([]);
+    
+    if (previewCanvasRef.current) {
+      const ctx = previewCanvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, previewCanvasRef.current.width, previewCanvasRef.current.height);
+      }
+    }
+    
+    toast.info('预览已清除');
   };
 
   const handleSave = () => {
@@ -413,7 +522,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             像素编辑工具
           </DialogTitle>
           <DialogDescription>
-            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或智能提取物体
+            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或点击智能提取预览模式选择要保留的区域
           </DialogDescription>
         </DialogHeader>
 
@@ -431,7 +540,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
               />
             </div>
             <div className="flex gap-2 items-center flex-wrap">
-              <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as 'erase' | 'pan' | 'restore')}>
+              <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as typeof tool)}>
                 <ToggleGroupItem value="erase" aria-label="擦除工具" title="擦除工具">
                   <Eraser className="h-4 w-4" />
                 </ToggleGroupItem>
@@ -441,18 +550,36 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                 <ToggleGroupItem value="pan" aria-label="拖动工具" title="拖动工具">
                   <Move className="h-4 w-4" />
                 </ToggleGroupItem>
+                <ToggleGroupItem value="preview" aria-label="智能提取预览" title="智能提取预览">
+                  <Sparkles className="h-4 w-4" />
+                </ToggleGroupItem>
               </ToggleGroup>
-              <div className="w-px h-6 bg-border" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSmartExtract}
-                disabled={isExtracting}
-                title="智能提取物体"
-              >
-                <Sparkles className="h-4 w-4 mr-1" />
-                {isExtracting ? "提取中..." : "智能提取"}
-              </Button>
+              {tool === 'preview' && (
+                <>
+                  <div className="w-px h-6 bg-border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={applyExtraction}
+                    disabled={!previewMask || isGeneratingPreview}
+                    title="应用智能提取"
+                  >
+                    ✓ 应用提取
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearPreview}
+                    disabled={!previewMask || isGeneratingPreview}
+                    title="清除预览重新选择"
+                  >
+                    ✕ 清除预览
+                  </Button>
+                  {isGeneratingPreview && (
+                    <span className="text-sm text-muted-foreground">生成预览中...</span>
+                  )}
+                </>
+              )}
               <div className="w-px h-6 bg-border" />
               <Button
                 variant="outline"
@@ -516,17 +643,36 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             <div 
               style={{ 
                 transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
-                transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+                transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+                position: 'relative'
               }}
             >
+              {/* 主Canvas - 编辑层 */}
               <canvas
                 ref={canvasRef}
-                className={tool === 'pan' ? 'cursor-move' : tool === 'restore' ? 'cursor-pointer' : 'cursor-crosshair'}
+                className={
+                  tool === 'pan' ? 'cursor-move' : 
+                  tool === 'restore' ? 'cursor-pointer' : 
+                  tool === 'preview' ? 'cursor-crosshair' : 
+                  'cursor-crosshair'
+                }
                 style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
                 onMouseDown={startErasing}
                 onMouseMove={handleMouseMove}
                 onMouseUp={stopErasing}
                 onMouseLeave={stopErasing}
+                onClick={handleCanvasClick}
+              />
+              
+              {/* 预览Canvas - 叠加层 */}
+              <canvas
+                ref={previewCanvasRef}
+                className="absolute top-0 left-0 pointer-events-none"
+                style={{ 
+                  transform: `scale(${zoom})`, 
+                  transformOrigin: 'center center',
+                  opacity: tool === 'preview' ? 1 : 0
+                }}
               />
             </div>
           </div>
