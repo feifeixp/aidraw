@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Trash2, FolderOpen, Clock } from "lucide-react";
+import { Loader2, Trash2, FolderOpen, Clock, HardDrive, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -49,6 +49,34 @@ export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManage
     },
     enabled: !!user && open,
   });
+
+  // 查询存储使用量
+  const { data: storageUsage } = useQuery({
+    queryKey: ['storage-usage', user?.id],
+    queryFn: async () => {
+      if (!user) throw new Error('未登录');
+      
+      const { data, error } = await supabase.rpc('get_user_storage_usage', {
+        p_user_id: user.id
+      });
+      
+      if (error) throw error;
+      return data as number;
+    },
+    enabled: !!user && open,
+  });
+
+  // 格式化文件大小
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const MAX_STORAGE = 500 * 1024 * 1024; // 500MB
+  const storagePercentage = storageUsage ? (storageUsage / MAX_STORAGE) * 100 : 0;
 
   // 加载草稿
   const handleLoadDraft = async (draftId: string, filePath: string) => {
@@ -124,7 +152,18 @@ export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManage
         </DialogTrigger>
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>我的云端草稿</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>我的云端草稿</span>
+              {storageUsage !== undefined && (
+                <div className="flex items-center gap-2 text-sm font-normal text-muted-foreground">
+                  <HardDrive className="h-4 w-4" />
+                  <span>{formatFileSize(storageUsage)} / 500 MB</span>
+                  {storagePercentage > 80 && (
+                    <span className="text-destructive">({storagePercentage.toFixed(0)}%)</span>
+                  )}
+                </div>
+              )}
+            </DialogTitle>
           </DialogHeader>
           
           {isLoading ? (
@@ -146,7 +185,20 @@ export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManage
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{draft.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium truncate">{draft.title}</h3>
+                        {draft.is_temporary ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-full">
+                            <Tag className="h-3 w-3" />
+                            临时
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-full">
+                            <Tag className="h-3 w-3" />
+                            已保存
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -157,6 +209,9 @@ export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManage
                         </span>
                         {draft.frame_count && (
                           <span>{draft.frame_count} 个分镜</span>
+                        )}
+                        {draft.file_size && (
+                          <span>{formatFileSize(draft.file_size)}</span>
                         )}
                       </div>
                     </div>

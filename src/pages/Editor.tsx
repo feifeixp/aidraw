@@ -9,6 +9,8 @@ import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { TaskQueueDisplay } from "@/components/editor/TaskQueueDisplay";
 import { DraftsList } from "@/components/editor/DraftsList";
 import { DraftsManagerDialog } from "@/components/editor/DraftsManagerDialog";
+import { SaveDraftDialog } from "@/components/editor/SaveDraftDialog";
+import { ExitConfirmDialog } from "@/components/editor/ExitConfirmDialog";
 import { Tutorial } from "@/components/editor/Tutorial";
 import { EditorInitialSetup } from "@/components/editor/EditorInitialSetup";
 import { Button } from "@/components/ui/button";
@@ -17,16 +19,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 interface Task {
   id: string;
   name: string;
@@ -126,6 +118,9 @@ const Editor = () => {
   // 页面离开确认
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  
+  // 保存确认对话框
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
 
   // 初始化设置 - 每次进入编辑器都需要初始化
   const [showInitialSetup, setShowInitialSetup] = useState(true);
@@ -174,7 +169,13 @@ const Editor = () => {
 
   // 保存并离开
   const handleSaveAndExit = useCallback(() => {
-    handleSaveToLocal();
+    setShowExitDialog(false);
+    setShowSaveDialog(true);
+  }, []);
+  
+  // 不保存直接离开
+  const handleExitWithoutSave = useCallback(() => {
+    setShowExitDialog(false);
     setTimeout(() => {
       if (pendingNavigation === "back") {
         window.history.back();
@@ -182,8 +183,44 @@ const Editor = () => {
         navigate(pendingNavigation);
       }
       setPendingNavigation(null);
-    }, 300);
-  }, [handleSaveToLocal, pendingNavigation, navigate]);
+    }, 100);
+  }, [pendingNavigation, navigate]);
+  
+  // 确认保存草稿（永久保存）
+  const handleConfirmSave = useCallback(async (title: string) => {
+    if (!cloudDraftId || !user) return;
+    
+    try {
+      // 更新草稿为非临时状态
+      const { error } = await supabase
+        .from('editor_drafts')
+        .update({
+          title,
+          is_temporary: false
+        })
+        .eq('id', cloudDraftId);
+      
+      if (error) throw error;
+      
+      toast.success('草稿已永久保存');
+      
+      // 如果有待处理的导航，执行导航
+      if (pendingNavigation) {
+        setTimeout(() => {
+          if (pendingNavigation === "back") {
+            window.history.back();
+          } else {
+            navigate(pendingNavigation);
+          }
+          setPendingNavigation(null);
+        }, 100);
+      }
+    } catch (error) {
+      console.error('保存草稿失败:', error);
+      toast.error('保存失败，请重试');
+      throw error;
+    }
+  }, [cloudDraftId, user, pendingNavigation, navigate]);
 
   // 处理初始化设置完成
   const handleInitialSetupComplete = useCallback(async (settings: {
@@ -571,7 +608,7 @@ const Editor = () => {
   }, [canvas, history.length]);
 
   // 云端自动保存功能
-  const autoSaveToCloud = useCallback(async () => {
+  const autoSaveToCloud = useCallback(async (isTemporary = true) => {
     if (!canvas || !user || isSaving) return;
     
     setIsSaving(true);
@@ -579,6 +616,19 @@ const Editor = () => {
       const jsonData = canvas.toJSON();
       const dataStr = JSON.stringify(jsonData);
       const blob = new Blob([dataStr], { type: 'application/json' });
+      const fileSize = blob.size;
+      
+      // 检查存储空间（500MB限制）
+      const { data: storageData } = await supabase.rpc('get_user_storage_usage', {
+        p_user_id: user.id
+      });
+      
+      const MAX_STORAGE = 500 * 1024 * 1024; // 500MB
+      if (storageData && storageData + fileSize > MAX_STORAGE) {
+        toast.error('存储空间不足！请删除一些旧文件后再试。');
+        setIsSaving(false);
+        return;
+      }
       
       // 如果没有草稿ID，创建新草稿
       if (!cloudDraftId) {
@@ -589,7 +639,9 @@ const Editor = () => {
             title: `草稿 ${new Date().toLocaleString('zh-CN')}`,
             frame_count: storyboardFrameCount,
             canvas_settings: { width: frameWidth, height: frameHeight },
-            file_path: '' // 临时占位
+            file_path: '', // 临时占位
+            is_temporary: isTemporary,
+            file_size: fileSize
           })
           .select()
           .single();
@@ -628,7 +680,9 @@ const Editor = () => {
           .from('editor_drafts')
           .update({ 
             last_saved_at: new Date().toISOString(),
-            frame_count: storyboardFrameCount 
+            frame_count: storyboardFrameCount,
+            file_size: fileSize,
+            is_temporary: isTemporary
           })
           .eq('id', cloudDraftId);
         
@@ -1015,44 +1069,20 @@ const Editor = () => {
       <TaskQueueDisplay currentTask={currentTask} />
       
       {/* 离开确认对话框 */}
-      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认离开？</AlertDialogTitle>
-            <AlertDialogDescription>
-              您确定要离开编辑器吗？请确保已保存您的工作到草稿。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel
-              onClick={() => {
-                setPendingNavigation(null);
-              }}
-            >
-              取消
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleSaveAndExit}
-              className="bg-primary hover:bg-primary/90"
-            >
-              保存并离开
-            </AlertDialogAction>
-            <AlertDialogAction
-              onClick={() => {
-                if (pendingNavigation === "back") {
-                  window.history.back();
-                } else if (pendingNavigation) {
-                  navigate(pendingNavigation);
-                }
-                setPendingNavigation(null);
-              }}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              直接离开
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ExitConfirmDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onSaveAndExit={handleSaveAndExit}
+        onExitWithoutSave={handleExitWithoutSave}
+      />
+      
+      {/* 保存草稿对话框 */}
+      <SaveDraftDialog
+        open={showSaveDialog}
+        onOpenChange={setShowSaveDialog}
+        onSave={handleConfirmSave}
+        defaultTitle={`草稿 ${new Date().toLocaleString('zh-CN')}`}
+      />
       <div className="border-b border-border p-2 flex items-center gap-2 my-[20px] overflow-x-auto editor-toolbar">
         {isMobile && <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>

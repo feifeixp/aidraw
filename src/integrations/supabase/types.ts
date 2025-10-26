@@ -102,9 +102,11 @@ export type Database = {
           canvas_settings: Json | null
           created_at: string | null
           file_path: string
+          file_size: number | null
           frame_count: number | null
           id: string
           is_auto_save: boolean | null
+          is_temporary: boolean | null
           last_saved_at: string | null
           thumbnail_url: string | null
           title: string | null
@@ -115,9 +117,11 @@ export type Database = {
           canvas_settings?: Json | null
           created_at?: string | null
           file_path: string
+          file_size?: number | null
           frame_count?: number | null
           id?: string
           is_auto_save?: boolean | null
+          is_temporary?: boolean | null
           last_saved_at?: string | null
           thumbnail_url?: string | null
           title?: string | null
@@ -128,9 +132,11 @@ export type Database = {
           canvas_settings?: Json | null
           created_at?: string | null
           file_path?: string
+          file_size?: number | null
           frame_count?: number | null
           id?: string
           is_auto_save?: boolean | null
+          is_temporary?: boolean | null
           last_saved_at?: string | null
           thumbnail_url?: string | null
           title?: string | null
@@ -368,6 +374,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_user_storage_usage: { Args: { p_user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
