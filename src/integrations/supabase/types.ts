@@ -97,6 +97,45 @@ export type Database = {
           },
         ]
       }
+      editor_drafts: {
+        Row: {
+          canvas_settings: Json | null
+          created_at: string | null
+          file_path: string
+          frame_count: number | null
+          id: string
+          is_auto_save: boolean | null
+          last_saved_at: string | null
+          thumbnail_url: string | null
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          canvas_settings?: Json | null
+          created_at?: string | null
+          file_path: string
+          frame_count?: number | null
+          id?: string
+          is_auto_save?: boolean | null
+          last_saved_at?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          canvas_settings?: Json | null
+          created_at?: string | null
+          file_path?: string
+          frame_count?: number | null
+          id?: string
+          is_auto_save?: boolean | null
+          last_saved_at?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       generation_history: {
         Row: {
           checkpoint_id: string | null

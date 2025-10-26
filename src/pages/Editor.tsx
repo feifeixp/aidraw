@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText, util } from "fabric";
-import { Menu, ChevronLeft, ChevronRight } from "lucide-react";
+import { Menu, ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
 import { useBeforeUnload, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { EditorCanvas } from "@/components/editor/EditorCanvas";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
@@ -8,12 +8,15 @@ import { LeftToolbar } from "@/components/editor/LeftToolbar";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { TaskQueueDisplay } from "@/components/editor/TaskQueueDisplay";
 import { DraftsList } from "@/components/editor/DraftsList";
+import { DraftsManagerDialog } from "@/components/editor/DraftsManagerDialog";
 import { Tutorial } from "@/components/editor/Tutorial";
 import { EditorInitialSetup } from "@/components/editor/EditorInitialSetup";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,6 +95,7 @@ const historyReducer = (state: HistoryState, action: HistoryAction): HistoryStat
   }
 };
 const Editor = () => {
+  const { user } = useAuth();
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
   const [zoom, setZoom] = useState<number>(80);
   const [searchParams] = useSearchParams();
@@ -113,6 +117,11 @@ const Editor = () => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 云端保存相关状态
+  const [cloudDraftId, setCloudDraftId] = useState<string | null>(null);
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 页面离开确认
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -561,9 +570,86 @@ const Editor = () => {
     }
   }, [canvas, history.length]);
 
-  // 移除自动加载草稿功能 - 不再使用localStorage缓存
+  // 云端自动保存功能
+  const autoSaveToCloud = useCallback(async () => {
+    if (!canvas || !user || isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      const jsonData = canvas.toJSON();
+      const dataStr = JSON.stringify(jsonData);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      
+      // 如果没有草稿ID，创建新草稿
+      if (!cloudDraftId) {
+        const { data: draft, error: draftError } = await supabase
+          .from('editor_drafts')
+          .insert({
+            user_id: user.id,
+            title: `草稿 ${new Date().toLocaleString('zh-CN')}`,
+            frame_count: storyboardFrameCount,
+            canvas_settings: { width: frameWidth, height: frameHeight },
+            file_path: '' // 临时占位
+          })
+          .select()
+          .single();
+        
+        if (draftError) throw draftError;
+        setCloudDraftId(draft.id);
+        
+        // 上传到 Storage
+        const filePath = `${user.id}/${draft.id}.json`;
+        const { error: uploadError } = await supabase.storage
+          .from('editor-drafts')
+          .upload(filePath, blob, { upsert: true });
+        
+        if (uploadError) throw uploadError;
+        
+        // 更新文件路径
+        await supabase
+          .from('editor_drafts')
+          .update({ file_path: filePath })
+          .eq('id', draft.id);
+      } else {
+        // 更新现有草稿
+        const filePath = `${user.id}/${cloudDraftId}.json`;
+        const { error: uploadError } = await supabase.storage
+          .from('editor-drafts')
+          .upload(filePath, blob, { upsert: true });
+        
+        if (uploadError) throw uploadError;
+        
+        await supabase
+          .from('editor_drafts')
+          .update({ 
+            last_saved_at: new Date().toISOString(),
+            frame_count: storyboardFrameCount 
+          })
+          .eq('id', cloudDraftId);
+      }
+      
+      setLastSaveTime(new Date());
+      console.log('自动保存成功');
+    } catch (error) {
+      console.error('自动保存失败:', error);
+      toast.error('自动保存失败');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [canvas, user, cloudDraftId, isSaving, frameWidth, frameHeight, storyboardFrameCount]);
 
-  // Keyboard shortcut for pan tool (H key)
+  // 定时自动保存（每30秒）
+  useEffect(() => {
+    if (!canvas || !user) return;
+    
+    const interval = setInterval(() => {
+      autoSaveToCloud();
+    }, 30000); // 30秒
+    
+    return () => clearInterval(interval);
+  }, [canvas, user, autoSaveToCloud]);
+
+  // 快捷键保存（Ctrl+S / Cmd+S）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check if user is typing in an input field
@@ -573,11 +659,51 @@ const Editor = () => {
                           target.isContentEditable;
       
       if (isInputField) return;
+
+      // Ctrl+S / Cmd+S 保存
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        autoSaveToCloud();
+        toast.success('手动保存成功');
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [autoSaveToCloud]);
+
+  // 从云端加载草稿
+  const loadDraftFromCloud = useCallback(async (draftId: string, draftData: string) => {
+    if (!canvas) return;
+    
+    try {
+      const jsonData = JSON.parse(draftData);
+      await canvas.loadFromJSON(jsonData);
+      canvas.renderAll();
+      setCloudDraftId(draftId);
+      
+      // 从草稿数据中提取分镜信息
+      const objects = jsonData.objects || [];
+      const frames = objects.filter((obj: any) => obj.name && obj.name.startsWith('storyboard-frame-'));
+      const frameCount = frames.length;
+      
+      if (frameCount > 0) {
+        const firstFrameId = frames[0].name.replace('storyboard-frame-', '');
+        setActiveFrameId(firstFrameId);
+        setStoryboardFrameCount(frameCount);
+      }
+      
+      // 重置历史记录
+      const state = JSON.stringify(jsonData);
+      dispatchHistory({
+        type: "RESET",
+        payload: state
+      });
+    } catch (error) {
+      console.error('加载草稿失败:', error);
+      toast.error('加载草稿失败');
+    }
+  }, [canvas]);
   const handleCloseMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
   }, []);
@@ -850,7 +976,7 @@ const Editor = () => {
               {leftToolbarContent}
             </SheetContent>
           </Sheet>}
-        <div className="drafts-list">
+        <div className="drafts-list flex items-center gap-2">
           <DraftsList 
             canvas={canvas} 
             onLoadDraft={handleLoadDraft}
@@ -860,6 +986,28 @@ const Editor = () => {
             onFrameCountChange={setStoryboardFrameCount}
             onRequestInitialSetup={handleRequestInitialSetup}
           />
+          <DraftsManagerDialog onLoadDraft={loadDraftFromCloud} />
+          
+          {/* 云端保存状态指示器 */}
+          {user && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground border-l pl-2">
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="hidden sm:inline">保存中...</span>
+                </>
+              ) : lastSaveTime ? (
+                <>
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span className="hidden sm:inline">
+                    {lastSaveTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </>
+              ) : (
+                <span className="hidden sm:inline">未保存</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-0 overflow-x-auto">
           <EditorToolbar
