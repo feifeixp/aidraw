@@ -14,6 +14,7 @@ import { SaveDraftDialog } from "@/components/editor/SaveDraftDialog";
 import { ExitConfirmDialog } from "@/components/editor/ExitConfirmDialog";
 import { Tutorial } from "@/components/editor/Tutorial";
 import { EditorInitialSetup } from "@/components/editor/EditorInitialSetup";
+import { FeaturesDialog } from "@/components/FeaturesDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -133,6 +134,9 @@ const Editor = () => {
   
   // 教程状态
   const [showTutorial, setShowTutorial] = useState(false);
+  
+  // 特色功能对话框状态
+  const [showFeaturesDialog, setShowFeaturesDialog] = useState(false);
 
   // 在组件挂载时清除所有缓存
   useEffect(() => {
@@ -351,6 +355,11 @@ const Editor = () => {
   // 手动显示教程
   const handleShowTutorial = useCallback(() => {
     setShowTutorial(true);
+  }, []);
+  
+  // 显示特色功能对话框
+  const handleShowFeatures = useCallback(() => {
+    setShowFeaturesDialog(true);
   }, []);
 
   // 请求显示初始化设置
@@ -1105,6 +1114,12 @@ const Editor = () => {
         onSave={handleConfirmSave}
         defaultTitle={`草稿 ${new Date().toLocaleString('zh-CN')}`}
       />
+      
+      {/* 特色功能介绍对话框 */}
+      <FeaturesDialog
+        open={showFeaturesDialog}
+        onOpenChange={setShowFeaturesDialog}
+      />
       <div className="border-b border-border p-2 flex items-center gap-2 my-[20px] overflow-x-auto editor-toolbar">
         {isMobile && <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
@@ -1173,6 +1188,7 @@ const Editor = () => {
             defaultFrameWidth={frameWidth}
             defaultFrameHeight={frameHeight}
             onShowTutorial={handleShowTutorial}
+            onShowFeatures={handleShowFeatures}
           />
         </div>
       </div>

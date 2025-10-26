@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wand2, Eraser, Sparkles, Image } from "lucide-react";
+import { Wand2, Eraser, Sparkles, Image, Layout } from "lucide-react";
 
 interface FeaturesDialogProps {
   open: boolean;
@@ -45,6 +45,13 @@ const features: Feature[] = [
     videoUrl: "", // 待填充
   },
   {
+    id: "smart-storyboard",
+    title: "智能多分镜",
+    description: "快速创建和管理多个分镜，实现连贯的视觉叙事",
+    icon: Layout,
+    videoUrl: "", // 待填充
+  },
+  {
     id: "render-export",
     title: "渲染导出",
     description: "最终合成的图片可以通过渲染优化图片，重新渲染光照和阴影",
@@ -67,7 +74,7 @@ export const FeaturesDialog = ({ open, onOpenChange }: FeaturesDialogProps) => {
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             {features.map((feature) => {
               const Icon = feature.icon;
               return (
@@ -147,6 +154,14 @@ export const FeaturesDialog = ({ open, onOpenChange }: FeaturesDialogProps) => {
                         <li>标记区域进行局部调整</li>
                         <li>智能融合多个元素</li>
                         <li>保持画面整体和谐统一</li>
+                      </>
+                    )}
+                    {feature.id === "smart-storyboard" && (
+                      <>
+                        <li>一键创建多个分镜画面</li>
+                        <li>智能管理分镜时间线和顺序</li>
+                        <li>支持分镜间的元素复用和继承</li>
+                        <li>快速预览完整故事流程</li>
                       </>
                     )}
                     {feature.id === "render-export" && (

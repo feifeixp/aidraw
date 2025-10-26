@@ -35,6 +35,7 @@ interface EditorToolbarProps {
   defaultFrameWidth?: number;
   defaultFrameHeight?: number;
   onShowTutorial?: () => void;
+  onShowFeatures?: () => void;
 }
 export const EditorToolbar = ({
   canvas,
@@ -58,7 +59,8 @@ export const EditorToolbar = ({
   defaultStyle = "auto",
   defaultFrameWidth = 1024,
   defaultFrameHeight = 768,
-  onShowTutorial
+  onShowTutorial,
+  onShowFeatures
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [replaceOriginal, setReplaceOriginal] = useState(true);
@@ -1021,8 +1023,21 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
         title="显示帮助教程"
       >
         <HelpCircle className="h-4 w-4" />
-        <span className="ml-1">帮助</span>
+        <span className="ml-1">教程</span>
       </Button>
+      
+      {onShowFeatures && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onShowFeatures}
+          className="shrink-0 whitespace-nowrap" 
+          title="特色功能介绍"
+        >
+          <Sparkles className="h-4 w-4" />
+          <span className="ml-1">特色功能</span>
+        </Button>
+      )}
 
 
       {/* Smart Compose Dialog */}
