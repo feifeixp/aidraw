@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move, PaintBucket, Sparkles } from "lucide-react";
+import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move, PaintBucket, Sparkles, Wand2 } from "lucide-react";
 import { FabricImage } from "fabric";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MediaPipeSegmenter } from "@/lib/mediapipe/interactiveSegmenter";
@@ -31,7 +31,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [tool, setTool] = useState<'erase' | 'pan' | 'restore' | 'preview'>('erase');
+  const [tool, setTool] = useState<'erase' | 'pan' | 'restore' | 'preview' | 'wand'>('erase');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [tempPanning, setTempPanning] = useState(false);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -47,6 +47,10 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   
   // 自定义光标状态
   const [cursorPosition, setCursorPosition] = useState<{x: number, y: number} | null>(null);
+  
+  // 魔棒工具相关状态
+  const [wandTolerance, setWandTolerance] = useState(30);
+  const [wandSelection, setWandSelection] = useState<Uint8Array | null>(null);
 
   useEffect(() => {
     if (!open || !imageObject) {
@@ -227,8 +231,8 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
       e.preventDefault();
     }
     
-    if (tool === 'preview') {
-      // 在预览模式下不启动擦除或其他编辑操作
+    if (tool === 'preview' || tool === 'wand') {
+      // 在预览模式或魔棒模式下不启动擦除或其他编辑操作
       return;
     }
     
@@ -289,8 +293,8 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
       return;
     }
     
-    if (tool === 'preview') {
-      // 在预览模式下不处理鼠标移动事件
+    if (tool === 'preview' || tool === 'wand') {
+      // 在预览模式或魔棒模式下不处理鼠标移动事件
       return;
     }
     
@@ -503,9 +507,163 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     ctx.putImageData(imageData, 0, 0);
   };
 
-  const handleCanvasClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (tool !== 'preview' || isGeneratingPreview) return;
+  // 魔棒工具：洪水填充算法选择相似颜色
+  const selectSimilarPixels = (startX: number, startY: number) => {
+    if (!canvasRef.current || !ctxRef.current) return;
     
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // 获取起始像素颜色
+    const startIdx = (Math.floor(startY) * width + Math.floor(startX)) * 4;
+    const targetR = data[startIdx];
+    const targetG = data[startIdx + 1];
+    const targetB = data[startIdx + 2];
+    const targetA = data[startIdx + 3];
+    
+    // 创建选区掩码
+    const selection = new Uint8Array(width * height);
+    const visited = new Uint8Array(width * height);
+    
+    // 颜色差异检测函数
+    const isColorSimilar = (idx: number) => {
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const a = data[idx + 3];
+      
+      // 如果目标像素是透明的，只选择透明像素
+      if (targetA < 10) {
+        return a < 10;
+      }
+      
+      // 计算颜色距离
+      const dr = Math.abs(r - targetR);
+      const dg = Math.abs(g - targetG);
+      const db = Math.abs(b - targetB);
+      const da = Math.abs(a - targetA);
+      
+      return dr + dg + db + da <= wandTolerance * 4;
+    };
+    
+    // 洪水填充算法（使用栈避免递归）
+    const stack: Array<{x: number, y: number}> = [{x: Math.floor(startX), y: Math.floor(startY)}];
+    
+    while (stack.length > 0) {
+      const {x, y} = stack.pop()!;
+      
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      
+      const pixelIdx = y * width + x;
+      if (visited[pixelIdx]) continue;
+      
+      visited[pixelIdx] = 1;
+      
+      const dataIdx = pixelIdx * 4;
+      if (!isColorSimilar(dataIdx)) continue;
+      
+      selection[pixelIdx] = 1; // 标记为选中
+      
+      // 添加相邻像素到栈
+      stack.push({x: x + 1, y});
+      stack.push({x: x - 1, y});
+      stack.push({x, y: y + 1});
+      stack.push({x, y: y - 1});
+    }
+    
+    setWandSelection(selection);
+    
+    // 绘制选区高亮
+    drawWandSelection(selection, width, height);
+    
+    // 统计选中像素数量
+    let count = 0;
+    for (let i = 0; i < selection.length; i++) {
+      if (selection[i]) count++;
+    }
+    
+    toast.success(`已选择 ${count} 个像素`);
+  };
+  
+  const drawWandSelection = (selection: Uint8Array, width: number, height: number) => {
+    if (!previewCanvasRef.current) return;
+    
+    const canvas = previewCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // 清空预览canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 创建半透明红色遮罩
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+    
+    for (let i = 0; i < selection.length; i++) {
+      if (selection[i]) {
+        const idx = i * 4;
+        data[idx] = 255;      // R - 红色
+        data[idx + 1] = 0;    // G
+        data[idx + 2] = 0;    // B
+        data[idx + 3] = 128;  // A - 50%透明度
+      }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+  };
+  
+  const applyWandDeletion = () => {
+    if (!canvasRef.current || !ctxRef.current || !wandSelection) {
+      toast.error('没有可应用的选区');
+      return;
+    }
+    
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    
+    // 删除选中的像素
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    for (let i = 0; i < wandSelection.length; i++) {
+      if (wandSelection[i]) {
+        const idx = i * 4;
+        data[idx + 3] = 0; // 设置为透明
+      }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    
+    // 清除选区
+    clearWandSelection();
+    
+    // 保存到历史
+    saveToHistory();
+    
+    // 切换回擦除工具
+    setTool('erase');
+    
+    toast.success('已删除选中像素');
+  };
+  
+  const clearWandSelection = () => {
+    setWandSelection(null);
+    
+    if (previewCanvasRef.current) {
+      const ctx = previewCanvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, previewCanvasRef.current.width, previewCanvasRef.current.height);
+      }
+    }
+    
+    toast.info('选区已清除');
+  };
+
+  const handleCanvasClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -515,9 +673,17 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     const x = (mouseX / rect.width) * canvas.width;
     const y = (mouseY / rect.height) * canvas.height;
     
-    // 检测是否按下Shift键进行减选
-    const isSubtract = e.shiftKey;
-    await generatePreview(x, y, isSubtract);
+    if (tool === 'wand') {
+      // 魔棒工具：选择相似颜色像素
+      selectSimilarPixels(x, y);
+      return;
+    }
+    
+    if (tool === 'preview' && !isGeneratingPreview) {
+      // 检测是否按下Shift键进行减选
+      const isSubtract = e.shiftKey;
+      await generatePreview(x, y, isSubtract);
+    }
   };
 
   const applyExtraction = () => {
@@ -626,23 +792,37 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             像素编辑工具
           </DialogTitle>
           <DialogDescription>
-            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或点击智能提取预览模式选择要保留的区域（按住Shift键可减选区域）
+            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，魔棒工具自动选择相似颜色像素，或点击智能提取预览模式选择要保留的区域
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-auto">
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
-              <Label>画笔大小: {brushSize}px</Label>
-              <Slider
-                value={[brushSize]}
-                onValueChange={(value) => setBrushSize(value[0])}
-                min={1}
-                max={100}
-                step={1}
-                className="mt-2"
-              />
-            </div>
+            {tool === 'wand' ? (
+              <div className="flex-1 min-w-[200px]">
+                <Label>颜色容差: {wandTolerance}</Label>
+                <Slider
+                  value={[wandTolerance]}
+                  onValueChange={(value) => setWandTolerance(value[0])}
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="mt-2"
+                />
+              </div>
+            ) : (
+              <div className="flex-1 min-w-[200px]">
+                <Label>画笔大小: {brushSize}px</Label>
+                <Slider
+                  value={[brushSize]}
+                  onValueChange={(value) => setBrushSize(value[0])}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="mt-2"
+                />
+              </div>
+            )}
             <div className="flex gap-2 items-center flex-wrap">
               <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as typeof tool)}>
                 <ToggleGroupItem value="erase" aria-label="擦除工具" title="擦除工具">
@@ -651,6 +831,9 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                 <ToggleGroupItem value="restore" aria-label="恢复笔刷" title="恢复笔刷">
                   <PaintBucket className="h-4 w-4" />
                 </ToggleGroupItem>
+                <ToggleGroupItem value="wand" aria-label="魔棒工具" title="魔棒工具">
+                  <Wand2 className="h-4 w-4" />
+                </ToggleGroupItem>
                 <ToggleGroupItem value="pan" aria-label="拖动工具" title="拖动工具">
                   <Move className="h-4 w-4" />
                 </ToggleGroupItem>
@@ -658,6 +841,29 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                   <Sparkles className="h-4 w-4" />
                 </ToggleGroupItem>
               </ToggleGroup>
+              {tool === 'wand' && (
+                <>
+                  <div className="w-px h-6 bg-border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={applyWandDeletion}
+                    disabled={!wandSelection}
+                    title="删除选中像素"
+                  >
+                    ✓ 删除选区
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearWandSelection}
+                    disabled={!wandSelection}
+                    title="清除选区"
+                  >
+                    ✕ 清除选区
+                  </Button>
+                </>
+              )}
               {tool === 'preview' && (
                 <>
                   <div className="w-px h-6 bg-border" />
@@ -756,7 +962,8 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                   tempPanning || isSpacePressed ? 'cursor-move' :
                   tool === 'pan' ? 'cursor-move' : 
                   tool === 'restore' ? 'cursor-none' : 
-                  tool === 'preview' ? 'cursor-crosshair' : 
+                  tool === 'preview' ? 'cursor-crosshair' :
+                  tool === 'wand' ? 'cursor-crosshair' : 
                   'cursor-none'
                 }
                 style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
@@ -775,7 +982,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                 style={{ 
                   transform: `scale(${zoom})`, 
                   transformOrigin: 'center center',
-                  opacity: tool === 'preview' ? 1 : 0
+                  opacity: (tool === 'preview' || tool === 'wand') ? 1 : 0
                 }}
               />
             </div>
@@ -802,6 +1009,8 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
           <div className="text-xs text-muted-foreground text-center">
             {isGeneratingPreview ? (
               <span className="font-medium">⏳ 生成预览中...</span>
+            ) : tool === 'wand' ? (
+              <span>💡 提示：点击图像选择相似颜色的像素 · 调整颜色容差控制选择范围 · 确认后删除选中像素</span>
             ) : (
               <span>💡 提示：按住空格键或鼠标中键拖动可平移视图 · 鼠标滚轮可缩放视图 · Shift+点击可减选区域</span>
             )}
