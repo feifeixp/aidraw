@@ -492,16 +492,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
           FabricImage
         } = await import("fabric");
         
-        // Only remove non-frame objects if shouldReplaceOriginal is true
-        if (shouldReplaceOriginal) {
-        const objects = canvas.getObjects();
-        objects.forEach(obj => {
-          const objName = (obj as any).name;
-          if (!objName?.startsWith('storyboard-')) {
-            canvas.remove(obj);
-          }
-        });
-        }
+        // 渲染结果将作为新图层添加，不删除原有内容
         
         const img = new Image();
         await new Promise((resolve, reject) => {
