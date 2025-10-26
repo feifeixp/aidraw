@@ -609,7 +609,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             像素编辑工具
           </DialogTitle>
           <DialogDescription>
-            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或点击智能提取预览模式选择要保留的区域（按住Shift键可减选区域）。提示：按住空格键或鼠标中键拖动可平移视图，鼠标滚轮可缩放视图
+            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或点击智能提取预览模式选择要保留的区域（按住Shift键可减选区域）
           </DialogDescription>
         </DialogHeader>
 
@@ -653,21 +653,18 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                   >
                     ✓ 应用提取
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearPreview}
-                    disabled={!previewMask || isGeneratingPreview}
-                    title="清除预览重新选择"
-                  >
-                    ✕ 清除预览
-                  </Button>
-                  {isGeneratingPreview && (
-                    <span className="text-sm text-muted-foreground">生成预览中...</span>
-                  )}
-                </>
-              )}
-              <div className="w-px h-6 bg-border" />
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={clearPreview}
+                     disabled={!previewMask || isGeneratingPreview}
+                     title="清除预览重新选择"
+                   >
+                     ✕ 清除预览
+                   </Button>
+                 </>
+               )}
+               <div className="w-px h-6 bg-border" />
               <Button
                 variant="outline"
                 size="sm"
@@ -768,13 +765,22 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>
-            取消
-          </Button>
-          <Button onClick={handleSave}>
-            保存
-          </Button>
+        <DialogFooter className="flex-col gap-2">
+          <div className="text-xs text-muted-foreground text-center">
+            {isGeneratingPreview ? (
+              <span className="font-medium">⏳ 生成预览中...</span>
+            ) : (
+              <span>💡 提示：按住空格键或鼠标中键拖动可平移视图 · 鼠标滚轮可缩放视图 · Shift+点击可减选区域</span>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="outline" onClick={handleCancel}>
+              取消
+            </Button>
+            <Button onClick={handleSave}>
+              保存
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
