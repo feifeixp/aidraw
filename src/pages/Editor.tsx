@@ -7,6 +7,7 @@ import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { LeftToolbar } from "@/components/editor/LeftToolbar";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { TaskQueueDisplay } from "@/components/editor/TaskQueueDisplay";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DraftsList } from "@/components/editor/DraftsList";
 import { DraftsManagerDialog } from "@/components/editor/DraftsManagerDialog";
 import { SaveDraftDialog } from "@/components/editor/SaveDraftDialog";
@@ -106,6 +107,7 @@ const Editor = () => {
   const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
   const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
   const [storyboardFrameCount, setStoryboardFrameCount] = useState(1);
+  const [isRendering, setIsRendering] = useState(false);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1068,6 +1070,26 @@ const Editor = () => {
       {showTutorial && <Tutorial onComplete={() => setShowTutorial(false)} />}
       <TaskQueueDisplay currentTask={currentTask} />
       
+      {/* Rendering Blocking Dialog */}
+      <AlertDialog open={isRendering}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              正在渲染
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-2">
+                <p>正在融合图层并优化光照效果，请稍候...</p>
+                <p className="text-amber-600 dark:text-amber-500 text-sm">
+                  ⚠️ 渲染过程中请勿进行其他操作
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       {/* 离开确认对话框 */}
       <ExitConfirmDialog
         open={showExitDialog}
@@ -1135,7 +1157,9 @@ const Editor = () => {
             canUndo={historyIndex > 0} 
             canRedo={historyIndex < history.length - 1} 
             saveState={saveState} 
-            isTaskProcessing={isTaskProcessing} 
+            isTaskProcessing={isTaskProcessing}
+            isRendering={isRendering}
+            setIsRendering={setIsRendering}
             startTask={startTask} 
             completeTask={completeTask} 
             cancelTask={cancelTask}

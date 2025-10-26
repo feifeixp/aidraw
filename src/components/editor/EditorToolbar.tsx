@@ -20,6 +20,8 @@ interface EditorToolbarProps {
   canRedo: boolean;
   saveState: () => void;
   isTaskProcessing: boolean;
+  isRendering: boolean;
+  setIsRendering: (isRendering: boolean) => void;
   startTask: (taskName: string) => string;
   completeTask: (taskId: string) => void;
   cancelTask: () => void;
@@ -42,6 +44,8 @@ export const EditorToolbar = ({
   canRedo,
   saveState,
   isTaskProcessing,
+  isRendering,
+  setIsRendering,
   startTask,
   completeTask,
   cancelTask,
@@ -57,9 +61,9 @@ export const EditorToolbar = ({
   onShowTutorial
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
-  const [composeMode, setComposeMode] = useState<"compose" | "render">("compose");
   const [replaceOriginal, setReplaceOriginal] = useState(true);
   const [isComposing, setIsComposing] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [showRecomposeDialog, setShowRecomposeDialog] = useState(false);
   const [customRecomposePrompt, setCustomRecomposePrompt] = useState("");
   const [showAiStoryboardDialog, setShowAiStoryboardDialog] = useState(false);
@@ -536,7 +540,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       toast.error(`重绘失败: ${errorMessage}`);
     }
   };
-  const handleExport = async () => {
+  const handleDirectExport = async () => {
     if (!canvas) return;
     
     // 根据activeFrameId查找对应的frame
@@ -597,6 +601,27 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
     link.click();
     toast.success("已导出画布");
   };
+
+  const handleRenderAndExport = async () => {
+    setShowExportDialog(false);
+    setIsRendering(true);
+    
+    try {
+      // 先渲染，替换原图
+      await handleRedraw(true);
+      
+      // 等待渲染完成后再导出
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await handleDirectExport();
+      
+      toast.success("渲染并导出完成");
+    } catch (error) {
+      console.error("Render and export error:", error);
+      toast.error("渲染导出失败");
+    } finally {
+      setIsRendering(false);
+    }
+  };
   const handleSmartCompose = async () => {
     if (!canvas) {
       toast.error("画布未初始化");
@@ -608,12 +633,6 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
     }
 
     setShowSmartComposeDialog(false);
-    
-    // If render mode, call handleRedraw with "create new layer" (false)
-    if (composeMode === "render") {
-      await handleRedraw(false);
-      return;
-    }
 
     // 根据activeFrameId查找对应的frame
     let frame;
@@ -997,7 +1016,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="icon" onClick={handleExport} className="shrink-0" title="导出">
+      <Button variant="outline" size="icon" onClick={() => setShowExportDialog(true)} disabled={isRendering} className="shrink-0" title="导出">
         <Download className="h-4 w-4" />
       </Button>
 
@@ -1023,68 +1042,102 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>功能选择</Label>
+              <Label>输出选项</Label>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant={composeMode === "compose" ? "default" : "outline"} onClick={() => setComposeMode("compose")} className="w-full">
-                  <Wand2 className="h-4 w-4 mr-2" />
-                  智能合成
+                <Button variant={replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(true)} className="w-full">
+                  替换原图
                 </Button>
-                <Button variant={composeMode === "render" ? "default" : "outline"} onClick={() => setComposeMode("render")} className="w-full">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  渲染
+                <Button variant={!replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(false)} className="w-full">
+                  创建新图层
                 </Button>
               </div>
             </div>
-
-            {composeMode === "compose" && (
-              <div className="space-y-2">
-                <Label>输出选项</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant={replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(true)} className="w-full">
-                    替换原图
-                  </Button>
-                  <Button variant={!replaceOriginal ? "default" : "outline"} onClick={() => setReplaceOriginal(false)} className="w-full">
-                    创建新图层
-                  </Button>
-                </div>
-              </div>
-            )}
 
             <Separator />
 
             <div className="space-y-2">
               <Label>功能说明</Label>
               <div className="text-sm text-muted-foreground space-y-2">
-                {composeMode === "compose" ? (
-                  <>
-                    <p>
-                      <strong>智能合成</strong>会分析画布中的所有文本标注和图形元素：
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>根据文本和图形标注生成或编辑图片</li>
-                      <li>支持添加文字描述想要的效果</li>
-                      <li>可以标记重点区域进行智能修改</li>
-                    </ul>
-                  </>
-                ) : (
-                  <>
-                    <p>
-                      <strong>渲染</strong>会将画布上的所有元素融合并优化：
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>融合所有图层到单一图像</li>
-                      <li>修复图像缺陷和缺失区域</li>
-                      <li>优化光照、阴影和高光效果</li>
-                      <li>保持原有构图和主体不变</li>
-                    </ul>
-                  </>
-                )}
+                <p>
+                  <strong>智能合成</strong>会分析画布中的所有文本标注和图形元素：
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>根据文本和图形标注生成或编辑图片</li>
+                  <li>支持添加文字描述想要的效果</li>
+                  <li>可以标记重点区域进行智能修改</li>
+                </ul>
               </div>
             </div>
 
             <Button onClick={handleSmartCompose} className="w-full" disabled={isComposing}>
-              {isComposing ? "处理中..." : composeMode === "compose" ? "开始合成" : "开始渲染"}
+              {isComposing ? "处理中..." : "开始合成"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>导出选项</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>选择导出方式</Label>
+              <div className="grid grid-cols-1 gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowExportDialog(false);
+                    handleDirectExport();
+                  }} 
+                  className="w-full h-auto py-4 flex flex-col items-start"
+                  disabled={isRendering}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Download className="h-4 w-4" />
+                    <span className="font-medium">直接导出</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground text-left">
+                    快速导出当前画布内容，不做任何处理
+                  </span>
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  onClick={handleRenderAndExport}
+                  className="w-full h-auto py-4 flex flex-col items-start"
+                  disabled={isRendering}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="font-medium">渲染并导出</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground text-left">
+                    融合所有图层，优化光照和合成效果后导出（需要等待）
+                  </span>
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label>渲染说明</Label>
+              <div className="text-sm text-muted-foreground">
+                <p className="mb-2"><strong>渲染功能</strong>会将画布上的所有元素融合并优化：</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>融合所有图层到单一图像</li>
+                  <li>修复图像缺陷和缺失区域</li>
+                  <li>优化光照、阴影和高光效果</li>
+                  <li>保持原有构图和主体不变</li>
+                </ul>
+                <p className="mt-2 text-amber-600 dark:text-amber-500">
+                  ⚠️ 渲染过程需要一定时间，期间无法进行其他操作
+                </p>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
