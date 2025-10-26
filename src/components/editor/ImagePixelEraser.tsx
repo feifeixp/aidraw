@@ -189,6 +189,11 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   };
 
   const startErasing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === 'preview') {
+      // 在预览模式下不启动擦除或其他编辑操作
+      return;
+    }
+    
     if (tool === 'pan') {
       setIsPanning(true);
       setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
@@ -216,6 +221,11 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === 'preview') {
+      // 在预览模式下不处理鼠标移动事件
+      return;
+    }
+    
     if (isPanning && tool === 'pan') {
       const newOffset = {
         x: e.clientX - panStart.x,
@@ -302,7 +312,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     ctx.putImageData(currentImageData, 0, 0);
   };
 
-  const generatePreview = async (clickX: number, clickY: number) => {
+  const generatePreview = async (clickX: number, clickY: number, isSubtract: boolean = false) => {
     if (!canvasRef.current || !previewCanvasRef.current) return;
     
     setIsGeneratingPreview(true);
@@ -339,13 +349,20 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
         const maskWidth = result.categoryMask.width;
         const maskHeight = result.categoryMask.height;
         
-        // 如果已有预览掩码，进行合并（取并集）
+        // 如果已有预览掩码，进行合并或减选
         if (previewMask && previewMaskSize) {
           const mergedMask = new Uint8Array(maskData.length);
           for (let i = 0; i < maskData.length; i++) {
             // MediaPipe: 0 = 前景（要提取的区域），非0 = 背景
-            // 合并：两个掩码只要有一个是前景(0)，结果就是前景(0)
-            mergedMask[i] = (maskData[i] === 0 || previewMask[i] === 0) ? 0 : 1;
+            if (isSubtract) {
+              // 减选：从现有选区中移除新掩码的前景部分
+              // 如果原来是前景(0)且新掩码也是前景(0)，则变成背景(1)
+              // 否则保持原有状态
+              mergedMask[i] = (previewMask[i] === 0 && maskData[i] === 0) ? 1 : previewMask[i];
+            } else {
+              // 添加：两个掩码只要有一个是前景(0)，结果就是前景(0)
+              mergedMask[i] = (maskData[i] === 0 || previewMask[i] === 0) ? 0 : 1;
+            }
           }
           setPreviewMask(mergedMask);
         } else {
@@ -357,7 +374,11 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
         // 绘制预览
         drawPreviewMask(maskData, maskWidth, maskHeight);
         
-        toast.success(`已添加选择区域 (${newPoints.length}个点)`);
+        if (isSubtract) {
+          toast.success(`已减少选择区域 (${newPoints.length}个点)`);
+        } else {
+          toast.success(`已添加选择区域 (${newPoints.length}个点)`);
+        }
       } else {
         toast.info("未检测到物体");
       }
@@ -421,7 +442,9 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     const x = (mouseX / rect.width) * canvas.width;
     const y = (mouseY / rect.height) * canvas.height;
     
-    await generatePreview(x, y);
+    // 检测是否按下Shift键进行减选
+    const isSubtract = e.shiftKey;
+    await generatePreview(x, y, isSubtract);
   };
 
   const applyExtraction = () => {
@@ -522,7 +545,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             像素编辑工具
           </DialogTitle>
           <DialogDescription>
-            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或点击智能提取预览模式选择要保留的区域
+            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或点击智能提取预览模式选择要保留的区域（按住Shift键可减选区域）
           </DialogDescription>
         </DialogHeader>
 
