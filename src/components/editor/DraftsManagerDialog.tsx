@@ -32,6 +32,7 @@ export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManage
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [loadingDraftId, setLoadingDraftId] = useState<string | null>(null);
 
   // 查询草稿列表
   const { data: drafts, isLoading } = useQuery({
@@ -81,6 +82,7 @@ export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManage
   // 加载草稿
   const handleLoadDraft = async (draftId: string, filePath: string) => {
     try {
+      setLoadingDraftId(draftId);
       // 下载草稿文件
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('editor-drafts')
@@ -95,6 +97,8 @@ export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManage
     } catch (error) {
       console.error('加载草稿失败:', error);
       toast.error('加载草稿失败');
+    } finally {
+      setLoadingDraftId(null);
     }
   };
 
@@ -219,13 +223,22 @@ export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManage
                       <Button
                         size="sm"
                         onClick={() => handleLoadDraft(draft.id, draft.file_path)}
+                        disabled={loadingDraftId !== null}
                       >
-                        加载
+                        {loadingDraftId === draft.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            加载中...
+                          </>
+                        ) : (
+                          '加载'
+                        )}
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => handleDeleteClick(draft.id, draft.file_path)}
+                        disabled={loadingDraftId !== null}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
