@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move } from "lucide-react";
+import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move, PaintBucket } from "lucide-react";
 import { FabricImage } from "fabric";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -21,6 +21,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const containerRef = useRef<HTMLDivElement>(null);
   const [brushSize, setBrushSize] = useState(20);
   const [isErasing, setIsErasing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [zoom, setZoom] = useState(1);
@@ -28,8 +29,9 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [tool, setTool] = useState<'erase' | 'pan'>('erase');
+  const [tool, setTool] = useState<'erase' | 'pan' | 'restore'>('erase');
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const originalImageDataRef = useRef<ImageData | null>(null);
 
   useEffect(() => {
     if (!open || !imageObject) {
@@ -83,11 +85,12 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
           ctx.drawImage(img, 0, 0, width, height);
           console.log('ImagePixelEraser: Image drawn successfully');
 
-          // 保存初始状态到历史
+          // 保存初始状态到历史和原始图像数据
           const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          originalImageDataRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height);
           setHistory([initialState]);
           setHistoryIndex(0);
-          console.log('ImagePixelEraser: History initialized');
+          console.log('ImagePixelEraser: History and original image data initialized');
         };
 
         img.onerror = (error) => {
@@ -144,6 +147,9 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     if (tool === 'pan') {
       setIsPanning(true);
       setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+    } else if (tool === 'restore') {
+      setIsRestoring(true);
+      restore(e);
     } else {
       setIsErasing(true);
       erase(e);
@@ -153,6 +159,10 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const stopErasing = () => {
     if (isErasing) {
       setIsErasing(false);
+      saveToHistory();
+    }
+    if (isRestoring) {
+      setIsRestoring(false);
       saveToHistory();
     }
     if (isPanning) {
@@ -167,6 +177,8 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
         y: e.clientY - panStart.y
       };
       setPanOffset(newOffset);
+    } else if (tool === 'restore') {
+      restore(e);
     } else {
       erase(e);
     }
@@ -196,6 +208,53 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
+  };
+
+  const restore = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isRestoring && e.type !== 'mousedown') return;
+    if (!canvasRef.current || !ctxRef.current || !originalImageDataRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // 计算鼠标在画布上的实际位置
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const x = (mouseX / rect.width) * canvas.width;
+    const y = (mouseY / rect.height) * canvas.height;
+
+    // 从原始图像中恢复像素区域
+    const brushRadius = brushSize / 2;
+    const startX = Math.max(0, Math.floor(x - brushRadius));
+    const startY = Math.max(0, Math.floor(y - brushRadius));
+    const endX = Math.min(canvas.width, Math.ceil(x + brushRadius));
+    const endY = Math.min(canvas.height, Math.ceil(y + brushRadius));
+    
+    // 遍历笔刷覆盖区域的每个像素
+    const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const originalImageData = originalImageDataRef.current;
+    
+    for (let py = startY; py < endY; py++) {
+      for (let px = startX; px < endX; px++) {
+        const dx = px - x;
+        const dy = py - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // 只处理在笔刷半径内的像素
+        if (distance <= brushRadius) {
+          const idx = (py * canvas.width + px) * 4;
+          
+          // 从原始图像复制像素数据（包括 alpha 通道）
+          currentImageData.data[idx] = originalImageData.data[idx];         // R
+          currentImageData.data[idx + 1] = originalImageData.data[idx + 1]; // G
+          currentImageData.data[idx + 2] = originalImageData.data[idx + 2]; // B
+          currentImageData.data[idx + 3] = originalImageData.data[idx + 3]; // A
+        }
+      }
+    }
+    
+    ctx.putImageData(currentImageData, 0, 0);
   };
 
   const handleSave = () => {
@@ -237,10 +296,10 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eraser className="h-5 w-5" />
-            像素擦除工具
+            像素编辑工具
           </DialogTitle>
           <DialogDescription>
-            使用画笔擦除图片中不需要的部分
+            使用擦除笔刷移除不需要的部分，或使用恢复笔刷还原被删除的像素
           </DialogDescription>
         </DialogHeader>
 
@@ -258,9 +317,12 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
               />
             </div>
             <div className="flex gap-2 items-center flex-wrap">
-              <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as 'erase' | 'pan')}>
+              <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as 'erase' | 'pan' | 'restore')}>
                 <ToggleGroupItem value="erase" aria-label="擦除工具" title="擦除工具">
                   <Eraser className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="restore" aria-label="恢复笔刷" title="恢复笔刷">
+                  <PaintBucket className="h-4 w-4" />
                 </ToggleGroupItem>
                 <ToggleGroupItem value="pan" aria-label="拖动工具" title="拖动工具">
                   <Move className="h-4 w-4" />
@@ -334,7 +396,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             >
               <canvas
                 ref={canvasRef}
-                className={tool === 'pan' ? 'cursor-move' : 'cursor-crosshair'}
+                className={tool === 'pan' ? 'cursor-move' : tool === 'restore' ? 'cursor-pointer' : 'cursor-crosshair'}
                 style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
                 onMouseDown={startErasing}
                 onMouseMove={handleMouseMove}

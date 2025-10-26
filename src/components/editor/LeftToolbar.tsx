@@ -1176,10 +1176,10 @@ export const LeftToolbar = ({
           size="sm" 
           className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`}
           onClick={handleOpenPixelEraser}
-          title="像素擦除"
+          title="像素编辑"
         >
           <Eraser className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">像素擦除</span>}
+          {!isCollapsed && <span className="ml-2">像素编辑</span>}
         </Button>
 
         <Button variant="outline" size="sm" className={`${isCollapsed ? 'w-full px-0' : 'w-full justify-start'}`} onClick={handleFlip}>
