@@ -997,9 +997,8 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 whitespace-nowrap" title="导出">
+      <Button variant="outline" size="icon" onClick={handleExport} className="shrink-0" title="导出">
         <Download className="h-4 w-4" />
-        <span className="ml-1">导出</span>
       </Button>
 
       <Separator orientation="vertical" className="h-6 shrink-0" />

@@ -1,10 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Download, Upload, PlusCircle, Save } from "lucide-react";
+import { Upload, PlusCircle, Save } from "lucide-react";
 import { toast } from "sonner";
-import { Canvas as FabricCanvas, Rect, FabricText } from "fabric";
+import { Canvas as FabricCanvas } from "fabric";
 
 interface DraftsListProps {
   canvas: FabricCanvas | null;
@@ -193,15 +192,23 @@ export const DraftsList = ({
     }
   }, [canvas, executeClearCanvas]);
 
-  const [showImportExportDialog, setShowImportExportDialog] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
   return (
     <>
-      {/* 新建草稿按钮 */}
-      <Button variant="outline" size="sm" onClick={createNewDraft}>
-        <PlusCircle className="h-4 w-4 mr-2" />
-        新建草稿
+      {/* 新建草稿按钮 - 图标 */}
+      <Button variant="outline" size="icon" onClick={createNewDraft} title="新建草稿">
+        <PlusCircle className="h-4 w-4" />
+      </Button>
+
+      {/* 导入草稿按钮 - 图标 */}
+      <Button variant="outline" size="icon" onClick={importDraft} title="导入草稿">
+        <Upload className="h-4 w-4" />
+      </Button>
+
+      {/* 本地保存按钮 - 图标 */}
+      <Button variant="outline" size="icon" onClick={exportDraft} title="本地保存">
+        <Save className="h-4 w-4" />
       </Button>
 
       {/* 保存提醒对话框 */}
@@ -225,45 +232,14 @@ export const DraftsList = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 导入/导出对话框 */}
-      <Dialog open={showImportExportDialog} onOpenChange={setShowImportExportDialog}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            导入/导出
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>导入/导出草稿</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              使用JSON文件管理您的草稿，无需云端存储或缓存。
-            </p>
-            
-            <div className="flex flex-col gap-2">
-              <Button onClick={exportDraft} className="w-full justify-start">
-                <Download className="h-4 w-4 mr-2" />
-                导出当前草稿为JSON文件
-              </Button>
-              
-              <Button onClick={importDraft} variant="outline" className="w-full justify-start">
-                <Upload className="h-4 w-4 mr-2" />
-                从JSON文件导入草稿
-              </Button>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleFileImport}
-              className="hidden"
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* 隐藏的文件输入 */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileImport}
+        className="hidden"
+      />
     </>
   );
 };
