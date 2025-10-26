@@ -22,9 +22,10 @@ import {
 
 interface DraftsManagerDialogProps {
   onLoadDraft: (draftId: string, draftData: string) => void;
+  customTrigger?: React.ReactNode;
 }
 
-export const DraftsManagerDialog = ({ onLoadDraft }: DraftsManagerDialogProps) => {
+export const DraftsManagerDialog = ({ onLoadDraft, customTrigger }: DraftsManagerDialogProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -114,10 +115,12 @@ export const DraftsManagerDialog = ({ onLoadDraft }: DraftsManagerDialogProps) =
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            <FolderOpen className="h-4 w-4 mr-2" />
-            我的草稿
-          </Button>
+          {customTrigger || (
+            <Button variant="outline" size="sm">
+              <FolderOpen className="h-4 w-4 mr-2" />
+              我的草稿
+            </Button>
+          )}
         </DialogTrigger>
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>

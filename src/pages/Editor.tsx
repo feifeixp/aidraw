@@ -704,6 +704,82 @@ const Editor = () => {
       toast.error('加载草稿失败');
     }
   }, [canvas]);
+
+  // 从云端加载草稿并关闭初始化对话框
+  const loadDraftFromCloudAndSetup = useCallback(async (draftId: string, draftData: string) => {
+    try {
+      const jsonData = JSON.parse(draftData);
+      
+      // 从草稿数据中提取画布尺寸
+      const canvasWidth = jsonData.width || 1024;
+      const canvasHeight = jsonData.height || 576;
+      
+      // 设置画布尺寸并关闭初始化对话框
+      setFrameWidth(canvasWidth);
+      setFrameHeight(canvasHeight);
+      setShowInitialSetup(false);
+      setShouldCenterOnFrame(true);
+      
+      // 等待画布初始化完成后加载数据
+      setTimeout(() => {
+        loadDraftFromCloud(draftId, draftData);
+      }, 100);
+    } catch (error) {
+      console.error('加载草稿失败:', error);
+      toast.error('加载草稿失败');
+    }
+  }, [loadDraftFromCloud]);
+
+  // 导入JSON文件
+  const handleImportJSON = useCallback(async (jsonData: string) => {
+    try {
+      const data = JSON.parse(jsonData);
+      
+      // 从JSON数据中提取画布尺寸
+      const canvasWidth = data.width || 1024;
+      const canvasHeight = data.height || 576;
+      
+      // 设置画布尺寸并关闭初始化对话框
+      setFrameWidth(canvasWidth);
+      setFrameHeight(canvasHeight);
+      setShowInitialSetup(false);
+      setShouldCenterOnFrame(true);
+      
+      // 等待画布初始化完成后加载数据
+      setTimeout(async () => {
+        if (!canvas) return;
+        
+        try {
+          await canvas.loadFromJSON(data);
+          canvas.renderAll();
+          
+          // 从数据中提取分镜信息
+          const objects = data.objects || [];
+          const frames = objects.filter((obj: any) => obj.name && obj.name.startsWith('storyboard-frame-'));
+          const frameCount = frames.length;
+          
+          if (frameCount > 0) {
+            const firstFrameId = frames[0].name.replace('storyboard-frame-', '');
+            setActiveFrameId(firstFrameId);
+            setStoryboardFrameCount(frameCount);
+          }
+          
+          // 重置历史记录
+          const state = JSON.stringify(data);
+          dispatchHistory({
+            type: "RESET",
+            payload: state
+          });
+        } catch (error) {
+          console.error('导入JSON失败:', error);
+          toast.error('导入JSON失败');
+        }
+      }, 100);
+    } catch (error) {
+      console.error('解析JSON失败:', error);
+      toast.error('解析JSON失败：文件格式不正确');
+    }
+  }, [canvas]);
   const handleCloseMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
   }, []);
@@ -921,6 +997,8 @@ const Editor = () => {
         <EditorInitialSetup
           open={showInitialSetup}
           onComplete={handleInitialSetupComplete}
+          onImportJSON={handleImportJSON}
+          onLoadDraft={user ? loadDraftFromCloudAndSetup : undefined}
         />
       )}
       {showTutorial && <Tutorial onComplete={() => setShowTutorial(false)} />}

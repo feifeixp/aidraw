@@ -2,7 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { Upload, FolderOpen } from "lucide-react";
+import { toast } from "sonner";
+import { DraftsManagerDialog } from "./DraftsManagerDialog";
+import { Separator } from "@/components/ui/separator";
 
 interface EditorInitialSetupProps {
   open: boolean;
@@ -11,6 +15,8 @@ interface EditorInitialSetupProps {
     width: number;
     height: number;
   }) => void;
+  onImportJSON?: (jsonData: string) => void;
+  onLoadDraft?: (draftId: string, draftData: string) => void;
 }
 
 const RESOLUTION_PRESETS = {
@@ -27,10 +33,11 @@ const ASPECT_RATIOS = {
   "21:9": { width: 21, height: 9, label: "21:9 超宽" },
 };
 
-export const EditorInitialSetup = ({ open, onComplete }: EditorInitialSetupProps) => {
+export const EditorInitialSetup = ({ open, onComplete, onImportJSON, onLoadDraft }: EditorInitialSetupProps) => {
   const [style, setStyle] = useState("auto");
   const [resolution, setResolution] = useState<"1k" | "2k" | "4k">("1k");
   const [aspectRatio, setAspectRatio] = useState<keyof typeof ASPECT_RATIOS>("16:9");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const calculateDimensions = () => {
     const baseSize = RESOLUTION_PRESETS[resolution];
@@ -58,16 +65,82 @@ export const EditorInitialSetup = ({ open, onComplete }: EditorInitialSetupProps
     onComplete({ style, width, height });
   };
 
+  const handleImportJSON = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const jsonData = JSON.parse(text);
+      
+      if (onImportJSON) {
+        onImportJSON(JSON.stringify(jsonData));
+        toast.success('JSON 文件导入成功');
+      }
+    } catch (error) {
+      console.error('导入JSON失败:', error);
+      toast.error('导入失败：文件格式不正确');
+    }
+  };
+
+  const handleLoadDraftWrapper = (draftId: string, draftData: string) => {
+    if (onLoadDraft) {
+      onLoadDraft(draftId, draftData);
+    }
+  };
+
   const { width, height } = calculateDimensions();
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>分镜编辑器初始化设置</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
+          {/* 快速开始选项 */}
+          <div className="space-y-3">
+            <Label className="text-base">快速开始</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                className="h-20 flex flex-col gap-2"
+                onClick={handleImportJSON}
+              >
+                <Upload className="h-5 w-5" />
+                <span className="text-sm">导入 JSON</span>
+              </Button>
+              
+              {onLoadDraft && (
+                <DraftsManagerDialog 
+                  onLoadDraft={handleLoadDraftWrapper}
+                  customTrigger={
+                    <Button
+                      variant="outline"
+                      className="h-20 flex flex-col gap-2"
+                    >
+                      <FolderOpen className="h-5 w-5" />
+                      <span className="text-sm">打开草稿</span>
+                    </Button>
+                  }
+                />
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              从本地JSON文件或云端草稿恢复项目
+            </p>
+          </div>
+
+          <Separator />
+
+          {/* 新建项目 */}
+          <div className="space-y-3">
+            <Label className="text-base">新建项目</Label>
           {/* 风格选择 */}
           <div className="space-y-2">
             <Label>默认生成风格</Label>
@@ -160,10 +233,20 @@ export const EditorInitialSetup = ({ open, onComplete }: EditorInitialSetupProps
             <p>• 可在后续编辑中随时调整分镜尺寸</p>
           </div>
 
-          <Button onClick={handleComplete} className="w-full" size="lg">
-            开始创作
-          </Button>
+            <Button onClick={handleComplete} className="w-full" size="lg">
+              开始创作
+            </Button>
+          </div>
         </div>
+
+        {/* 隐藏的文件输入 */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleFileChange}
+          className="hidden"
+        />
       </DialogContent>
     </Dialog>
   );
