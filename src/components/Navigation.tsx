@@ -1,16 +1,18 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Sparkles, Settings, Pencil, ChevronDown, Home, ExternalLink, LogOut, User, Briefcase } from "lucide-react";
+import { Sparkles, Settings, Pencil, ChevronDown, Home, ExternalLink, LogOut, User, Briefcase, HelpCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { exportAuthToProject } from "@/utils/crossProjectAuth";
 import { toast } from "sonner";
+import { FeaturesDialog } from "@/components/FeaturesDialog";
 const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [hasHovered, setHasHovered] = useState(false);
+  const [featuresDialogOpen, setFeaturesDialogOpen] = useState(false);
 
   // 处理编辑器页面的导航拦截
   const handleNavClick = (e: React.MouseEvent, path: string) => {
@@ -130,6 +132,14 @@ const Navigation = () => {
                 {label}
               </Link>)}
             
+            <button
+              onClick={() => setFeaturesDialogOpen(true)}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap shrink-0"
+            >
+              <HelpCircle className="h-4 w-4 shrink-0" />
+              帮助
+            </button>
+            
             {user ? <div className="flex items-center gap-2 ml-4 shrink-0">
                 <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap max-w-[200px] truncate">
                   <User className="h-4 w-4 shrink-0" />
@@ -145,6 +155,11 @@ const Navigation = () => {
           </div>
         </div>
       </nav>
+      
+      <FeaturesDialog 
+        open={featuresDialogOpen} 
+        onOpenChange={setFeaturesDialogOpen} 
+      />
     </>;
 };
 export default Navigation;
