@@ -3,9 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move, PaintBucket } from "lucide-react";
+import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move, PaintBucket, Sparkles } from "lucide-react";
 import { FabricImage } from "fabric";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { MediaPipeSegmenter } from "@/lib/mediapipe/interactiveSegmenter";
+import { toast } from "sonner";
 
 interface ImagePixelEraserProps {
   open: boolean;
@@ -30,8 +32,10 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<'erase' | 'pan' | 'restore'>('erase');
+  const [isExtracting, setIsExtracting] = useState(false);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const originalImageDataRef = useRef<ImageData | null>(null);
+  const originalImageUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open || !imageObject) {
@@ -58,12 +62,23 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
       ctxRef.current = ctx;
 
       try {
-        // 获取图片数据URL
+        // 检查是否已经保存了原始图片URL (方案B)
+        const savedOriginalUrl = (imageObject as any).originalImageDataUrl;
+        
+        // 获取当前图片数据URL
         const imgDataUrl = imageObject.toDataURL({
           format: 'png',
           quality: 1,
           multiplier: 1
         });
+
+        // 如果没有保存原始URL，则保存当前URL作为原始数据
+        if (!savedOriginalUrl) {
+          (imageObject as any).originalImageDataUrl = imgDataUrl;
+          originalImageUrlRef.current = imgDataUrl;
+        } else {
+          originalImageUrlRef.current = savedOriginalUrl;
+        }
 
         console.log('ImagePixelEraser: Got image data URL');
 
@@ -85,12 +100,29 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
           ctx.drawImage(img, 0, 0, width, height);
           console.log('ImagePixelEraser: Image drawn successfully');
 
-          // 保存初始状态到历史和原始图像数据
+          // 保存初始状态到历史
           const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          originalImageDataRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height);
           setHistory([initialState]);
           setHistoryIndex(0);
-          console.log('ImagePixelEraser: History and original image data initialized');
+          
+          // 加载原始图片数据用于恢复笔刷
+          if (originalImageUrlRef.current) {
+            const originalImg = new Image();
+            originalImg.onload = () => {
+              const tempCanvas = document.createElement('canvas');
+              const tempCtx = tempCanvas.getContext('2d');
+              if (tempCtx) {
+                tempCanvas.width = originalImg.width;
+                tempCanvas.height = originalImg.height;
+                tempCtx.drawImage(originalImg, 0, 0);
+                originalImageDataRef.current = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                console.log('ImagePixelEraser: Original image data loaded for restore');
+              }
+            };
+            originalImg.src = originalImageUrlRef.current;
+          }
+          
+          console.log('ImagePixelEraser: History initialized');
         };
 
         img.onerror = (error) => {
@@ -257,6 +289,88 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     ctx.putImageData(currentImageData, 0, 0);
   };
 
+  const handleSmartExtract = async () => {
+    if (!canvasRef.current || !ctxRef.current) return;
+
+    setIsExtracting(true);
+    try {
+      const canvas = canvasRef.current;
+      const ctx = ctxRef.current;
+
+      // Get current canvas as image
+      const currentDataUrl = canvas.toDataURL('image/png');
+      const img = new Image();
+      
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = currentDataUrl;
+      });
+
+      // Initialize MediaPipe segmenter
+      const segmenter = new MediaPipeSegmenter();
+      await segmenter.initialize();
+
+      // Use center point for segmentation
+      const centerX = img.width / 2;
+      const centerY = img.height / 2;
+
+      const result = await segmenter.segmentWithPoint(img, centerX, centerY);
+
+      if (!result || !result.categoryMask) {
+        toast.info("未检测到需要提取的物体");
+        segmenter.close();
+        setIsExtracting(false);
+        return;
+      }
+
+      // Create source canvas
+      const sourceCanvas = document.createElement('canvas');
+      sourceCanvas.width = img.width;
+      sourceCanvas.height = img.height;
+      const sourceCtx = sourceCanvas.getContext('2d')!;
+      sourceCtx.drawImage(img, 0, 0);
+
+      // Extract the masked object
+      const maskData = result.categoryMask.getAsUint8Array();
+      const extractedCanvas = segmenter.extractMaskedImage(
+        sourceCanvas,
+        maskData,
+        result.categoryMask.width,
+        result.categoryMask.height,
+        {
+          dilation: -2,
+          feather: 0,
+          padding: 10,
+          crop: false  // Don't crop in pixel editor
+        }
+      );
+
+      // Draw extracted image back to main canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(extractedCanvas, 0, 0);
+
+      // Save to history
+      const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newImageData);
+      if (newHistory.length > 50) {
+        newHistory.shift();
+      } else {
+        setHistoryIndex(historyIndex + 1);
+      }
+      setHistory(newHistory);
+
+      segmenter.close();
+      toast.success("智能提取成功");
+    } catch (error) {
+      console.error("Smart extract error:", error);
+      toast.error("智能提取失败");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   const handleSave = () => {
     if (!canvasRef.current) return;
 
@@ -299,7 +413,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             像素编辑工具
           </DialogTitle>
           <DialogDescription>
-            使用擦除笔刷移除不需要的部分，或使用恢复笔刷还原被删除的像素
+            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或智能提取物体
           </DialogDescription>
         </DialogHeader>
 
@@ -328,6 +442,17 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                   <Move className="h-4 w-4" />
                 </ToggleGroupItem>
               </ToggleGroup>
+              <div className="w-px h-6 bg-border" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSmartExtract}
+                disabled={isExtracting}
+                title="智能提取物体"
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                {isExtracting ? "提取中..." : "智能提取"}
+              </Button>
               <div className="w-px h-6 bg-border" />
               <Button
                 variant="outline"
