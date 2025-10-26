@@ -32,6 +32,8 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<'erase' | 'pan' | 'restore' | 'preview'>('erase');
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [tempPanning, setTempPanning] = useState(false);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const originalImageDataRef = useRef<ImageData | null>(null);
   const originalImageUrlRef = useRef<string | null>(null);
@@ -151,6 +153,34 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     initCanvas();
   }, [open, imageObject]);
 
+  // 监听空格键
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isSpacePressed) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsSpacePressed(false);
+        setTempPanning(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [open, isSpacePressed]);
+
   const saveToHistory = () => {
     if (!canvasRef.current || !ctxRef.current) return;
 
@@ -189,8 +219,21 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   };
 
   const startErasing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // 阻止中键点击的默认行为
+    if (e.button === 1) {
+      e.preventDefault();
+    }
+    
     if (tool === 'preview') {
       // 在预览模式下不启动擦除或其他编辑操作
+      return;
+    }
+    
+    // 空格键临时平移或鼠标中键平移
+    if (isSpacePressed || e.button === 1) {
+      e.preventDefault();
+      setTempPanning(true);
+      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
       return;
     }
     
@@ -218,9 +261,22 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     if (isPanning) {
       setIsPanning(false);
     }
+    if (tempPanning) {
+      setTempPanning(false);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // 临时平移优先级最高
+    if (tempPanning) {
+      const newOffset = {
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y
+      };
+      setPanOffset(newOffset);
+      return;
+    }
+    
     if (tool === 'preview') {
       // 在预览模式下不处理鼠标移动事件
       return;
@@ -523,6 +579,14 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     setZoom(prev => Math.max(prev - 0.25, 0.5));
   };
 
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    
+    // 滚轮向上缩小，向下放大
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoom(prev => Math.max(0.5, Math.min(3, prev + delta)));
+  };
+
   const getBackgroundClass = () => {
     switch (backgroundMode) {
       case 'checkered':
@@ -545,7 +609,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
             像素编辑工具
           </DialogTitle>
           <DialogDescription>
-            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或点击智能提取预览模式选择要保留的区域（按住Shift键可减选区域）
+            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，或点击智能提取预览模式选择要保留的区域（按住Shift键可减选区域）。提示：按住空格键或鼠标中键拖动可平移视图，鼠标滚轮可缩放视图
           </DialogDescription>
         </DialogHeader>
 
@@ -662,6 +726,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
           <div 
             ref={containerRef}
             className={`border rounded-lg overflow-hidden max-h-[60vh] ${getBackgroundClass()} p-4 flex items-center justify-center relative`}
+            onWheel={handleWheel}
           >
             <div 
               style={{ 
@@ -674,6 +739,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
               <canvas
                 ref={canvasRef}
                 className={
+                  tempPanning || isSpacePressed ? 'cursor-move' :
                   tool === 'pan' ? 'cursor-move' : 
                   tool === 'restore' ? 'cursor-pointer' : 
                   tool === 'preview' ? 'cursor-crosshair' : 
@@ -685,6 +751,7 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                 onMouseUp={stopErasing}
                 onMouseLeave={stopErasing}
                 onClick={handleCanvasClick}
+                onContextMenu={(e) => e.preventDefault()}
               />
               
               {/* 预览Canvas - 叠加层 */}
