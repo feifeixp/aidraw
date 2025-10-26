@@ -3,11 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move, PaintBucket, Sparkles, Wand2 } from "lucide-react";
+import { Eraser, Undo, Redo, ZoomIn, ZoomOut, Move, RotateCcw, Sparkles, Wand2, Save, Grid3x3 } from "lucide-react";
 import { FabricImage } from "fabric";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MediaPipeSegmenter } from "@/lib/mediapipe/interactiveSegmenter";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 interface ImagePixelEraserProps {
   open: boolean;
@@ -751,7 +753,28 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   };
 
   const handleCancel = () => {
+    // 检查是否有未处理的选区
+    if (wandSelection || previewMask) {
+      toast.warning('请先处理当前选区后再关闭');
+      return;
+    }
     onOpenChange(false);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open && (wandSelection || previewMask)) {
+      toast.warning('请先处理当前选区后再关闭');
+      return;
+    }
+    onOpenChange(open);
+  };
+  
+  const cycleBackground = () => {
+    setBackgroundMode(prev => {
+      if (prev === 'checkered') return 'light';
+      if (prev === 'light') return 'dark';
+      return 'checkered';
+    });
   };
 
   const handleZoomIn = () => {
@@ -784,129 +807,98 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+    <Dialog open={open} onOpenChange={handleDialogClose}>
+      <DialogContent 
+        className="max-w-4xl max-h-[90vh] flex flex-col"
+        onEscapeKeyDown={(e) => {
+          if (wandSelection || previewMask) {
+            e.preventDefault();
+            toast.warning('请先处理当前选区后再关闭');
+          }
+        }}
+        onPointerDownOutside={(e) => {
+          if (wandSelection || previewMask) {
+            e.preventDefault();
+            toast.warning('请先处理当前选区后再关闭');
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eraser className="h-5 w-5" />
             像素编辑工具
           </DialogTitle>
           <DialogDescription>
-            使用擦除笔刷移除不需要的部分，恢复笔刷还原原始像素，魔棒工具自动选择相似颜色像素，或点击智能提取预览模式选择要保留的区域
+            使用工具编辑像素 · 有选区时必须先应用或清除才能保存或关闭
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-auto">
-          <div className="flex items-center gap-4 flex-wrap">
-            {tool === 'wand' ? (
-              <div className="flex-1 min-w-[200px]">
-                <Label>颜色容差: {wandTolerance}</Label>
-                <Slider
-                  value={[wandTolerance]}
-                  onValueChange={(value) => setWandTolerance(value[0])}
-                  min={0}
-                  max={100}
-                  step={1}
-                  className="mt-2"
-                />
-              </div>
-            ) : (
-              <div className="flex-1 min-w-[200px]">
-                <Label>画笔大小: {brushSize}px</Label>
-                <Slider
-                  value={[brushSize]}
-                  onValueChange={(value) => setBrushSize(value[0])}
-                  min={1}
-                  max={100}
-                  step={1}
-                  className="mt-2"
-                />
-              </div>
-            )}
-            <div className="flex gap-2 items-center flex-wrap">
-              <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as typeof tool)}>
-                <ToggleGroupItem value="erase" aria-label="擦除工具" title="擦除工具">
-                  <Eraser className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="restore" aria-label="恢复笔刷" title="恢复笔刷">
-                  <PaintBucket className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="wand" aria-label="魔棒工具" title="魔棒工具">
-                  <Wand2 className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="pan" aria-label="拖动工具" title="拖动工具">
-                  <Move className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="preview" aria-label="智能提取预览" title="智能提取预览">
-                  <Sparkles className="h-4 w-4" />
-                </ToggleGroupItem>
-              </ToggleGroup>
-              {tool === 'wand' && (
-                <>
-                  <div className="w-px h-6 bg-border" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={applyWandDeletion}
-                    disabled={!wandSelection}
-                    title="删除选中像素"
-                  >
-                    ✓ 删除选区
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearWandSelection}
-                    disabled={!wandSelection}
-                    title="清除选区"
-                  >
-                    ✕ 清除选区
-                  </Button>
-                </>
-              )}
-              {tool === 'preview' && (
-                <>
-                  <div className="w-px h-6 bg-border" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={applyExtraction}
-                    disabled={!previewMask || isGeneratingPreview}
-                    title="应用智能提取"
-                  >
-                    ✓ 应用提取
-                  </Button>
-                   <Button
-                     variant="outline"
-                     size="sm"
-                     onClick={clearPreview}
-                     disabled={!previewMask || isGeneratingPreview}
-                     title="清除预览重新选择"
-                   >
-                     ✕ 清除预览
-                   </Button>
-                 </>
-               )}
-               <div className="w-px h-6 bg-border" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleZoomOut}
-                disabled={zoom <= 0.5}
-                title="缩小"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
+          {/* 顶部工具栏 - 按功能分组 */}
+          <div className="flex items-center gap-2 flex-wrap p-2 bg-muted/30 rounded-lg">
+            {/* 第一组：画笔工具 */}
+            <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as typeof tool)} className="gap-1">
+              <ToggleGroupItem value="erase" aria-label="擦除工具" title="擦除工具 (左键擦除)">
+                <Eraser className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="restore" aria-label="恢复画笔" title="恢复画笔 (还原原始像素)">
+                <RotateCcw className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+            
+            <Separator orientation="vertical" className="h-8" />
+            
+            {/* 第二组：自动选取工具 */}
+            <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as typeof tool)} className="gap-1">
+              <ToggleGroupItem value="wand" aria-label="魔棒工具" title="魔棒工具 (选择相似颜色)">
+                <Wand2 className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="preview" aria-label="智能提取" title="智能提取 (AI自动识别)">
+                <Sparkles className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+            
+            <Separator orientation="vertical" className="h-8" />
+            
+            {/* 第三组：视图控制 */}
+            <div className="flex gap-1">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleZoomIn}
                 disabled={zoom >= 3}
-                title="放大"
+                title="放大 (滚轮缩放)"
               >
                 <ZoomIn className="h-4 w-4" />
               </Button>
-              <div className="w-px h-6 bg-border" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.5}
+                title="缩小 (滚轮缩放)"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as typeof tool)}>
+                <ToggleGroupItem value="pan" aria-label="拖动" title="拖动工具 (空格键临时拖动)">
+                  <Move className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={cycleBackground}
+                title="切换背景显示"
+              >
+                <Grid3x3 className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <Separator orientation="vertical" className="h-8" />
+            
+            {/* 第四组：历史操作和保存 */}
+            <div className="flex gap-1">
               <Button
                 variant="outline"
                 size="sm"
@@ -925,23 +917,111 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
               >
                 <Redo className="h-4 w-4" />
               </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleSave}
+                disabled={!!(wandSelection || previewMask)}
+                title={wandSelection || previewMask ? "请先处理选区" : "保存并关闭"}
+              >
+                <Save className="h-4 w-4 mr-1" />
+                保存
+              </Button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Label>背景:</Label>
-            <ToggleGroup type="single" value={backgroundMode} onValueChange={(value) => value && setBackgroundMode(value as BackgroundMode)}>
-              <ToggleGroupItem value="checkered" aria-label="棋盘格" title="棋盘格">
-                棋盘格
-              </ToggleGroupItem>
-              <ToggleGroupItem value="light" aria-label="亮色" title="亮色">
-                亮色
-              </ToggleGroupItem>
-              <ToggleGroupItem value="dark" aria-label="暗色" title="暗色">
-                暗色
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          
+          {/* 画笔调节区 */}
+          {(tool === 'erase' || tool === 'restore') && (
+            <div className="px-2">
+              <Label className="text-sm">画笔大小: {brushSize}px</Label>
+              <Slider
+                value={[brushSize]}
+                onValueChange={(value) => setBrushSize(value[0])}
+                min={1}
+                max={100}
+                step={1}
+                className="mt-2"
+              />
+            </div>
+          )}
+          
+          {tool === 'wand' && (
+            <div className="px-2">
+              <Label className="text-sm">颜色容差: {wandTolerance} (值越大选择范围越大)</Label>
+              <Slider
+                value={[wandTolerance]}
+                onValueChange={(value) => setWandTolerance(value[0])}
+                min={0}
+                max={100}
+                step={1}
+                className="mt-2"
+              />
+            </div>
+          )}
+          
+          {tool === 'preview' && !previewMask && (
+            <Alert className="mx-2">
+              <Sparkles className="h-4 w-4" />
+              <AlertDescription>
+                💡 点击图像选择要保留的区域，AI会自动识别对象边界 · 可多次点击添加选区 · 按住 Shift 点击可减选
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* 选取操作提示区 - 醒目显示 */}
+          {wandSelection && (
+            <Alert className="mx-2 border-primary bg-primary/5">
+              <Wand2 className="h-4 w-4 text-primary" />
+              <AlertDescription className="flex items-center justify-between gap-4">
+                <span className="font-medium">⚠️ 魔棒选区待处理 - 请选择操作：</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={applyWandDeletion}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    ✓ 删除选区
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearWandSelection}
+                  >
+                    ✕ 清除选区
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {previewMask && (
+            <Alert className="mx-2 border-primary bg-primary/5">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <AlertDescription className="flex items-center justify-between gap-4">
+                <span className="font-medium">⚠️ 智能提取预览待处理 - 请选择操作：</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={applyExtraction}
+                    disabled={isGeneratingPreview}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    ✓ 应用提取
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearPreview}
+                    disabled={isGeneratingPreview}
+                  >
+                    ✕ 清除预览
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div 
             ref={containerRef}
@@ -1006,21 +1086,21 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
         </div>
 
         <DialogFooter className="flex-col gap-2">
+          {(wandSelection || previewMask) && (
+            <div className="text-sm text-destructive text-center font-medium">
+              ⚠️ 请先处理当前选区后再关闭或保存
+            </div>
+          )}
           <div className="text-xs text-muted-foreground text-center">
             {isGeneratingPreview ? (
-              <span className="font-medium">⏳ 生成预览中...</span>
-            ) : tool === 'wand' ? (
-              <span>💡 提示：点击图像选择相似颜色的像素 · 调整颜色容差控制选择范围 · 确认后删除选中像素</span>
+              <span className="font-medium">⏳ 正在生成预览...</span>
             ) : (
-              <span>💡 提示：按住空格键或鼠标中键拖动可平移视图 · 鼠标滚轮可缩放视图 · Shift+点击可减选区域</span>
+              <span>💡 提示：空格键临时拖动 · 滚轮缩放 · 中键拖动画布</span>
             )}
           </div>
-          <div className="flex justify-end gap-2 w-full">
+          <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={handleCancel}>
               取消
-            </Button>
-            <Button onClick={handleSave}>
-              保存
             </Button>
           </div>
         </DialogFooter>
