@@ -606,10 +606,15 @@ const Editor = () => {
         if (uploadError) throw uploadError;
         
         // 更新文件路径
-        await supabase
+        const { error: updateError } = await supabase
           .from('editor_drafts')
           .update({ file_path: filePath })
           .eq('id', draft.id);
+        
+        if (updateError) {
+          console.error('更新文件路径失败:', updateError);
+          throw updateError;
+        }
       } else {
         // 更新现有草稿
         const filePath = `${user.id}/${cloudDraftId}.json`;
@@ -619,13 +624,18 @@ const Editor = () => {
         
         if (uploadError) throw uploadError;
         
-        await supabase
+        const { error: updateError } = await supabase
           .from('editor_drafts')
           .update({ 
             last_saved_at: new Date().toISOString(),
             frame_count: storyboardFrameCount 
           })
           .eq('id', cloudDraftId);
+        
+        if (updateError) {
+          console.error('更新草稿失败:', updateError);
+          throw updateError;
+        }
       }
       
       setLastSaveTime(new Date());

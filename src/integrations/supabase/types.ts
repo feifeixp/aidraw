@@ -108,6 +108,7 @@ export type Database = {
           last_saved_at: string | null
           thumbnail_url: string | null
           title: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -120,6 +121,7 @@ export type Database = {
           last_saved_at?: string | null
           thumbnail_url?: string | null
           title?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -132,6 +134,7 @@ export type Database = {
           last_saved_at?: string | null
           thumbnail_url?: string | null
           title?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
