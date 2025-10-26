@@ -44,6 +44,9 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   const [previewPoints, setPreviewPoints] = useState<Array<{x: number, y: number}>>([]);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // 自定义光标状态
+  const [cursorPosition, setCursorPosition] = useState<{x: number, y: number} | null>(null);
 
   useEffect(() => {
     if (!open || !imageObject) {
@@ -267,6 +270,15 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // 更新光标位置（相对于容器）
+    if (containerRef.current && (tool === 'erase' || tool === 'restore')) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      setCursorPosition({
+        x: e.clientX - containerRect.left,
+        y: e.clientY - containerRect.top
+      });
+    }
+    
     // 临时平移优先级最高
     if (tempPanning) {
       const newOffset = {
@@ -293,6 +305,11 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
     } else {
       erase(e);
     }
+  };
+  
+  const handleMouseLeave = () => {
+    setCursorPosition(null);
+    stopErasing();
   };
 
   const erase = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -738,15 +755,15 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                 className={
                   tempPanning || isSpacePressed ? 'cursor-move' :
                   tool === 'pan' ? 'cursor-move' : 
-                  tool === 'restore' ? 'cursor-pointer' : 
+                  tool === 'restore' ? 'cursor-none' : 
                   tool === 'preview' ? 'cursor-crosshair' : 
-                  'cursor-crosshair'
+                  'cursor-none'
                 }
                 style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
                 onMouseDown={startErasing}
                 onMouseMove={handleMouseMove}
                 onMouseUp={stopErasing}
-                onMouseLeave={stopErasing}
+                onMouseLeave={handleMouseLeave}
                 onClick={handleCanvasClick}
                 onContextMenu={(e) => e.preventDefault()}
               />
@@ -762,6 +779,22 @@ export const ImagePixelEraser = ({ open, onOpenChange, imageObject, onSave }: Im
                 }}
               />
             </div>
+            
+            {/* 自定义圆形光标 */}
+            {cursorPosition && (tool === 'erase' || tool === 'restore') && (
+              <div
+                className="pointer-events-none absolute rounded-full border-2 border-primary"
+                style={{
+                  left: cursorPosition.x,
+                  top: cursorPosition.y,
+                  width: brushSize * zoom,
+                  height: brushSize * zoom,
+                  transform: 'translate(-50%, -50%)',
+                  transition: 'width 0.1s ease-out, height 0.1s ease-out',
+                  backgroundColor: tool === 'restore' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                }}
+              />
+            )}
           </div>
         </div>
 
