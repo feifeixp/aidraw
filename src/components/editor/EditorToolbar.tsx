@@ -263,17 +263,16 @@ export const EditorToolbar = ({
 
       toast.success(`成功生成 ${data.images.length} 张分镜！`);
       
-      // 批量创建分镜框架和添加图片
-      const COLS = 5;
-      const ROWS = 8;
+      // 批量创建分镜框架和添加图片 - 使用单列布局
+      const MAX_FRAMES = 12;
       const INFINITE_CANVAS_SIZE = 10000;
       const FRAME_WIDTH = defaultFrameWidth;
       const FRAME_HEIGHT = defaultFrameHeight;
       const SPACING = 50;
-      const totalWidth = COLS * FRAME_WIDTH + (COLS - 1) * SPACING;
-      const START_X = (INFINITE_CANVAS_SIZE - totalWidth) / 2;
-      const totalHeight = ROWS * FRAME_HEIGHT + (ROWS - 1) * SPACING;
-      const START_Y = (INFINITE_CANVAS_SIZE - totalHeight) / 2;
+      
+      // 单列布局
+      const START_X = (INFINITE_CANVAS_SIZE - FRAME_WIDTH) / 2;
+      const START_Y = (INFINITE_CANVAS_SIZE - FRAME_HEIGHT) / 2;
       
       // 记录初始的分镜数量
       const initialFrameCount = storyboardFrameCount;
@@ -291,16 +290,14 @@ export const EditorToolbar = ({
         const frameId = `${currentFrameIndex + 1}`;
         
         // 检查是否超过最大frame数量
-        if (currentFrameIndex >= COLS * ROWS) {
-          toast.error(`已达到最大分镜数量 (${COLS * ROWS})`);
+        if (currentFrameIndex >= MAX_FRAMES) {
+          toast.error(`已达到最大分镜数量 (${MAX_FRAMES})`);
           break;
         }
         
-        // 计算frame在网格中的位置
-        const col = currentFrameIndex % COLS;
-        const row = Math.floor(currentFrameIndex / COLS);
-        const frameLeft = START_X + col * (FRAME_WIDTH + SPACING);
-        const frameTop = START_Y + row * (FRAME_HEIGHT + SPACING);
+        // 计算frame位置（纵向单列布局）
+        const frameLeft = START_X;
+        const frameTop = START_Y + currentFrameIndex * (FRAME_HEIGHT + SPACING);
         
         // 创建分镜框架
         const frame = new FabricRect({
@@ -309,9 +306,22 @@ export const EditorToolbar = ({
           width: FRAME_WIDTH,
           height: FRAME_HEIGHT,
           fill: 'white',
+          stroke: '#d1d5db',
+          strokeWidth: 1,
           selectable: false,
-          evented: false,
-          name: `storyboard-frame-${frameId}`
+          evented: true,
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true,
+          hoverCursor: 'pointer',
+          name: `storyboard-frame-${frameId}`,
+          data: { 
+            isFrameElement: true,
+            objectType: 'storyboard-frame',
+            frameId: frameId,
+            objectName: `storyboard-frame-${frameId}`
+          }
         });
         
         // 创建边框
@@ -321,28 +331,50 @@ export const EditorToolbar = ({
           width: FRAME_WIDTH,
           height: FRAME_HEIGHT,
           fill: 'transparent',
-          stroke: '#666',
+          stroke: '#3b82f6',
           strokeWidth: 2,
+          strokeDashArray: [5, 5],
           selectable: false,
           evented: false,
-          name: `storyboard-border-${frameId}`
+          hasControls: false,
+          hasBorders: false,
+          lockMovementX: true,
+          lockMovementY: true,
+          hoverCursor: 'default',
+          visible: false,
+          name: `storyboard-border-${frameId}`,
+          data: { 
+            isFrameElement: true,
+            objectType: 'storyboard-border',
+            frameId: frameId,
+            objectName: `storyboard-border-${frameId}`
+          }
         });
         
         // 创建帧编号标签
-        const frameLabel = new FabricText(`${frameId}`, {
-          left: frameLeft + 10,
-          top: frameTop + 10,
-          fontSize: 16,
-          fill: '#333',
+        const frameLabel = new FabricText(`分镜 ${frameId}`, {
+          left: frameLeft,
+          top: frameTop - 20,
+          fontSize: 14,
+          fill: '#666',
           selectable: false,
           evented: false,
-          name: `storyboard-label-${frameId}`
+          name: `storyboard-label-${frameId}`,
+          data: { 
+            isFrameElement: true,
+            objectType: 'storyboard-number',
+            frameId: frameId,
+            objectName: `storyboard-label-${frameId}`
+          }
         });
         
-        // 添加frame和border到canvas
+        // 添加frame、border和label到canvas
         canvas.add(frame);
+        canvas.sendObjectToBack(frame);
         canvas.add(frameBorder);
+        canvas.bringObjectToFront(frameBorder);
         canvas.add(frameLabel);
+        canvas.bringObjectToFront(frameLabel);
         
         // 缩放图片以适应分镜框架
         const scale = Math.min(
@@ -363,6 +395,8 @@ export const EditorToolbar = ({
         });
         
         canvas.add(img);
+        // 确保图片在边框之下
+        canvas.sendObjectBackwards(img);
         
         toast.info(`已添加分镜 ${i + 1}/${data.images.length}`);
       }
