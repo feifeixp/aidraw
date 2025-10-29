@@ -887,7 +887,7 @@ export const EditorCanvas = ({
   return (
     <div 
       ref={containerRef}
-      className="h-full bg-gray-200 overflow-auto relative"
+      className="absolute inset-0 bg-gray-200 overflow-auto"
     >
       <div 
         style={{ 
