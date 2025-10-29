@@ -1193,7 +1193,7 @@ const Editor = () => {
         </div>
       </div>
       
-      <div className="flex-1 relative overflow-hidden editor-canvas flex">
+      <div className="flex-1 relative editor-canvas flex">
         <EditorCanvas 
           canvas={canvas} 
           setCanvas={setCanvas} 
