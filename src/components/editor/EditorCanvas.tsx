@@ -379,19 +379,31 @@ export const EditorCanvas = ({
     console.log('[EditorCanvas] 检查并创建分镜，storyboardFrameCount:', storyboardFrameCount);
 
     const SPACING = 50;
-    const START_X = (INFINITE_CANVAS_SIZE - defaultFrameWidth) / 2;
-    const START_Y = (INFINITE_CANVAS_SIZE - defaultFrameHeight) / 2;
+    const STORYBOARD_COLUMNS = 3; // 每行3个
+    const MAX_STORYBOARDS = 12; // 最多12个
+    
+    // 计算整个网格的总宽度和高度
+    const totalGridWidth = STORYBOARD_COLUMNS * defaultFrameWidth + (STORYBOARD_COLUMNS - 1) * SPACING;
+    const actualFrameCount = Math.min(storyboardFrameCount, MAX_STORYBOARDS);
+    const totalRows = Math.ceil(actualFrameCount / STORYBOARD_COLUMNS);
+    const totalGridHeight = totalRows * defaultFrameHeight + (totalRows - 1) * SPACING;
+    
+    // 计算起始位置（居中整个网格）
+    const START_X = (INFINITE_CANVAS_SIZE - totalGridWidth) / 2;
+    const START_Y = (INFINITE_CANVAS_SIZE - totalGridHeight) / 2;
 
     // 检查每个分镜是否已存在，如果不存在则创建，如果存在但尺寸不对则更新
-    for (let i = 1; i <= storyboardFrameCount; i++) {
+    for (let i = 1; i <= Math.min(storyboardFrameCount, MAX_STORYBOARDS); i++) {
       const frameId = i.toString();
       const existingFrame = canvas.getObjects().find((obj: any) => obj.name === `storyboard-frame-${frameId}`) as any;
       const existingBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${frameId}`) as any;
       const existingNumber = canvas.getObjects().find((obj: any) => obj.name === `storyboard-number-${frameId}`) as any;
       
-      // 计算位置（纵向单列布局）
-      const frameLeft = START_X;
-      const frameTop = START_Y + (i - 1) * (defaultFrameHeight + SPACING);
+      // 计算位置（3列网格布局）
+      const row = Math.floor((i - 1) / STORYBOARD_COLUMNS);
+      const col = (i - 1) % STORYBOARD_COLUMNS;
+      const frameLeft = START_X + col * (defaultFrameWidth + SPACING);
+      const frameTop = START_Y + row * (defaultFrameHeight + SPACING);
 
       if (existingFrame) {
         // 如果分镜已存在，检查尺寸是否需要更新
