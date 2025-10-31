@@ -835,40 +835,53 @@ const Editor = () => {
       const canvasWidth = data.width || 1024;
       const canvasHeight = data.height || 576;
       
-      // 设置画布尺寸并关闭初始化对话框
+      // 先设置画布尺寸，但不立即关闭对话框
       setFrameWidth(canvasWidth);
       setFrameHeight(canvasHeight);
-      setShowInitialSetup(false);
       setShouldCenterOnFrame(true);
       
-      // 等待画布初始化完成后加载数据
-      setTimeout(async () => {
-        if (!canvas) return;
-        
-        try {
-          await canvas.loadFromJSON(data);
-          canvas.renderAll();
+      // 关闭初始化对话框，触发画布创建
+      setShowInitialSetup(false);
+      
+      // 使用更长的延迟和轮询机制确保画布已初始化
+      let attempts = 0;
+      const maxAttempts = 50; // 最多等待5秒
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (canvas) {
+          clearInterval(checkInterval);
           
-          // 从数据中提取分镜信息
-          const objects = data.objects || [];
-          const frames = objects.filter((obj: any) => obj.name && obj.name.startsWith('storyboard-frame-'));
-          const frameCount = frames.length;
-          
-          if (frameCount > 0) {
-            const firstFrameId = frames[0].name.replace('storyboard-frame-', '');
-            setActiveFrameId(firstFrameId);
-            setStoryboardFrameCount(frameCount);
-          }
-          
-          // 重置历史记录
-          const state = JSON.stringify(data);
-          dispatchHistory({
-            type: "RESET",
-            payload: state
+          // 画布已准备好，加载数据
+          canvas.loadFromJSON(data).then(() => {
+            canvas.renderAll();
+            
+            // 从数据中提取分镜信息
+            const objects = data.objects || [];
+            const frames = objects.filter((obj: any) => obj.name && obj.name.startsWith('storyboard-frame-'));
+            const frameCount = frames.length;
+            
+            if (frameCount > 0) {
+              const firstFrameId = frames[0].name.replace('storyboard-frame-', '');
+              setActiveFrameId(firstFrameId);
+              setStoryboardFrameCount(frameCount);
+            }
+            
+            // 重置历史记录
+            const state = JSON.stringify(data);
+            dispatchHistory({
+              type: "RESET",
+              payload: state
+            });
+            
+            toast.success('JSON文件已成功加载');
+          }).catch((error) => {
+            console.error('导入JSON失败:', error);
+            toast.error('导入JSON失败');
           });
-        } catch (error) {
-          console.error('导入JSON失败:', error);
-          toast.error('导入JSON失败');
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          console.error('画布初始化超时');
+          toast.error('画布初始化超时，请刷新页面重试');
         }
       }, 100);
     } catch (error) {
