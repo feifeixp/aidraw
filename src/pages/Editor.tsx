@@ -140,6 +140,9 @@ const Editor = () => {
   
   // 特色功能对话框状态
   const [showFeaturesDialog, setShowFeaturesDialog] = useState(false);
+  
+  // 待加载的JSON数据
+  const [pendingJsonData, setPendingJsonData] = useState<any>(null);
 
   // 在组件挂载时清除所有缓存
   useEffect(() => {
@@ -835,60 +838,61 @@ const Editor = () => {
       const canvasWidth = data.width || 1024;
       const canvasHeight = data.height || 576;
       
-      // 先设置画布尺寸，但不立即关闭对话框
-      setFrameWidth(canvasWidth);
-      setFrameHeight(canvasHeight);
-      setShouldCenterOnFrame(true);
+      // 保存待加载的JSON数据
+      setPendingJsonData(data);
       
-      // 关闭初始化对话框，触发画布创建
-      setShowInitialSetup(false);
+      // 调用初始化完成，这会创建canvas
+      handleInitialSetupComplete({
+        style: 'auto',
+        width: canvasWidth,
+        height: canvasHeight
+      });
       
-      // 使用更长的延迟和轮询机制确保画布已初始化
-      let attempts = 0;
-      const maxAttempts = 50; // 最多等待5秒
-      const checkInterval = setInterval(() => {
-        attempts++;
-        if (canvas) {
-          clearInterval(checkInterval);
-          
-          // 画布已准备好，加载数据
-          canvas.loadFromJSON(data).then(() => {
-            canvas.renderAll();
-            
-            // 从数据中提取分镜信息
-            const objects = data.objects || [];
-            const frames = objects.filter((obj: any) => obj.name && obj.name.startsWith('storyboard-frame-'));
-            const frameCount = frames.length;
-            
-            if (frameCount > 0) {
-              const firstFrameId = frames[0].name.replace('storyboard-frame-', '');
-              setActiveFrameId(firstFrameId);
-              setStoryboardFrameCount(frameCount);
-            }
-            
-            // 重置历史记录
-            const state = JSON.stringify(data);
-            dispatchHistory({
-              type: "RESET",
-              payload: state
-            });
-            
-            toast.success('JSON文件已成功加载');
-          }).catch((error) => {
-            console.error('导入JSON失败:', error);
-            toast.error('导入JSON失败');
-          });
-        } else if (attempts >= maxAttempts) {
-          clearInterval(checkInterval);
-          console.error('画布初始化超时');
-          toast.error('画布初始化超时，请刷新页面重试');
-        }
-      }, 100);
+      toast.success('正在加载JSON文件...');
     } catch (error) {
       console.error('解析JSON失败:', error);
       toast.error('解析JSON失败：文件格式不正确');
     }
-  }, [canvas]);
+  }, []);
+  
+  // 当canvas准备好且有待加载的JSON数据时，加载它
+  useEffect(() => {
+    if (canvas && pendingJsonData) {
+      console.log('Canvas准备好，开始加载JSON数据');
+      
+      canvas.loadFromJSON(pendingJsonData).then(() => {
+        canvas.renderAll();
+        
+        // 从数据中提取分镜信息
+        const objects = pendingJsonData.objects || [];
+        const frames = objects.filter((obj: any) => obj.name && obj.name.startsWith('storyboard-frame-'));
+        const frameCount = frames.length;
+        
+        if (frameCount > 0) {
+          const firstFrameId = frames[0].name.replace('storyboard-frame-', '');
+          setActiveFrameId(firstFrameId);
+          setStoryboardFrameCount(frameCount);
+        }
+        
+        // 重置历史记录
+        const state = JSON.stringify(pendingJsonData);
+        dispatchHistory({
+          type: "RESET",
+          payload: state
+        });
+        
+        // 清除待加载数据
+        setPendingJsonData(null);
+        
+        toast.success('JSON文件已成功加载');
+      }).catch((error) => {
+        console.error('导入JSON失败:', error);
+        toast.error('导入JSON失败');
+        setPendingJsonData(null);
+      });
+    }
+  }, [canvas, pendingJsonData]);
+  
   const handleCloseMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
   }, []);
