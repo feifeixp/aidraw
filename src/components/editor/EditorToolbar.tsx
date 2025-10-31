@@ -89,19 +89,16 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 分镜布局配置 - 纵向单列排列
+    // 分镜布局配置 - 3列网格布局
     const MAX_FRAMES = 12; // 最大分镜数量
     const INFINITE_CANVAS_SIZE = 10000;
+    const STORYBOARD_COLUMNS = 3; // 每行3个
     
     // 使用初始化设置的分镜尺寸
     const FRAME_WIDTH = defaultFrameWidth;
     const FRAME_HEIGHT = defaultFrameHeight;
     const SPACING = 50; // 间距
     
-    // 计算起始位置（水平和垂直都居中在无限画布中心，与初始分镜位置一致）
-    const START_X = (INFINITE_CANVAS_SIZE - FRAME_WIDTH) / 2;
-    const START_Y = (INFINITE_CANVAS_SIZE - FRAME_HEIGHT) / 2;
-
     // 计算当前frame的索引
     const frameIndex = storyboardFrameCount;
 
@@ -111,9 +108,21 @@ export const EditorToolbar = ({
       return;
     }
 
-    // 计算frame位置 - 纵向排列
-    const x = START_X;
-    const y = START_Y + frameIndex * (FRAME_HEIGHT + SPACING);
+    // 计算整个网格的总宽度和高度
+    const totalGridWidth = STORYBOARD_COLUMNS * FRAME_WIDTH + (STORYBOARD_COLUMNS - 1) * SPACING;
+    const actualFrameCount = Math.min(frameIndex + 1, MAX_FRAMES);
+    const totalRows = Math.ceil(actualFrameCount / STORYBOARD_COLUMNS);
+    const totalGridHeight = totalRows * FRAME_HEIGHT + (totalRows - 1) * SPACING;
+    
+    // 计算起始位置（居中整个网格）
+    const START_X = (INFINITE_CANVAS_SIZE - totalGridWidth) / 2;
+    const START_Y = (INFINITE_CANVAS_SIZE - totalGridHeight) / 2;
+
+    // 计算frame位置 - 3列网格布局
+    const row = Math.floor(frameIndex / STORYBOARD_COLUMNS);
+    const col = frameIndex % STORYBOARD_COLUMNS;
+    const x = START_X + col * (FRAME_WIDTH + SPACING);
+    const y = START_Y + row * (FRAME_HEIGHT + SPACING);
 
     // 创建frame矩形（类似workframe，不可选择，放在底层）
     const frame = new FabricRect({
