@@ -841,12 +841,12 @@ const Editor = () => {
       // 保存待加载的JSON数据
       setPendingJsonData(data);
       
-      // 调用初始化完成，这会创建canvas
-      handleInitialSetupComplete({
-        style: 'auto',
-        width: canvasWidth,
-        height: canvasHeight
-      });
+      // 直接设置画布尺寸和状态，不调用handleInitialSetupComplete
+      // 因为那会创建新的分镜框架，与导入的JSON冲突
+      setFrameWidth(canvasWidth);
+      setFrameHeight(canvasHeight);
+      setShowInitialSetup(false);
+      setShouldCenterOnFrame(true);
       
       toast.success('正在加载JSON文件...');
     } catch (error) {
