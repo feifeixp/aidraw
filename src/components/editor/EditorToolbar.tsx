@@ -267,16 +267,13 @@ export const EditorToolbar = ({
 
       toast.success(`成功生成 ${data.images.length} 张分镜！`);
       
-      // 批量创建分镜框架和添加图片 - 使用单列布局
+      // 批量创建分镜框架和添加图片 - 使用3列网格布局
       const MAX_FRAMES = 12;
       const INFINITE_CANVAS_SIZE = 10000;
       const FRAME_WIDTH = defaultFrameWidth;
       const FRAME_HEIGHT = defaultFrameHeight;
       const SPACING = 50;
-      
-      // 单列布局
-      const START_X = (INFINITE_CANVAS_SIZE - FRAME_WIDTH) / 2;
-      const START_Y = (INFINITE_CANVAS_SIZE - FRAME_HEIGHT) / 2;
+      const STORYBOARD_COLUMNS = 3; // 每行3个
       
       // 记录初始的分镜数量
       const initialFrameCount = storyboardFrameCount;
@@ -286,6 +283,16 @@ export const EditorToolbar = ({
         FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' })
       );
       const loadedImages = await Promise.all(imageLoadPromises);
+      
+      // 计算整个网格的总尺寸（包含将要生成的所有分镜）
+      const totalFrameCount = Math.min(initialFrameCount + loadedImages.length, MAX_FRAMES);
+      const totalGridWidth = STORYBOARD_COLUMNS * FRAME_WIDTH + (STORYBOARD_COLUMNS - 1) * SPACING;
+      const totalRows = Math.ceil(totalFrameCount / STORYBOARD_COLUMNS);
+      const totalGridHeight = totalRows * FRAME_HEIGHT + (totalRows - 1) * SPACING;
+      
+      // 计算起始位置（居中整个网格）
+      const START_X = (INFINITE_CANVAS_SIZE - totalGridWidth) / 2;
+      const START_Y = (INFINITE_CANVAS_SIZE - totalGridHeight) / 2;
       
       // 为每张图片创建分镜框架并添加图片
       for (let i = 0; i < loadedImages.length; i++) {
@@ -299,9 +306,11 @@ export const EditorToolbar = ({
           break;
         }
         
-        // 计算frame位置（纵向单列布局）
-        const frameLeft = START_X;
-        const frameTop = START_Y + currentFrameIndex * (FRAME_HEIGHT + SPACING);
+        // 计算frame位置 - 3列网格布局
+        const row = Math.floor(currentFrameIndex / STORYBOARD_COLUMNS);
+        const col = currentFrameIndex % STORYBOARD_COLUMNS;
+        const frameLeft = START_X + col * (FRAME_WIDTH + SPACING);
+        const frameTop = START_Y + row * (FRAME_HEIGHT + SPACING);
         
         // 创建分镜框架
         const frame = new FabricRect({
