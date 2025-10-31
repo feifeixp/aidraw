@@ -3,7 +3,7 @@ import { Canvas as FabricCanvas, FabricImage, Rect, PencilBrush, FabricText } fr
 import { toast } from "sonner";
 
 // 无限画布的实际尺寸
-const INFINITE_CANVAS_SIZE = 30000;
+const INFINITE_CANVAS_SIZE = 10000;
 
 interface EditorCanvasProps {
   canvas: FabricCanvas | null;
@@ -520,14 +520,14 @@ export const EditorCanvas = ({
 
     canvas.renderAll();
 
-    // 首次创建分镜或分镜数量增加时，确保视口居中到第一个分镜
-    if (!hasInitialCenteredRef.current && containerRef.current && storyboardFrameCount > 0) {
+    // 只在第一次创建第一个分镜时居中一次
+    if (storyboardFrameCount === 1 && !hasInitialCenteredRef.current && containerRef.current) {
       hasInitialCenteredRef.current = true; // 标记已完成初始居中
       
       setTimeout(() => {
         if (!containerRef.current) return;
         
-        console.log('[EditorCanvas] 首次创建分镜，移动视口到第一个分镜中心');
+        console.log('[EditorCanvas] 首次创建分镜，移动视口到分镜中心');
         
         const viewportWidth = containerRef.current.clientWidth;
         const viewportHeight = containerRef.current.clientHeight;
@@ -543,12 +543,7 @@ export const EditorCanvas = ({
         containerRef.current.scrollLeft = targetScrollLeft;
         containerRef.current.scrollTop = targetScrollTop;
         
-        console.log('[EditorCanvas] 视口移动完成，位置:', {
-          scrollLeft: targetScrollLeft,
-          scrollTop: targetScrollTop,
-          frameCenterX,
-          frameCenterY
-        });
+        console.log('[EditorCanvas] 视口移动完成');
         
         if (shouldCenterOnFrame && onCenterComplete) {
           onCenterComplete();
