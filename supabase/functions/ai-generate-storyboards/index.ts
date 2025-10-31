@@ -89,19 +89,26 @@ serve(async (req) => {
       // 构建提示词（包含风格信息，传入是否有参考图片）
       const prompt = buildStoryboardPrompt(scene, scriptText, style, referenceImages && referenceImages.length > 0);
 
-      // 构建消息内容
-      const content: any[] = [
-        { type: "text", text: prompt }
-      ];
-
-      // 添加参考图片（如果有）
+      // 构建消息内容 - 根据是否有参考图片决定content格式
+      let messageContent: any;
+      
       if (referenceImages && referenceImages.length > 0) {
+        // 有参考图片时，使用数组格式（编辑模式）
+        const content: any[] = [
+          { type: "text", text: prompt }
+        ];
+        
         for (const imageUrl of referenceImages) {
           content.push({
             type: "image_url",
             image_url: { url: imageUrl }
           });
         }
+        
+        messageContent = content;
+      } else {
+        // 没有参考图片时，使用字符串格式（生成模式）
+        messageContent = prompt;
       }
 
       // 调用 Lovable AI 生成图片
@@ -116,7 +123,7 @@ serve(async (req) => {
           messages: [
             {
               role: "user",
-              content: content
+              content: messageContent
             }
           ],
           modalities: ["image", "text"]
