@@ -3,7 +3,7 @@ import { Canvas as FabricCanvas, FabricImage, Rect, PencilBrush, FabricText } fr
 import { toast } from "sonner";
 
 // 无限画布的实际尺寸
-const INFINITE_CANVAS_SIZE = 10000;
+const INFINITE_CANVAS_SIZE = 30000;
 
 interface EditorCanvasProps {
   canvas: FabricCanvas | null;
