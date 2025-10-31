@@ -72,7 +72,7 @@ export const EditorToolbar = ({
   const [scriptText, setScriptText] = useState("");
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
   const [isGeneratingStoryboards, setIsGeneratingStoryboards] = useState(false);
-  const [storyboardStyle, setStoryboardStyle] = useState(defaultStyle);
+  const [storyboardStyle, setStoryboardStyle] = useState("blackWhiteSketch");
   const [customStyle, setCustomStyle] = useState("");
   const handleUndo = () => {
     undo();
@@ -214,11 +214,6 @@ export const EditorToolbar = ({
 
     if (scriptText.length > 3500) {
       toast.error("剧本文本不能超过3500字");
-      return;
-    }
-
-    if (referenceImages.length === 0) {
-      toast.error("请至少上传1张参考图片");
       return;
     }
 
@@ -1306,7 +1301,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
             {/* 参考图片上传 */}
             <div className="space-y-2">
               <Label className="text-base font-semibold">
-                参考图片 <span className="text-sm text-muted-foreground">(最多4张)</span>
+                参考图片 <span className="text-sm text-muted-foreground">(可选，最多4张)</span>
               </Label>
               <div className="border-2 border-dashed rounded-lg p-6 bg-muted/50">
                 <input
@@ -1330,10 +1325,10 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
                 >
                   <Camera className="h-12 w-12 text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    点击或拖拽上传角色参考图片
+                    点击或拖拽上传角色参考图片（可选）
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    AI会识别图片中的角色特征，保持画风一致
+                    上传参考图后AI会识别角色特征，保持画风一致；未上传则纯文本生成
                   </p>
                 </label>
               </div>
@@ -1380,8 +1375,8 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
               <h4 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">AI 生成说明</h4>
               <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
                 <li>• 根据选择的风格生成相应的分镜画面</li>
-                <li>• 自动识别参考图片中的角色特征</li>
-                <li>• 保持角色画风和造型一致性</li>
+                <li>• 若上传参考图，AI会识别角色特征并保持一致性</li>
+                <li>• 未上传参考图时，纯文本生成分镜画面</li>
                 <li>• 根据剧本自动生成多个分镜场景</li>
                 <li>• 支持自定义风格描述</li>
               </ul>
@@ -1416,7 +1411,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
               </Button>
               <Button
                 onClick={handleAiStoryboardGeneration}
-                disabled={!scriptText.trim() || referenceImages.length === 0 || isGeneratingStoryboards}
+                disabled={!scriptText.trim() || isGeneratingStoryboards}
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
                 {isGeneratingStoryboards ? "生成中..." : "开始生成分镜"}

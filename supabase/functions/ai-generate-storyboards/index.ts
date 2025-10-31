@@ -61,14 +61,7 @@ serve(async (req) => {
       );
     }
 
-    if (!referenceImages || !Array.isArray(referenceImages) || referenceImages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: '至少需要一张参考图片' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (referenceImages.length > 4) {
+    if (referenceImages && (!Array.isArray(referenceImages) || referenceImages.length > 4)) {
       return new Response(
         JSON.stringify({ error: '最多只能上传4张参考图片' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -93,20 +86,22 @@ serve(async (req) => {
       const scene = scenes[i];
       console.log(`生成第 ${i + 1}/${scenes.length} 个场景分镜...`);
 
-      // 构建提示词（包含风格信息）
-      const prompt = buildStoryboardPrompt(scene, scriptText, style);
+      // 构建提示词（包含风格信息，传入是否有参考图片）
+      const prompt = buildStoryboardPrompt(scene, scriptText, style, referenceImages && referenceImages.length > 0);
 
       // 构建消息内容
       const content: any[] = [
         { type: "text", text: prompt }
       ];
 
-      // 添加参考图片
-      for (const imageUrl of referenceImages) {
-        content.push({
-          type: "image_url",
-          image_url: { url: imageUrl }
-        });
+      // 添加参考图片（如果有）
+      if (referenceImages && referenceImages.length > 0) {
+        for (const imageUrl of referenceImages) {
+          content.push({
+            type: "image_url",
+            image_url: { url: imageUrl }
+          });
+        }
       }
 
       // 调用 Lovable AI 生成图片
@@ -257,7 +252,7 @@ function analyzeScriptScenes(scriptText: string): string[] {
 }
 
 // 构建分镜生成提示词（根据风格）
-function buildStoryboardPrompt(sceneText: string, fullScript: string, style: string): string {
+function buildStoryboardPrompt(sceneText: string, fullScript: string, style: string, hasReferenceImages: boolean): string {
   // 从完整剧本中识别角色
   const characters = extractCharacters(fullScript);
   const charactersText = characters.length > 0 
@@ -272,16 +267,25 @@ function buildStoryboardPrompt(sceneText: string, fullScript: string, style: str
   
   // 构建风格要求部分
   let styleRequirements = '';
-  if (style === 'auto') {
-    // 自动风格：让AI根据参考图片决定风格
+  if (style === 'auto' && hasReferenceImages) {
+    // 自动风格且有参考图：让AI根据参考图片决定风格
     styleRequirements = `艺术风格要求：
 参考提供的参考图片中的绘画风格、色彩运用和表现手法，生成与参考图风格一致的分镜画面。`;
+  } else if (style === 'auto' && !hasReferenceImages) {
+    // 自动风格但无参考图：使用默认风格
+    styleRequirements = `艺术风格要求：
+使用清晰简洁的黑白线稿风格，线条流畅，构图清晰。`;
   } else if (styleConfig.description) {
     // 指定风格
     styleRequirements = `艺术风格要求：
 ${styleConfig.description}
 ${styleConfig.background}`;
   }
+  
+  // 构建角色相关要求
+  const characterRequirements = hasReferenceImages 
+    ? '3. 保持参考图中的角色造型和特征'
+    : '3. 根据剧本描述创作角色形象';
   
   return `为以下场景生成一张独立的分镜画面：
 
@@ -294,8 +298,10 @@ ${styleRequirements}
 重要要求：
 1. 这是单个独立的分镜画面，不要在一张图中包含多个分镜格子或面板
 2. 只显示这一个场景的画面内容
-3. 保持参考图中的角色造型和特征
-${style === 'auto' ? '4. 严格参考提供的参考图片风格' : '4. 严格按照上述风格要求生成'}
+${characterRequirements}
+${hasReferenceImages 
+  ? (style === 'auto' ? '4. 严格参考提供的参考图片风格' : '4. 严格按照上述风格要求生成') 
+  : '4. 严格按照上述风格要求生成'}
 5. 构图要完整，适合作为独立的分镜使用
 
 请直接生成一张完整的分镜图片，不要输出文字描述。`;

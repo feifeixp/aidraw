@@ -141,28 +141,6 @@ export const EditorInitialSetup = ({ open, onComplete, onImportJSON, onLoadDraft
           {/* 新建项目 */}
           <div className="space-y-3">
             <Label className="text-base">新建项目</Label>
-          {/* 风格选择 */}
-          <div className="space-y-2">
-            <Label>默认生成风格</Label>
-            <Select value={style} onValueChange={setStyle}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择生成风格" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">自动风格（根据参考图）</SelectItem>
-                <SelectItem value="blackWhiteSketch">黑白线稿</SelectItem>
-                <SelectItem value="blackWhiteComic">黑白漫画</SelectItem>
-                <SelectItem value="japaneseAnime">日式动漫</SelectItem>
-                <SelectItem value="americanComic">美式漫画</SelectItem>
-                <SelectItem value="watercolor">水彩画风</SelectItem>
-                <SelectItem value="oilPainting">油画风格</SelectItem>
-                <SelectItem value="pixelArt">像素艺术</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              此风格将作为智能多分镜生成的默认风格
-            </p>
-          </div>
 
           {/* 分镜尺寸 */}
           <div className="space-y-4">
