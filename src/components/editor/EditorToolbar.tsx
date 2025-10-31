@@ -85,7 +85,6 @@ export const EditorToolbar = ({
     redo();
   };
 
-
   // 创建分镜frame的函数
   const handleCreateStoryboardFrame = () => {
     if (!canvas) {
@@ -97,12 +96,12 @@ export const EditorToolbar = ({
     const MAX_FRAMES = 12; // 最大分镜数量
     const INFINITE_CANVAS_SIZE = 10000;
     const STORYBOARD_COLUMNS = 3; // 每行3个
-    
+
     // 使用初始化设置的分镜尺寸
     const FRAME_WIDTH = defaultFrameWidth;
     const FRAME_HEIGHT = defaultFrameHeight;
     const SPACING = 50; // 间距
-    
+
     // 计算当前frame的索引
     const frameIndex = storyboardFrameCount;
 
@@ -117,7 +116,7 @@ export const EditorToolbar = ({
     const actualFrameCount = Math.min(frameIndex + 1, MAX_FRAMES);
     const totalRows = Math.ceil(actualFrameCount / STORYBOARD_COLUMNS);
     const totalGridHeight = totalRows * FRAME_HEIGHT + (totalRows - 1) * SPACING;
-    
+
     // 计算起始位置（居中整个网格）
     const START_X = (INFINITE_CANVAS_SIZE - totalGridWidth) / 2;
     const START_Y = (INFINITE_CANVAS_SIZE - totalGridHeight) / 2;
@@ -203,13 +202,11 @@ export const EditorToolbar = ({
     canvas.add(frame);
     canvas.add(frameBorder);
     canvas.add(frameNumber);
-    
     canvas.renderAll();
     saveState();
 
     // 更新frame计数
     setStoryboardFrameCount(frameIndex + 1);
-
     toast.success(`已创建分镜 ${frameIndex + 1}/${MAX_FRAMES}`);
   };
 
@@ -219,29 +216,24 @@ export const EditorToolbar = ({
       toast.error("画布未初始化");
       return;
     }
-
     if (!scriptText.trim()) {
       toast.error("请输入剧本文本");
       return;
     }
-
     if (scriptText.length > 3500) {
       toast.error("剧本文本不能超过3500字");
       return;
     }
-
     if (referenceImages.length > 4) {
       toast.error("最多只能上传4张参考图片");
       return;
     }
-
     setShowAiStoryboardDialog(false);
     setIsGeneratingStoryboards(true);
     const taskId = startTask("正在生成AI分镜");
-
     try {
       toast.info("正在分析剧本和参考图片...");
-      
+
       // 将图片转换为 base64
       const imagePromises = referenceImages.map(file => {
         return new Promise<string>((resolve, reject) => {
@@ -251,26 +243,25 @@ export const EditorToolbar = ({
           reader.readAsDataURL(file);
         });
       });
-
       const imageDataUrls = await Promise.all(imagePromises);
 
       // 调用 edge function 生成分镜
-      const { data, error } = await supabase.functions.invoke('ai-generate-storyboards', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('ai-generate-storyboards', {
         body: {
           scriptText,
           referenceImages: imageDataUrls,
           style: storyboardStyle === 'custom' ? customStyle : storyboardStyle
         }
       });
-
       if (error) throw error;
-
       if (!data || !data.images || data.images.length === 0) {
         throw new Error("未生成任何分镜图片");
       }
-
       toast.success(`成功生成 ${data.images.length} 张分镜！`);
-      
+
       // 批量创建分镜框架和添加图片 - 使用3列网格布局
       const MAX_FRAMES = 12;
       const INFINITE_CANVAS_SIZE = 10000;
@@ -278,44 +269,44 @@ export const EditorToolbar = ({
       const FRAME_HEIGHT = defaultFrameHeight;
       const SPACING = 50;
       const STORYBOARD_COLUMNS = 3; // 每行3个
-      
+
       // 记录初始的分镜数量
       const initialFrameCount = storyboardFrameCount;
-      
+
       // 批量加载所有图片
-      const imageLoadPromises = data.images.map((imageUrl: string) => 
-        FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' })
-      );
+      const imageLoadPromises = data.images.map((imageUrl: string) => FabricImage.fromURL(imageUrl, {
+        crossOrigin: 'anonymous'
+      }));
       const loadedImages = await Promise.all(imageLoadPromises);
-      
+
       // 计算整个网格的总尺寸（包含将要生成的所有分镜）
       const totalFrameCount = Math.min(initialFrameCount + loadedImages.length, MAX_FRAMES);
       const totalGridWidth = STORYBOARD_COLUMNS * FRAME_WIDTH + (STORYBOARD_COLUMNS - 1) * SPACING;
       const totalRows = Math.ceil(totalFrameCount / STORYBOARD_COLUMNS);
       const totalGridHeight = totalRows * FRAME_HEIGHT + (totalRows - 1) * SPACING;
-      
+
       // 计算起始位置（居中整个网格）
       const START_X = (INFINITE_CANVAS_SIZE - totalGridWidth) / 2;
       const START_Y = (INFINITE_CANVAS_SIZE - totalGridHeight) / 2;
-      
+
       // 为每张图片创建分镜框架并添加图片
       for (let i = 0; i < loadedImages.length; i++) {
         const img = loadedImages[i];
         const currentFrameIndex = initialFrameCount + i;
         const frameId = `${currentFrameIndex + 1}`;
-        
+
         // 检查是否超过最大frame数量
         if (currentFrameIndex >= MAX_FRAMES) {
           toast.error(`已达到最大分镜数量 (${MAX_FRAMES})`);
           break;
         }
-        
+
         // 计算frame位置 - 3列网格布局
         const row = Math.floor(currentFrameIndex / STORYBOARD_COLUMNS);
         const col = currentFrameIndex % STORYBOARD_COLUMNS;
         const frameLeft = START_X + col * (FRAME_WIDTH + SPACING);
         const frameTop = START_Y + row * (FRAME_HEIGHT + SPACING);
-        
+
         // 创建分镜框架
         const frame = new FabricRect({
           left: frameLeft,
@@ -333,14 +324,14 @@ export const EditorToolbar = ({
           lockMovementY: true,
           hoverCursor: 'pointer',
           name: `storyboard-frame-${frameId}`,
-          data: { 
+          data: {
             isFrameElement: true,
             objectType: 'storyboard-frame',
             frameId: frameId,
             objectName: `storyboard-frame-${frameId}`
           }
         });
-        
+
         // 创建边框
         const frameBorder = new FabricRect({
           left: frameLeft,
@@ -360,14 +351,14 @@ export const EditorToolbar = ({
           hoverCursor: 'default',
           visible: false,
           name: `storyboard-border-${frameId}`,
-          data: { 
+          data: {
             isFrameElement: true,
             objectType: 'storyboard-border',
             frameId: frameId,
             objectName: `storyboard-border-${frameId}`
           }
         });
-        
+
         // 创建帧编号标签
         const frameLabel = new FabricText(`分镜 ${frameId}`, {
           left: frameLeft,
@@ -377,14 +368,14 @@ export const EditorToolbar = ({
           selectable: false,
           evented: false,
           name: `storyboard-label-${frameId}`,
-          data: { 
+          data: {
             isFrameElement: true,
             objectType: 'storyboard-number',
             frameId: frameId,
             objectName: `storyboard-label-${frameId}`
           }
         });
-        
+
         // 添加frame、border和label到canvas
         canvas.add(frame);
         canvas.sendObjectToBack(frame);
@@ -392,13 +383,10 @@ export const EditorToolbar = ({
         canvas.bringObjectToFront(frameBorder);
         canvas.add(frameLabel);
         canvas.bringObjectToFront(frameLabel);
-        
+
         // 缩放图片以适应分镜框架
-        const scale = Math.min(
-          FRAME_WIDTH / img.width,
-          FRAME_HEIGHT / img.height
-        );
-        
+        const scale = Math.min(FRAME_WIDTH / img.width, FRAME_HEIGHT / img.height);
+
         // 设置图片位置和大小，居中放置在分镜框架中
         img.set({
           left: frameLeft + (FRAME_WIDTH - img.width * scale) / 2,
@@ -410,28 +398,23 @@ export const EditorToolbar = ({
             frameId: frameId
           }
         });
-        
         canvas.add(img);
         // 确保图片在边框之下
         canvas.sendObjectBackwards(img);
-        
         toast.info(`已添加分镜 ${i + 1}/${data.images.length}`);
       }
-      
+
       // 更新分镜计数
       setStoryboardFrameCount(initialFrameCount + loadedImages.length);
-      
       canvas.renderAll();
       saveState();
-      
       completeTask(taskId);
-      
+
       // 清空表单
       setScriptText("");
       setReferenceImages([]);
       setStoryboardStyle("blackWhiteSketch");
       setCustomStyle("");
-      
     } catch (error) {
       console.error("AI分镜生成错误:", error);
       toast.error(error instanceof Error ? error.message : "AI分镜生成失败");
@@ -440,13 +423,12 @@ export const EditorToolbar = ({
       setIsGeneratingStoryboards(false);
     }
   };
-
   const handleRedraw = async (shouldReplaceOriginal: boolean = true) => {
     if (!canvas) {
       toast.error("画布未初始化");
       return;
     }
-    
+
     // 根据activeFrameId查找对应的frame
     let frame, frameBorder;
     if (activeFrameId) {
@@ -457,7 +439,6 @@ export const EditorToolbar = ({
       frame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
       frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
     }
-    
     if (!frame) {
       toast.error("未找到工作区域");
       return;
@@ -466,29 +447,29 @@ export const EditorToolbar = ({
     // 检查是否只有composite类型元素
     const nonCompositeObjects = canvas.getObjects().filter((obj: any) => {
       const objName = obj.name;
-      return !objName?.startsWith('storyboard-') && 
-             obj.type === 'image' && 
-             (obj.data?.elementType !== 'composite' || !obj.data);
+      return !objName?.startsWith('storyboard-') && obj.type === 'image' && (obj.data?.elementType !== 'composite' || !obj.data);
     });
-    
     if (nonCompositeObjects.length === 0) {
       toast.error("画布上需要有角色或场景元素才能使用渲染功能");
       return;
     }
-    
     toast.info("正在融合图层并重新绘制，请稍候...");
     try {
       // 临时隐藏frame边框
       const originalStroke = frame.stroke;
       const originalStrokeWidth = frame.strokeWidth;
-      frame.set({ stroke: 'transparent', strokeWidth: 0 });
-      
+      frame.set({
+        stroke: 'transparent',
+        strokeWidth: 0
+      });
+
       // 临时隐藏frameBorder
       const originalBorderVisible = frameBorder?.visible;
       if (frameBorder) {
-        frameBorder.set({ visible: false });
+        frameBorder.set({
+          visible: false
+        });
       }
-      
       canvas.renderAll();
 
       // 使用Fabric.js的toDataURL导出frame区域
@@ -499,13 +480,18 @@ export const EditorToolbar = ({
         left: frame.left || 0,
         top: frame.top || 0,
         width: frame.width || 1024,
-        height: frame.height || 768,
+        height: frame.height || 768
       });
 
       // 恢复frame边框和frameBorder
-      frame.set({ stroke: originalStroke, strokeWidth: originalStrokeWidth });
+      frame.set({
+        stroke: originalStroke,
+        strokeWidth: originalStrokeWidth
+      });
       if (frameBorder) {
-        frameBorder.set({ visible: originalBorderVisible });
+        frameBorder.set({
+          visible: originalBorderVisible
+        });
       }
       canvas.renderAll();
       const instruction = `Professionally render this image with unified realistic lighting and seamless compositing:
@@ -533,20 +519,24 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       if (aiData?.imageUrl) {
         // 清理边缘不干净的像素
         toast.info("正在优化边缘...");
-        const { cleanImageEdges } = await import("@/lib/edgeCleanup");
+        const {
+          cleanImageEdges
+        } = await import("@/lib/edgeCleanup");
         const cleanedImageUrl = await cleanImageEdges(aiData.imageUrl, {
-          threshold: 30,      // 边缘检测阈值
-          smoothRadius: 2,    // 平滑半径
-          colorTolerance: 25, // 颜色容差
-          featherWidth: 2     // 羽化宽度
+          threshold: 30,
+          // 边缘检测阈值
+          smoothRadius: 2,
+          // 平滑半径
+          colorTolerance: 25,
+          // 颜色容差
+          featherWidth: 2 // 羽化宽度
         });
-        
         const {
           FabricImage
         } = await import("fabric");
-        
+
         // 渲染结果将作为新图层添加，不删除原有内容
-        
+
         const img = new Image();
         await new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -557,20 +547,23 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
           left: frame.left,
           top: frame.top,
           selectable: true,
-          data: { elementType: 'composite' }
+          data: {
+            elementType: 'composite'
+          }
         });
         const scaleX = frame.width! / fabricImg.width!;
         const scaleY = frame.height! / fabricImg.height!;
         const scale = Math.min(scaleX, scaleY);
         fabricImg.scale(scale);
-        
+
         // Use layer sorting system
-        const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+        const {
+          insertObjectWithLayerType
+        } = await import("@/lib/layerSorting");
         insertObjectWithLayerType(canvas, fabricImg, 'composite');
-        
+
         // 确保frame保持在底层
         canvas.sendObjectToBack(frame as any);
-        
         canvas.setActiveObject(fabricImg);
         canvas.renderAll();
         saveState();
@@ -586,7 +579,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
   };
   const handleDirectExport = async () => {
     if (!canvas) return;
-    
+
     // 根据activeFrameId查找对应的frame
     let frame, frameBorder, frameNumber;
     if (activeFrameId) {
@@ -599,26 +592,29 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
       frameNumber = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-number-1');
     }
-    
     if (!frame) {
       toast.error("未找到工作区域");
       return;
     }
-    
+
     // 临时隐藏frameBorder和frameNumber
     const originalBorderVisible = frameBorder?.visible;
     const originalNumberVisible = frameNumber?.visible;
     if (frameBorder) {
-      frameBorder.set({ visible: false });
+      frameBorder.set({
+        visible: false
+      });
     }
     if (frameNumber) {
-      frameNumber.set({ visible: false });
+      frameNumber.set({
+        visible: false
+      });
     }
     canvas.renderAll();
-    
+
     // 等待一小段时间确保渲染完成
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // 只导出frame区域内的内容
     const dataURL = canvas.toDataURL({
       format: "png",
@@ -627,37 +623,37 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       left: frame.left,
       top: frame.top,
       width: frame.width,
-      height: frame.height,
+      height: frame.height
     });
-    
+
     // 恢复frameBorder和frameNumber
     if (frameBorder) {
-      frameBorder.set({ visible: originalBorderVisible });
+      frameBorder.set({
+        visible: originalBorderVisible
+      });
     }
     if (frameNumber) {
-      frameNumber.set({ visible: originalNumberVisible });
+      frameNumber.set({
+        visible: originalNumberVisible
+      });
     }
     canvas.renderAll();
-    
     const link = document.createElement("a");
     link.download = `artwork-${Date.now()}.png`;
     link.href = dataURL;
     link.click();
     toast.success("已导出画布");
   };
-
   const handleRenderAndExport = async () => {
     setShowExportDialog(false);
     setIsRendering(true);
-    
     try {
       // 先渲染，替换原图
       await handleRedraw(true);
-      
+
       // 等待渲染完成后再导出
       await new Promise(resolve => setTimeout(resolve, 500));
       await handleDirectExport();
-      
       toast.success("渲染并导出完成");
     } catch (error) {
       console.error("Render and export error:", error);
@@ -675,7 +671,6 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       toast.error("当前有任务正在处理，请等待完成");
       return;
     }
-
     setShowSmartComposeDialog(false);
 
     // 根据activeFrameId查找对应的frame
@@ -685,12 +680,10 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
     } else {
       frame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
     }
-    
     if (!frame) {
       toast.error("未找到工作区域");
       return;
     }
-
     const frameLeft = frame.left || 0;
     const frameTop = frame.top || 0;
     const frameWidth = frame.width || 1024;
@@ -700,36 +693,29 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
     const nonCompositeObjects = canvas.getObjects().filter((obj: any) => {
       const objName = obj.name;
       const isFrameObject = objName?.startsWith('storyboard-');
-      
       if (isFrameObject) return false;
       if (obj.type === 'image' && obj.data?.elementType === 'composite') return false;
-      
+
       // Check if object is within frame bounds
       const objLeft = obj.left || 0;
       const objTop = obj.top || 0;
-      return objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-             objTop >= frameTop && objTop < frameTop + frameHeight;
+      return objLeft >= frameLeft && objLeft < frameLeft + frameWidth && objTop >= frameTop && objTop < frameTop + frameHeight;
     });
-    
     if (nonCompositeObjects.length === 0) {
       toast.error("画布上需要有角色、场景元素或标注才能使用智能合成功能");
       return;
     }
-
     setIsComposing(true);
     const taskId = startTask("正在智能合成");
     const objects = canvas.getObjects();
     const textAnnotations: string[] = [];
-    
+
     // 收集frame区域内的文字标注作为提示词
     objects.forEach(obj => {
       const objLeft = obj.left || 0;
       const objTop = obj.top || 0;
-      const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-                       objTop >= frameTop && objTop < frameTop + frameHeight;
-      
+      const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth && objTop >= frameTop && objTop < frameTop + frameHeight;
       if (!isInFrame) return;
-      
       if (obj.type === 'text') {
         const text = (obj as any).text;
         if (text && text !== '双击编辑文字') {
@@ -737,7 +723,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
         }
       }
     });
-    
+
     // 构建AI指令：文字标注作为提示词，形状通过图像传递
     let instruction = "";
     if (textAnnotations.length > 0) {
@@ -745,32 +731,35 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
     } else {
       instruction = "Generate an image based on the visual elements shown, enhancing with professional lighting, shading, and composition.";
     }
-    
     toast.info("正在使用AI智能合成图片，请稍候...");
     try {
       // 临时隐藏frame边框
       const frameBorder = canvas.getObjects().find((obj: any) => obj.name === `storyboard-border-${activeFrameId || '1'}`);
       const originalBorderVisible = frameBorder?.visible;
       if (frameBorder) {
-        frameBorder.set({ visible: false });
+        frameBorder.set({
+          visible: false
+        });
       }
-      
+
       // 临时隐藏所有文字标注
       const hiddenTexts: any[] = [];
       objects.forEach(obj => {
         const objLeft = obj.left || 0;
         const objTop = obj.top || 0;
-        const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-                         objTop >= frameTop && objTop < frameTop + frameHeight;
-        
+        const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth && objTop >= frameTop && objTop < frameTop + frameHeight;
         if (isInFrame && obj.type === 'text') {
-          hiddenTexts.push({ obj, visible: obj.visible });
-          obj.set({ visible: false });
+          hiddenTexts.push({
+            obj,
+            visible: obj.visible
+          });
+          obj.set({
+            visible: false
+          });
         }
       });
-      
       canvas.renderAll();
-      
+
       // 将frame区域的所有内容（图像+形状）导出为一张完整图像
       const imageDataURL = canvas.toDataURL({
         format: 'png',
@@ -779,18 +768,24 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
         left: frameLeft,
         top: frameTop,
         width: frameWidth,
-        height: frameHeight,
+        height: frameHeight
       });
-      
+
       // 恢复frameBorder和文字
       if (frameBorder) {
-        frameBorder.set({ visible: originalBorderVisible });
+        frameBorder.set({
+          visible: originalBorderVisible
+        });
       }
-      hiddenTexts.forEach(({ obj, visible }) => {
-        obj.set({ visible });
+      hiddenTexts.forEach(({
+        obj,
+        visible
+      }) => {
+        obj.set({
+          visible
+        });
       });
       canvas.renderAll();
-      
       const {
         data: aiData,
         error: aiError
@@ -804,40 +799,41 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       if (aiData?.imageUrl) {
         // 清理边缘不干净的像素
         toast.info("正在优化边缘...");
-        const { cleanImageEdges } = await import("@/lib/edgeCleanup");
+        const {
+          cleanImageEdges
+        } = await import("@/lib/edgeCleanup");
         const cleanedImageUrl = await cleanImageEdges(aiData.imageUrl, {
-          threshold: 30,      // 边缘检测阈值
-          smoothRadius: 2,    // 平滑半径
-          colorTolerance: 25, // 颜色容差
-          featherWidth: 2     // 羽化宽度
+          threshold: 30,
+          // 边缘检测阈值
+          smoothRadius: 2,
+          // 平滑半径
+          colorTolerance: 25,
+          // 颜色容差
+          featherWidth: 2 // 羽化宽度
         });
-        
         const {
           FabricImage
         } = await import("fabric");
         const img = await FabricImage.fromURL(cleanedImageUrl, {
           crossOrigin: 'anonymous'
         });
-        
         const imgWidth = img.width || 1;
         const imgHeight = img.height || 1;
         const scale = Math.min(frameWidth / imgWidth, frameHeight / imgHeight, 1);
-        
         img.scale(scale);
         img.set({
           left: frameLeft,
           top: frameTop,
-          data: { elementType: 'composite' }
+          data: {
+            elementType: 'composite'
+          }
         });
-        
         if (replaceOriginal) {
           objects.forEach(obj => {
             const objLeft = obj.left || 0;
             const objTop = obj.top || 0;
-            const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-                             objTop >= frameTop && objTop < frameTop + frameHeight;
-            
-            if (isInFrame && !((obj as any).name?.startsWith('storyboard-'))) {
+            const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth && objTop >= frameTop && objTop < frameTop + frameHeight;
+            if (isInFrame && !(obj as any).name?.startsWith('storyboard-')) {
               canvas.remove(obj);
             }
           });
@@ -846,17 +842,17 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
           objects.forEach(obj => {
             const objLeft = obj.left || 0;
             const objTop = obj.top || 0;
-            const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth &&
-                             objTop >= frameTop && objTop < frameTop + frameHeight;
-            
+            const isInFrame = objLeft >= frameLeft && objLeft < frameLeft + frameWidth && objTop >= frameTop && objTop < frameTop + frameHeight;
             if (isInFrame && (obj.type === 'text' || ['rect', 'circle', 'triangle', 'polygon'].includes(obj.type || ''))) {
               canvas.remove(obj);
             }
           });
         }
-        
+
         // Use layer sorting system
-        const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+        const {
+          insertObjectWithLayerType
+        } = await import("@/lib/layerSorting");
         insertObjectWithLayerType(canvas, img, 'composite');
         canvas.setActiveObject(img);
         canvas.renderAll();
@@ -872,7 +868,6 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       setIsComposing(false);
     }
   };
-
   const handleRecompose = async (instruction: string) => {
     if (!canvas) {
       toast.error("画布未初始化");
@@ -893,27 +888,28 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       frame = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-frame-1');
       frameBorder = canvas.getObjects().find((obj: any) => obj.name === 'storyboard-border-1');
     }
-    
     if (!frame) {
       toast.error("未找到工作区域");
       return;
     }
-
     setShowRecomposeDialog(false);
     const taskId = startTask("正在重新构图");
-
     try {
       // 临时隐藏frame边框
       const originalStroke = frame.stroke;
       const originalStrokeWidth = frame.strokeWidth;
-      frame.set({ stroke: 'transparent', strokeWidth: 0 });
-      
+      frame.set({
+        stroke: 'transparent',
+        strokeWidth: 0
+      });
+
       // 临时隐藏frameBorder
       const originalBorderVisible = frameBorder?.visible;
       if (frameBorder) {
-        frameBorder.set({ visible: false });
+        frameBorder.set({
+          visible: false
+        });
       }
-      
       canvas.renderAll();
 
       // 使用Fabric.js的toDataURL导出frame区域
@@ -924,38 +920,49 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
         left: frame.left || 0,
         top: frame.top || 0,
         width: frame.width || 1024,
-        height: frame.height || 768,
+        height: frame.height || 768
       });
 
       // 恢复frame边框和frameBorder
-      frame.set({ stroke: originalStroke, strokeWidth: originalStrokeWidth });
+      frame.set({
+        stroke: originalStroke,
+        strokeWidth: originalStrokeWidth
+      });
       if (frameBorder) {
-        frameBorder.set({ visible: originalBorderVisible });
+        frameBorder.set({
+          visible: originalBorderVisible
+        });
       }
       canvas.renderAll();
-
-      const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-edit-image', {
+      const {
+        data: aiData,
+        error: aiError
+      } = await supabase.functions.invoke('ai-edit-image', {
         body: {
           imageUrl: canvasDataURL,
           instruction
         }
       });
-
       if (aiError) throw aiError;
-
       if (aiData?.imageUrl) {
         // 清理边缘不干净的像素
         toast.info("正在优化边缘...");
-        const { cleanImageEdges } = await import("@/lib/edgeCleanup");
+        const {
+          cleanImageEdges
+        } = await import("@/lib/edgeCleanup");
         const cleanedImageUrl = await cleanImageEdges(aiData.imageUrl, {
-          threshold: 30,      // 边缘检测阈值
-          smoothRadius: 2,    // 平滑半径
-          colorTolerance: 25, // 颜色容差
-          featherWidth: 2     // 羽化宽度
+          threshold: 30,
+          // 边缘检测阈值
+          smoothRadius: 2,
+          // 平滑半径
+          colorTolerance: 25,
+          // 颜色容差
+          featherWidth: 2 // 羽化宽度
         });
-        
-        const { FabricImage } = await import("fabric");
-        
+        const {
+          FabricImage
+        } = await import("fabric");
+
         // 先移除画布上所有非frame的对象
         const objects = canvas.getObjects();
         objects.forEach(obj => {
@@ -964,31 +971,31 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
             canvas.remove(obj);
           }
         });
-        
         const img = await FabricImage.fromURL(cleanedImageUrl, {
           crossOrigin: 'anonymous'
         });
-
         const frameWidth = frame.width || 1024;
         const frameHeight = frame.height || 768;
         const imgWidth = img.width || 1;
         const imgHeight = img.height || 1;
         const scale = Math.min(frameWidth / imgWidth, frameHeight / imgHeight, 1);
-
         img.scale(scale);
         img.set({
           left: frame.left || 0,
           top: frame.top || 0,
-          data: { elementType: 'composite' }
+          data: {
+            elementType: 'composite'
+          }
         });
 
         // Use layer sorting system
-        const { insertObjectWithLayerType } = await import("@/lib/layerSorting");
+        const {
+          insertObjectWithLayerType
+        } = await import("@/lib/layerSorting");
         insertObjectWithLayerType(canvas, img, 'composite');
-        
+
         // 确保frame保持在底层
         canvas.sendObjectToBack(frame as any);
-        
         canvas.setActiveObject(img);
         canvas.renderAll();
         saveState();
@@ -1004,25 +1011,16 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       cancelTask();
     }
   };
-
   return <div className="flex items-center gap-2 flex-nowrap">
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
       {/* 保存按钮 */}
-      {onSave && (
-        <Button 
-          variant={isCloudSaveEnabled ? "default" : "outline"} 
-          size="sm" 
-          onClick={onSave} 
-          className="shrink-0"
-          title={isCloudSaveEnabled ? "已启用云端自动保存" : "保存"}
-        >
+      {onSave && <Button variant={isCloudSaveEnabled ? "default" : "outline"} size="sm" onClick={onSave} className="shrink-0" title={isCloudSaveEnabled ? "已启用云端自动保存" : "保存"}>
           <Save className="h-4 w-4 mr-1" />
           <span className="hidden sm:inline">
             {isCloudSaveEnabled ? "云端保存" : "保存"}
           </span>
-        </Button>
-      )}
+        </Button>}
 
       <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo} className="shrink-0" title="撤销">
         <Undo className="h-4 w-4" />
@@ -1041,14 +1039,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
       <div className="flex items-center gap-1 shrink-0">
-        <Button 
-          variant="default" 
-          size="sm" 
-          onClick={() => setShowAiStoryboardDialog(true)} 
-          className="whitespace-nowrap bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg" 
-          title="AI智能多分镜生成"
-          disabled={isGeneratingStoryboards}
-        >
+        <Button variant="default" size="sm" onClick={() => setShowAiStoryboardDialog(true)} className="whitespace-nowrap bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg" title="AI智能多分镜生成" disabled={isGeneratingStoryboards}>
           <Sparkles className="h-4 w-4" />
           <span className="ml-1">{isGeneratingStoryboards ? "生成中..." : "智能多分镜"}</span>
         </Button>
@@ -1063,14 +1054,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
 
       <div className="flex items-center gap-2 shrink-0">
         <span className="text-sm text-muted-foreground whitespace-nowrap">缩放</span>
-        <Slider
-          value={[zoom]}
-          onValueChange={(values) => onZoomChange(values[0])}
-          min={10}
-          max={200}
-          step={10}
-          className="w-32"
-        />
+        <Slider value={[zoom]} onValueChange={values => onZoomChange(values[0])} min={10} max={200} step={10} className="w-32" />
         <span className="text-sm text-muted-foreground whitespace-nowrap min-w-[3rem] text-right">{zoom}%</span>
       </div>
 
@@ -1082,29 +1066,12 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
 
       <Separator orientation="vertical" className="h-6 shrink-0" />
 
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={onShowTutorial}
-        className="shrink-0 whitespace-nowrap" 
-        title="显示帮助教程"
-      >
-        <HelpCircle className="h-4 w-4" />
-        <span className="ml-1">教程</span>
-      </Button>
       
-      {onShowFeatures && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={onShowFeatures}
-          className="shrink-0 whitespace-nowrap" 
-          title="特色功能介绍"
-        >
+      
+      {onShowFeatures && <Button variant="outline" size="sm" onClick={onShowFeatures} className="shrink-0 whitespace-nowrap" title="特色功能介绍">
           <Sparkles className="h-4 w-4" />
           <span className="ml-1">特色功能</span>
-        </Button>
-      )}
+        </Button>}
 
 
       {/* Smart Compose Dialog */}
@@ -1159,15 +1126,10 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
             <div className="space-y-2">
               <Label>选择导出方式</Label>
               <div className="grid grid-cols-1 gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowExportDialog(false);
-                    handleDirectExport();
-                  }} 
-                  className="w-full h-auto py-4 flex flex-col items-start"
-                  disabled={isRendering}
-                >
+                <Button variant="outline" onClick={() => {
+                setShowExportDialog(false);
+                handleDirectExport();
+              }} className="w-full h-auto py-4 flex flex-col items-start" disabled={isRendering}>
                   <div className="flex items-center gap-2 mb-1">
                     <Download className="h-4 w-4" />
                     <span className="font-medium">直接导出</span>
@@ -1177,12 +1139,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
                   </span>
                 </Button>
                 
-                <Button 
-                  variant="outline" 
-                  onClick={handleRenderAndExport}
-                  className="w-full h-auto py-4 flex flex-col items-start"
-                  disabled={isRendering}
-                >
+                <Button variant="outline" onClick={handleRenderAndExport} className="w-full h-auto py-4 flex flex-col items-start" disabled={isRendering}>
                   <div className="flex items-center gap-2 mb-1">
                     <Sparkles className="h-4 w-4" />
                     <span className="font-medium">渲染并导出</span>
@@ -1278,27 +1235,18 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
             <TabsContent value="custom" className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="custom-recompose">自定义构图描述</Label>
-                <Textarea
-                  id="custom-recompose"
-                  placeholder="例如：使用低角度仰视拍摄，突出主体的高大感；或使用浅景深模糊背景，突出前景主体..."
-                  value={customRecomposePrompt}
-                  onChange={(e) => setCustomRecomposePrompt(e.target.value)}
-                  rows={4}
-                />
+                <Textarea id="custom-recompose" placeholder="例如：使用低角度仰视拍摄，突出主体的高大感；或使用浅景深模糊背景，突出前景主体..." value={customRecomposePrompt} onChange={e => setCustomRecomposePrompt(e.target.value)} rows={4} />
                 <p className="text-sm text-muted-foreground">
                   用自然语言描述你想要的镜头、角度和构图效果
                 </p>
               </div>
-              <Button 
-                onClick={() => {
-                  if (!customRecomposePrompt.trim()) {
-                    toast.error("请输入构图描述");
-                    return;
-                  }
-                  handleRecompose(customRecomposePrompt);
-                }} 
-                className="w-full"
-              >
+              <Button onClick={() => {
+              if (!customRecomposePrompt.trim()) {
+                toast.error("请输入构图描述");
+                return;
+              }
+              handleRecompose(customRecomposePrompt);
+            }} className="w-full">
                 应用自定义构图
               </Button>
             </TabsContent>
@@ -1322,15 +1270,7 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
               <Label htmlFor="script-text" className="text-base font-semibold">
                 剧本文本 <span className="text-sm text-muted-foreground">({scriptText.length}/3500字)</span>
               </Label>
-              <Textarea
-                id="script-text"
-                placeholder="输入您的剧本内容，AI将根据剧本生成分镜画面..."
-                value={scriptText}
-                onChange={(e) => setScriptText(e.target.value)}
-                rows={8}
-                className="resize-none"
-                maxLength={3500}
-              />
+              <Textarea id="script-text" placeholder="输入您的剧本内容，AI将根据剧本生成分镜画面..." value={scriptText} onChange={e => setScriptText(e.target.value)} rows={8} className="resize-none" maxLength={3500} />
               <p className="text-sm text-muted-foreground">
                 描述场景、角色动作和情绪，AI会自动生成对应的分镜线稿
               </p>
@@ -1342,25 +1282,15 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
                 参考图片 <span className="text-sm text-muted-foreground">(可选，最多4张)</span>
               </Label>
               <div className="border-2 border-dashed rounded-lg p-6 bg-muted/50">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length + referenceImages.length > 4) {
-                      toast.error("最多只能上传4张图片");
-                      return;
-                    }
-                    setReferenceImages([...referenceImages, ...files]);
-                  }}
-                  className="hidden"
-                  id="reference-images"
-                />
-                <label
-                  htmlFor="reference-images"
-                  className="flex flex-col items-center justify-center cursor-pointer"
-                >
+                <input type="file" accept="image/*" multiple onChange={e => {
+                const files = Array.from(e.target.files || []);
+                if (files.length + referenceImages.length > 4) {
+                  toast.error("最多只能上传4张图片");
+                  return;
+                }
+                setReferenceImages([...referenceImages, ...files]);
+              }} className="hidden" id="reference-images" />
+                <label htmlFor="reference-images" className="flex flex-col items-center justify-center cursor-pointer">
                   <Camera className="h-12 w-12 text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">
                     点击或拖拽上传角色参考图片（可选）
@@ -1372,41 +1302,24 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
               </div>
 
               {/* 已上传图片预览 */}
-              {referenceImages.length > 0 && (
-                <div className="grid grid-cols-4 gap-2 mt-4">
-                  {referenceImages.map((file, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`参考图 ${index + 1}`}
-                        className="w-full h-24 object-cover rounded border"
-                      />
-                      <button
-                        onClick={() => {
-                          setReferenceImages(referenceImages.filter((_, i) => i !== index));
-                        }}
-                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
+              {referenceImages.length > 0 && <div className="grid grid-cols-4 gap-2 mt-4">
+                  {referenceImages.map((file, index) => <div key={index} className="relative group">
+                      <img src={URL.createObjectURL(file)} alt={`参考图 ${index + 1}`} className="w-full h-24 object-cover rounded border" />
+                      <button onClick={() => {
+                  setReferenceImages(referenceImages.filter((_, i) => i !== index));
+                }} className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <span className="sr-only">删除</span>
                         ×
                       </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    </div>)}
+                </div>}
             </div>
 
             {/* 自定义风格输入（仅当选择自定义时显示） */}
-            {storyboardStyle === 'custom' && (
-              <div className="space-y-2">
+            {storyboardStyle === 'custom' && <div className="space-y-2">
                 <Label className="text-sm">自定义风格描述</Label>
-                <Input
-                  placeholder="输入自定义风格描述，如：水彩风格、油画风格等"
-                  value={customStyle}
-                  onChange={(e) => setCustomStyle(e.target.value)}
-                />
-              </div>
-            )}
+                <Input placeholder="输入自定义风格描述，如：水彩风格、油画风格等" value={customStyle} onChange={e => setCustomStyle(e.target.value)} />
+              </div>}
 
             {/* 生成说明 */}
             <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -1441,17 +1354,10 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
                   </SelectContent>
                 </Select>
               </div>
-              <Button
-                onClick={() => setShowAiStoryboardDialog(false)}
-                variant="outline"
-              >
+              <Button onClick={() => setShowAiStoryboardDialog(false)} variant="outline">
                 取消
               </Button>
-              <Button
-                onClick={handleAiStoryboardGeneration}
-                disabled={!scriptText.trim() || isGeneratingStoryboards}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              >
+              <Button onClick={handleAiStoryboardGeneration} disabled={!scriptText.trim() || isGeneratingStoryboards} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
                 {isGeneratingStoryboards ? "生成中..." : "开始生成分镜"}
               </Button>
             </div>
