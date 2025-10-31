@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHea
 import { DraftsList } from "@/components/editor/DraftsList";
 import { DraftsManagerDialog } from "@/components/editor/DraftsManagerDialog";
 import { SaveDraftDialog } from "@/components/editor/SaveDraftDialog";
+import { SaveOptionsDialog } from "@/components/editor/SaveOptionsDialog";
 import { ExitConfirmDialog } from "@/components/editor/ExitConfirmDialog";
 import { Tutorial } from "@/components/editor/Tutorial";
 import { EditorInitialSetup } from "@/components/editor/EditorInitialSetup";
@@ -117,6 +118,7 @@ const Editor = () => {
   const [cloudDraftId, setCloudDraftId] = useState<string | null>(null);
   const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCloudSaveEnabled, setIsCloudSaveEnabled] = useState(false); // 是否启用云端自动保存
 
   // 页面离开确认
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -124,6 +126,7 @@ const Editor = () => {
   
   // 保存确认对话框
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showSaveOptionsDialog, setShowSaveOptionsDialog] = useState(false);
 
   // 初始化设置 - 每次进入编辑器都需要初始化
   const [showInitialSetup, setShowInitialSetup] = useState(true);
@@ -713,18 +716,32 @@ const Editor = () => {
     }
   }, [canvas, user, cloudDraftId, isSaving, frameWidth, frameHeight, storyboardFrameCount]);
 
-  // 定时自动保存（每30秒）
+  // 启用云端保存
+  const handleEnableCloudSave = useCallback(async () => {
+    if (!user) {
+      toast.error('请先登录');
+      return;
+    }
+    
+    setIsCloudSaveEnabled(true);
+    toast.success('已启用云端自动保存');
+    
+    // 立即执行一次保存
+    await autoSaveToCloud();
+  }, [user, autoSaveToCloud]);
+
+  // 定时自动保存（每30秒） - 只有启用云端保存后才执行
   useEffect(() => {
-    if (!canvas || !user) return;
+    if (!canvas || !user || !isCloudSaveEnabled) return;
     
     const interval = setInterval(() => {
       autoSaveToCloud();
     }, 30000); // 30秒
     
     return () => clearInterval(interval);
-  }, [canvas, user, autoSaveToCloud]);
+  }, [canvas, user, isCloudSaveEnabled, autoSaveToCloud]);
 
-  // 快捷键保存（Ctrl+S / Cmd+S）
+  // 快捷键保存（Ctrl+S / Cmd+S） - 只有启用云端保存后才自动保存到云端
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check if user is typing in an input field
@@ -738,14 +755,18 @@ const Editor = () => {
       // Ctrl+S / Cmd+S 保存
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        autoSaveToCloud();
-        toast.success('手动保存成功');
+        if (isCloudSaveEnabled) {
+          autoSaveToCloud();
+          toast.success('云端保存成功');
+        } else {
+          handleSaveToLocal();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [autoSaveToCloud]);
+  }, [isCloudSaveEnabled, autoSaveToCloud, handleSaveToLocal]);
 
   // 从云端加载草稿
   const loadDraftFromCloud = useCallback(async (draftId: string, draftData: string) => {
@@ -1115,6 +1136,14 @@ const Editor = () => {
         defaultTitle={`草稿 ${new Date().toLocaleString('zh-CN')}`}
       />
       
+      {/* 保存选项对话框 */}
+      <SaveOptionsDialog
+        open={showSaveOptionsDialog}
+        onOpenChange={setShowSaveOptionsDialog}
+        onSaveLocal={handleSaveToLocal}
+        onSaveCloud={handleEnableCloudSave}
+      />
+      
       {/* 特色功能介绍对话框 */}
       <FeaturesDialog
         open={showFeaturesDialog}
@@ -1189,6 +1218,8 @@ const Editor = () => {
             defaultFrameHeight={frameHeight}
             onShowTutorial={handleShowTutorial}
             onShowFeatures={handleShowFeatures}
+            onSave={() => setShowSaveOptionsDialog(true)}
+            isCloudSaveEnabled={isCloudSaveEnabled}
           />
         </div>
       </div>

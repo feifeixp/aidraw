@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Hand, Grid3x3, HelpCircle } from "lucide-react";
+import { MousePointer2, Download, Undo, Redo, Sparkles, Wand2, Camera, Hand, Grid3x3, HelpCircle, Save } from "lucide-react";
 import { Canvas as FabricCanvas, FabricImage, Rect as FabricRect, FabricText } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,8 @@ interface EditorToolbarProps {
   defaultFrameHeight?: number;
   onShowTutorial?: () => void;
   onShowFeatures?: () => void;
+  onSave?: () => void;
+  isCloudSaveEnabled?: boolean;
 }
 export const EditorToolbar = ({
   canvas,
@@ -60,7 +62,9 @@ export const EditorToolbar = ({
   defaultFrameWidth = 1024,
   defaultFrameHeight = 768,
   onShowTutorial,
-  onShowFeatures
+  onShowFeatures,
+  onSave,
+  isCloudSaveEnabled = false
 }: EditorToolbarProps) => {
   const [showSmartComposeDialog, setShowSmartComposeDialog] = useState(false);
   const [replaceOriginal, setReplaceOriginal] = useState(true);
@@ -1003,6 +1007,22 @@ PRESERVE: Keep exact composition, poses, positions, character details, expressio
 
   return <div className="flex items-center gap-2 flex-nowrap">
       <Separator orientation="vertical" className="h-6 shrink-0" />
+
+      {/* 保存按钮 */}
+      {onSave && (
+        <Button 
+          variant={isCloudSaveEnabled ? "default" : "outline"} 
+          size="sm" 
+          onClick={onSave} 
+          className="shrink-0"
+          title={isCloudSaveEnabled ? "已启用云端自动保存" : "保存"}
+        >
+          <Save className="h-4 w-4 mr-1" />
+          <span className="hidden sm:inline">
+            {isCloudSaveEnabled ? "云端保存" : "保存"}
+          </span>
+        </Button>
+      )}
 
       <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo} className="shrink-0" title="撤销">
         <Undo className="h-4 w-4" />
