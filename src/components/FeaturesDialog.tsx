@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Hls from "hls.js";
 import {
   Dialog,
   DialogContent,
@@ -28,37 +29,69 @@ const features: Feature[] = [
     title: "元素的AI智能操作",
     description: "可以编辑角色动作、场景元素可以快捷视角和环境",
     icon: Wand2,
-    videoUrl: "", // 待填充
+    videoUrl: "https://customer-dsvvr0l0774egrdd.cloudflarestream.com/e3c53121c7f2bb52b8ee6b67de9b64fe/manifest/video.m3u8",
   },
   {
     id: "pixel-editor",
     title: "像素编辑器",
     description: "可以通过AI智能提取方便提取图片中的元素",
     icon: Eraser,
-    videoUrl: "", // 待填充
+    videoUrl: "https://customer-dsvvr0l0774egrdd.cloudflarestream.com/8376e417421d93421791417501e46537/manifest/video.m3u8",
   },
   {
     id: "smart-synthesis",
     title: "智能合成",
     description: "可以通过文本和标记对图片做复杂的调整",
     icon: Sparkles,
-    videoUrl: "", // 待填充
+    videoUrl: "https://customer-dsvvr0l0774egrdd.cloudflarestream.com/69c616e944a6f4c539ec89ff3bac903d/manifest/video.m3u8",
   },
   {
     id: "smart-storyboard",
     title: "智能多分镜",
     description: "快速创建和管理多个分镜，实现连贯的视觉叙事",
     icon: Layout,
-    videoUrl: "", // 待填充
+    videoUrl: "https://customer-dsvvr0l0774egrdd.cloudflarestream.com/a77b3ce9f04dc3b953c2d7b3c769c2c7/manifest/video.m3u8",
   },
   {
     id: "render-export",
     title: "渲染导出",
     description: "最终合成的图片可以通过渲染优化图片，重新渲染光照和阴影",
     icon: Image,
-    videoUrl: "", // 待填充
+    videoUrl: "https://customer-dsvvr0l0774egrdd.cloudflarestream.com/8790d4b2d8e5c85283ee7abdfc0e6351/manifest/video.m3u8",
   },
 ];
+
+const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!videoRef.current || !videoUrl) return;
+
+    const video = videoRef.current;
+
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(videoUrl);
+      hls.attachMedia(video);
+      
+      return () => {
+        hls.destroy();
+      };
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = videoUrl;
+    }
+  }, [videoUrl]);
+
+  return (
+    <video
+      ref={videoRef}
+      controls
+      className="w-full h-full object-contain"
+    >
+      您的浏览器不支持视频播放
+    </video>
+  );
+};
 
 export const FeaturesDialog = ({ open, onOpenChange }: FeaturesDialogProps) => {
   const [activeTab, setActiveTab] = useState(features[0].id);
@@ -113,13 +146,7 @@ export const FeaturesDialog = ({ open, onOpenChange }: FeaturesDialogProps) => {
                 {/* 视频播放区域 */}
                 <div className="aspect-video rounded-lg border bg-muted/30 flex items-center justify-center overflow-hidden">
                   {feature.videoUrl ? (
-                    <video
-                      src={feature.videoUrl}
-                      controls
-                      className="w-full h-full object-contain"
-                    >
-                      您的浏览器不支持视频播放
-                    </video>
+                    <VideoPlayer videoUrl={feature.videoUrl} />
                   ) : (
                     <div className="text-center text-muted-foreground">
                       <Icon className="h-12 w-12 mx-auto mb-2 opacity-50" />
